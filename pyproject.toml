@@ -1,6 +1,6 @@
 [build-system]
-requires = ["flit_core >=2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name =  "gwsim"
@@ -14,13 +14,18 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11"
 ]
-requires-python = ">=3.8.1"
+requires-python = ">=3.9"
 dynamic = ["version"]
+dependencies = [
+    "click",
+    "tqdm",
+    "numpy",
+    "h5py",
+]
 
 [project.optional-dependencies]
 spark = [
@@ -50,12 +55,15 @@ test = [
 gwsim = "gwsim.tools.main:main"
 
 [project.urls]
-Documentation = "https://github.com/microsoft/python-package-template/tree/main#readme"
-Source = "https://github.com/microsoft/python-package-template"
-Tracker = "https://github.com/microsoft/python-package-template/issues"
+Documentation = "https://gitlab.et-gw.eu/eluminat/software/gwsim/-/blob/main/README.md"
+Source = "https://gitlab.et-gw.eu/eluminat/software/gwsim"
+Tracker = "https://gitlab.et-gw.eu/eluminat/software/gwsim/-/issues"
 
-[tool.flit.module]
-name = "gwsim"
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gwsim"]
 
 [tool.bandit]
 exclude_dirs = ["build","dist","tests","scripts"]
