@@ -25,6 +25,7 @@ dependencies = [
     "tqdm",
     "numpy",
     "h5py",
+    "pycbc",
 ]
 
 [project.optional-dependencies]
