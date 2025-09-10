@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import logging
-import tempfile
-from pathlib import Path
 
 import pytest
 import yaml
 from click.testing import CliRunner
-
 from gwsim.tools.main import main
 
 logger = logging.getLogger("gwsim")
@@ -39,7 +36,6 @@ def mock_config(temp_dir):
                 "sampling_frequency": 16,
                 "duration": 4,
                 "start_time": 123,
-                "batch_size": 1,
                 "max_samples": 10,
                 "seed": 0,
             },

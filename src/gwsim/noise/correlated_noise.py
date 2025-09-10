@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+from gwpy.timeseries import TimeSeries
 from scipy.interpolate import interp1d
 from scipy.linalg import cholesky
 from scipy.sparse import block_diag, coo_matrix

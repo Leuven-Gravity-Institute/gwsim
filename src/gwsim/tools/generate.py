@@ -116,7 +116,7 @@ def generate(config_file_name: str, overwrite: bool, metadata: bool) -> None:
     if checkpoint_file.is_file():
         generator.load_state(file_name=checkpoint_file)
 
-    for batch in tqdm(generator, initial=generator.batch_counter, total=len(generator), desc="Generating data"):
+    for batch in tqdm(generator, initial=generator.sample_counter, total=len(generator), desc="Generating data"):
         # Get the file name from template
         file_name = Path(get_file_name_from_template(file_name_template, generator))
 
