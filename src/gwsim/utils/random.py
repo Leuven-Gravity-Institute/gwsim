@@ -60,25 +60,6 @@ class RandomManager:
         cls._rng = default_rng()  # Create new generator to avoid state conflicts
         cls._rng.bit_generator.state = state
 
-    @classmethod
-    def get_state(cls) -> dict:
-        """Get the current state of the random number generator.
-
-        Returns:
-            dict: The state of the RNG's bit generator.
-        """
-        return cls._rng.bit_generator.state
-
-    @classmethod
-    def set_state(cls, state: dict):
-        """Set the state of the random number generator.
-
-        Args:
-            state (dict): The state of the RNG's bit generator.
-        """
-        cls._rng = default_rng()  # Create new generator to avoid state conflicts
-        cls._rng.bit_generator.state = state
-
 
 # Alias for easy  access
 get_rng = RandomManager.get_rng
