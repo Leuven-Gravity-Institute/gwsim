@@ -11,7 +11,7 @@ from scipy.linalg import cholesky
 from scipy.sparse import block_diag, coo_matrix
 
 from ..utils.random import get_state
-from .noise.base import BaseNoise
+from .base import BaseNoise
 
 
 class CorrelatedNoise(BaseNoise):
@@ -25,8 +25,8 @@ class CorrelatedNoise(BaseNoise):
     def __init__(
         self,
         detector_names: list[str],
-        psd: np.ndarray,
-        csd: np.ndarray,
+        psd: str,
+        csd: str,
         sampling_frequency: float,
         duration: float,
         flow: float | None = 2,
@@ -43,8 +43,8 @@ class CorrelatedNoise(BaseNoise):
 
         Args:
             detector_names (List[str]): Names of the detectors.
-            psd (np.ndarray): Power Spectral Density with shape (N, 2), where the first column is frequency (Hz) and the second is PSD values.
-            csd (np.ndarray): Cross Power Spectral Density with shape (N, 2), where the first column is frequency (Hz) and the second is complex CSD values.
+            psd (str): Path to the file containing the Power Spectral Density array, with shape (N, 2), where the first column is frequency (Hz) and the second is PSD values.
+            csd (str): Path to the file containing Cross Power Spectral Density array, with shape (N, 2), where the first column is frequency (Hz) and the second is complex CSD values.
             sampling_frequency (float): Sampling frequency in Hz.
             duration (float): Length of the noise time series in seconds.
             flow (float, optional): Lower frequency cut-off in Hz. Defaults to 2.0.
@@ -62,10 +62,14 @@ class CorrelatedNoise(BaseNoise):
             seed=seed,
         )
         self.detector_names = detector_names
+        self.N_det = len(detector_names)
+        if self.N_det == 0:
+            raise ValueError("detector_names must contain at least one detector.")
         self.flow = flow
         self.fhigh = fhigh if (fhigh is not None and fhigh <=
                                sampling_frequency / 2) else sampling_frequency / 2
 
+        # Initialize
         self._initialize_window_properties()
         self._initialize_frequency_properties()
         self._initialize_psd_csd(psd, csd)
@@ -99,17 +103,44 @@ class CorrelatedNoise(BaseNoise):
         self.frequency = np.arange(0.0, self.N / 2.0 + 1) * self.df
         self.N_freq = len(self.frequency[self.kmin: self.kmax])
 
-    def _initialize_psd_csd(self, psd: np.ndarray, csd: np.ndarray) -> None:
+    def _load_array(self, arr_path: str) -> np.ndarray:
+        """
+        Load an array from a file path
+
+        Args:
+            arr_path (str): Path to the file containing the input array
+
+        Returns:
+            np.ndarray: The loaded array
+        """
+        if isinstance(arr_path, str):
+            path = Path(arr_path)
+            if path.suffix == ".npy":
+                return np.load(path)
+            elif path.suffix == ".txt":
+                return np.loadtxt(path)
+            elif path.suffix == ".csv":
+                return np.loadtxt(path, delimiter="," if path.suffix == ".csv" else None)
+            else:
+                raise ValueError(f"Unsupported file format for {path}")
+        else:
+            raise TypeError("psd and csd must be a string with path to a file")
+
+    def _initialize_psd_csd(self, psd: str, csd: str) -> None:
         """
         Initialize PSD and CSD interpolations for frequency range
 
         Args:
-            psd (np.ndarray): Power Spectral Density with shape (N, 2), where the first column is frequency (Hz) and the second is PSD values.
-            csd (np.ndarray): Cross Power Spectral Density with shape (N, 2), where the first column is frequency (Hz) and the second is complex CSD values.
+            psd (str): Path to the file containing the Power Spectral Density array, with shape (N, 2), where the first column is frequency (Hz) and the second is PSD values.
+            csd (str): Path to the file containing Cross Power Spectral Density array, with shape (N, 2), where the first column is frequency (Hz) and the second is complex CSD values.
 
         Raises:
             ValueError: If the shape of the psd or csd is different form (N, 2), raise ValueError
         """
+
+        # Load psd/csd
+        psd = self._load_array(psd)
+        csd = self._load_array(csd)
 
         if psd.shape[1] != 2 or csd.shape[1] != 2:
             raise ValueError("PSD and CSD must have shape (N, 2)")
@@ -221,9 +252,9 @@ class CorrelatedNoise(BaseNoise):
         """
         file_name = Path(file_name)
 
-        if batch.shape[0] != len(self.detector_names):
+        if batch.shape[0] != self.N_det:
             raise ValueError(
-                f"Batch first dimension ({batch.shape[0]}) must match number of detectors ({len(self.detector_names)}).")
+                f"Batch first dimension ({batch.shape[0]}) must match number of detectors ({self.N_det}).")
 
         for i, det_name in enumerate(self.detector_names):
             # Adjust filename per detector
