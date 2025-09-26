@@ -71,8 +71,6 @@ class CorrelatedNoise(BaseNoise):
         self._initialize_psd_csd(psd, csd)
         self.spectral_matrix = self.spectral_matrix_cholesky_decomposition()
 
-        self.register_state_attribute("gps_epoch")
-
     def _initialize_window_properties(self) -> None:
         """
         Initialize window properties for noise generation
