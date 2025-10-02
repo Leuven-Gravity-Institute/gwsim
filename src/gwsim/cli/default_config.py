@@ -5,21 +5,44 @@ A tool to generate default configuration file.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
 from .config import save_config
 
 _DEFAULT_CONFIG = {
-    "working-directory": ".",
-    "generator": {"class": None, "arguments": None},
-    "output": {"file_name": None},
+    "globals": {
+        "working-directory": ".",
+        "sampling-frequency": 16384,
+        "duration": 4,
+        "output-directory": "output",
+        "metadata-directory": "metadata",
+    },
+    "generators": {
+        "example": {
+            "class": "WhiteNoise",  # Resolves to gwsim.noise.WhiteNoise
+            "arguments": {
+                "batch_size": 1,
+                "max_samples": 10,
+                "loc": 0.0,
+                "scale": 1.0,
+                "seed": 0,
+            },
+            "output": {
+                "file_name": "example-{{ start-time }}-{{ duration }}.gwf",
+                "arguments": {
+                    "channel": "STRAIN",
+                },
+            },
+        },
+    },
 }
 
 
 def default_config_command(
-    output: str = typer.Option("config.yaml", "--output", help="File name of the output"),
-    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite the existing file"),
+    output: Annotated[str, typer.Option("--output", help="File name of the output", prompt=True)] = "config.yaml",
+    overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite the existing file")] = False,
 ) -> None:
     """Write the default configuration file to disk.
 
