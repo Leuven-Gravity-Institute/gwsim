@@ -476,7 +476,7 @@ def process_single_simulator(
 def simulate_command(
     config_file_name: Annotated[str, typer.Argument(help="Configuration file path")],
     overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite existing files")] = False,
-    metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files")] = False,
+    metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files")] = True,
 ) -> None:
     """Generate gravitational wave simulation data using specified simulators.
 
