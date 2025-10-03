@@ -293,6 +293,19 @@ def normalize_config(config: dict) -> dict:
     if "globals" not in normalized:
         normalized["globals"] = {}
 
+    # Check each simulator has required fields
+    for name, sim_config in normalized["simulators"].items():
+        if "class" not in sim_config:
+            raise ValueError(f"Simulator '{name}' missing required 'class' field")
+        if "arguments" not in sim_config:
+            sim_config["arguments"] = {}
+        if "output" not in sim_config:
+            sim_config["output"] = {}
+        if "file_name" not in sim_config["output"]:
+            sim_config["output"]["file_name"] = f"{name}-{{{{ counter }}}}.hdf5"
+        if "arguments" not in sim_config["output"]:
+            sim_config["output"]["arguments"] = {}
+
     return normalized
 
 
