@@ -89,6 +89,9 @@ branch = true
 [tool.coverage.report]
 fail_under = 100
 
+[tool.coverage.xml]
+output = "coverage.xml"
+
 [tool.flake8]
 max-line-length = 120
 select = "F,E,W,B,B901,B902,B903"
@@ -130,9 +133,17 @@ executionEnvironments = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov-report xml:coverage.xml --cov src --cov-fail-under 0 --cov-append -m 'not integration'"
+addopts = [
+    "--cov=gwsim",
+    "--cov-report=xml",
+    "--cov-report=term",
+    "--junitxml=test-results.xml",
+    "--cov-fail-under=0",
+    "--cov-append",
+    "-m", "not integration"
+]
 pythonpath = [
-  "src"
+    "src"
 ]
 testpaths = "tests"
 junit_family = "xunit2"
