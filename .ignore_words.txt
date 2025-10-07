@@ -1,4 +1,10 @@
+freqs
+gengli
+gwpy
 gwsim
+LIGO
+NSBH
+Nyquist
 pycbc
 retryable
 Uncatched

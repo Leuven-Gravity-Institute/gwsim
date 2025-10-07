@@ -57,6 +57,8 @@ repos:
         additional_dependencies:
           [
             typer,
+            gwpy,
+            pycbc,
           ]
 
   - repo: https://github.com/asottile/pyupgrade

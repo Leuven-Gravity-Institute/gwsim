@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from ..simulator.state import StateAttribute
-from ..utils.random import Generator, get_rng, get_state, set_seed, set_state
+from gwsim.simulator.state import StateAttribute
+from gwsim.utils.random import Generator, get_rng, get_state, set_seed, set_state
 
 logger = logging.getLogger(__name__)
 
