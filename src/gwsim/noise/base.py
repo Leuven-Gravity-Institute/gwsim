@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import cast
 
 from gwsim.simulator.base import Simulator
 from gwsim.simulator.mixin.gwf import GWFOutputMixin
 from gwsim.simulator.mixin.randomness import RandomnessMixin
 from gwsim.simulator.mixin.time_series import TimeSeriesMixin
 from gwsim.simulator.state import StateAttribute
+from gwsim.utils.random import get_state
 
 
 class NoiseSimulator(Simulator, RandomnessMixin, TimeSeriesMixin, GWFOutputMixin):
@@ -57,6 +58,12 @@ class NoiseSimulator(Simulator, RandomnessMixin, TimeSeriesMixin, GWFOutputMixin
 
         return metadata
 
-    def next(self) -> Any:
-        """Next noise segment."""
-        raise NotImplementedError("Not implemented.")
+    def update_state(self) -> None:
+        """Update internal state after each sample generation.
+
+        This method can be overridden by subclasses to update any internal state
+        after generating a sample. The default implementation does nothing.
+        """
+        self.counter = cast(int, self.counter) + 1
+        self.start_time += self.duration
+        self.rng_state = get_state()
