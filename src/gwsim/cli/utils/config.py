@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from ...utils.io import check_file_overwrite
+from gwsim.utils.io import check_file_overwrite
 
 logger = logging.getLogger("gwsim")
 

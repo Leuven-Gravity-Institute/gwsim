@@ -15,11 +15,11 @@ from typing import Annotated, Any
 import typer
 from tqdm import tqdm
 
-from ..simulator.base import Simulator
-from .utils.config import load_config, process_config, resolve_class_path
-from .utils.retry import RetryManager
-from .utils.template import TemplateValidator
-from .utils.utils import get_file_name_from_template, handle_signal, import_attribute, save_file_safely
+from gwsim.cli.utils.config import load_config, process_config, resolve_class_path
+from gwsim.cli.utils.retry import RetryManager
+from gwsim.cli.utils.template import TemplateValidator
+from gwsim.cli.utils.utils import get_file_name_from_template, handle_signal, import_attribute, save_file_safely
+from gwsim.simulator.base import Simulator
 
 logger = logging.getLogger("gwsim")
 

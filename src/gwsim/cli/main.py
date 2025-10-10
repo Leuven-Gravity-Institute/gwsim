@@ -12,8 +12,8 @@ import typer
 from rich.console import Console
 from rich.logging import RichHandler
 
-from .default_config import default_config_command
-from .simulate import simulate_command
+from gwsim.cli.default_config import default_config_command
+from gwsim.cli.simulate import simulate_command
 
 logger = logging.getLogger("gwsim")
 console = Console()

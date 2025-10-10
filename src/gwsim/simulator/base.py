@@ -11,11 +11,10 @@ from typing import Any, cast
 import numpy as np
 
 from gwsim import __version__
+from gwsim.simulator.state import StateAttribute
+from gwsim.utils.io import check_file_exist
 
-from ..utils.io import check_file_exist
-from .state import StateAttribute
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gwsim")
 
 
 class Simulator(ABC):
