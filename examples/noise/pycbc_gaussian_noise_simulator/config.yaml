@@ -9,10 +9,11 @@ simulators:
   noise:
     class: PyCBCStationaryGaussianNoiseSimulator
     arguments:
-      detectors: ["ET1",]
+      detectors:
+        - ET1
       label: EinsteinTelescopeP1600143
       seed: 0
     output:
-      file_name: ET1-{{ start_time }}-{{ duration }}.gwf
+      file_name: "{{ detector }}-{{ start_time }}-{{ duration }}.gwf"
       arguments:
         channel: STRAIN
