@@ -29,6 +29,37 @@ def import_attribute(full_path: str) -> Any:
     return getattr(module, class_name)
 
 
+def get_file_name_from_template_with_dict(
+    template: str, values: dict[str, Any], exclude: set[str] | None = None
+) -> str:
+    """Get the file name from a template string.
+    The template string should use a double curly bracket to indicate the placeholder.
+    For example, in '{{ x }}-{{ y }}.txt', x and y are interpreted as placeholders,
+    and the values are retrieved from the values dictionary.
+
+    Args:
+        template (str): A template string.
+        values (dict[str, Any]): A dictionary of values.
+        exclude (set[str] | None): Set of attribute names to exclude from expansion. Defaults to None.
+
+    Returns:
+        str: The file name with the placeholders substituted by the values from the dictionary.
+    """
+    if exclude is None:
+        exclude = set()
+
+    def replace(matched):
+        label = matched.group(1).strip()
+        if label in exclude:
+            return matched.group(0)  # Return the original placeholder unchanged
+        try:
+            return str(values[label])
+        except KeyError as e:
+            raise ValueError(f"Key '{label}' not found in values dictionary") from e
+
+    return re.sub(r"\{\{\s*(\w+)\s*\}\}", replace, template)
+
+
 def get_file_name_from_template(template: str, instance: object, exclude: set[str] | None = None) -> str:
     """Get the file name from a template string.
     The template string should use a double curly bracket to indicate the placeholder.

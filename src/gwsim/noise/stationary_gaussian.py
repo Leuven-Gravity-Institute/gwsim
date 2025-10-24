@@ -5,7 +5,7 @@ from __future__ import annotations
 from gwsim.noise.base import NoiseSimulator
 
 
-class StationaryGaussianNoiseSimulator(NoiseSimulator):
+class StationaryGaussianNoiseSimulator(NoiseSimulator):  # pylint: disable=duplicate-code
     """Stationary Gaussian noise simulator.
 
     Generates noise from a specified power spectral density.
@@ -18,6 +18,7 @@ class StationaryGaussianNoiseSimulator(NoiseSimulator):
         start_time: float = 0,
         max_samples: int | None = None,
         seed: int | None = None,
+        detectors: list[str] | None = None,
         **kwargs,
     ):
         """Initialize stationary Gaussian noise simulator.
@@ -29,6 +30,7 @@ class StationaryGaussianNoiseSimulator(NoiseSimulator):
             start_time: Start time in GPS seconds. Default is 0.
             max_samples: Maximum number of samples. None means infinite.
             seed: Random seed. If None, RNG is not initialized.
+            detectors: List of detector names. Default is None.
             **kwargs: Additional arguments.
         """
         super().__init__(
@@ -37,5 +39,6 @@ class StationaryGaussianNoiseSimulator(NoiseSimulator):
             start_time=start_time,
             max_samples=max_samples,
             seed=seed,
+            detectors=detectors,
             **kwargs,
         )

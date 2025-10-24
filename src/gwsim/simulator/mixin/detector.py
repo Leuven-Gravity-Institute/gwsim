@@ -13,6 +13,8 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             detectors (list[str] | None): List of detector names. If None, use all available detectors.
             **kwargs: Additional arguments.
         """
+        super().__init__(**kwargs)
+        print("mixin", detectors)
         self.detectors = detectors
 
     @property

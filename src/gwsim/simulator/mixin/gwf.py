@@ -114,6 +114,13 @@ class GWFOutputMixin:
     generates numpy arrays.
     """
 
+    def __init__(self, **kwargs) -> None:
+        """Initialize GWFOutputMixin.
+
+        Args:
+            **kwargs: Additional arguments absorbed by subclasses.
+        """
+
     def save_to_gwf(
         self,
         data: np.ndarray,

@@ -15,7 +15,9 @@ from gwsim.noise.stationary_gaussian import StationaryGaussianNoiseSimulator
 logger = logging.getLogger("gwsim")
 
 
-class PyCBCStationaryGaussianNoiseSimulator(StationaryGaussianNoiseSimulator):
+class PyCBCStationaryGaussianNoiseSimulator(
+    StationaryGaussianNoiseSimulator
+):  # pylint: disable=too-many-ancestors, duplicate-code
     """Stationary Gaussian noise simulator using Bilby."""
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
@@ -30,6 +32,7 @@ class PyCBCStationaryGaussianNoiseSimulator(StationaryGaussianNoiseSimulator):
         start_time: float = 0,
         max_samples: int | None = None,
         seed: int | None = None,
+        detectors: list[str] | None = None,
         **kwargs,
     ):
         """Initialize Bilby stationary Gaussian noise simulator.
@@ -45,6 +48,7 @@ class PyCBCStationaryGaussianNoiseSimulator(StationaryGaussianNoiseSimulator):
             start_time (float): Start time in GPS seconds. Default is 0.
             max_samples (int | None): Maximum number of samples. None means infinite.
             seed (int | None): Random seed. If None, RNG is not initialized.
+            detectors (list[str] | None): List of detector names. Default is None.
             **kwargs: Additional arguments.
         """
         super().__init__(
@@ -53,6 +57,7 @@ class PyCBCStationaryGaussianNoiseSimulator(StationaryGaussianNoiseSimulator):
             start_time=start_time,
             max_samples=max_samples,
             seed=seed,
+            detectors=detectors,
             **kwargs,
         )
         self.frequency_array = frequency_array
