@@ -47,11 +47,6 @@ class PyCBCStationaryGaussianNoiseSimulator(StationaryGaussianNoiseSimulator):
             seed (int | None): Random seed. If None, RNG is not initialized.
             **kwargs: Additional arguments.
         """
-        self.frequency_array = frequency_array
-        self.psd_array = psd_array
-        self.psd_file = psd_file
-        self.label = label
-        self.low_frequency_cutoff = low_frequency_cutoff
         super().__init__(
             sampling_frequency=sampling_frequency,
             duration=duration,
@@ -60,6 +55,12 @@ class PyCBCStationaryGaussianNoiseSimulator(StationaryGaussianNoiseSimulator):
             seed=seed,
             **kwargs,
         )
+        self.frequency_array = frequency_array
+        self.psd_array = psd_array
+        self.psd_file = psd_file
+        self.label = label
+        self.low_frequency_cutoff = low_frequency_cutoff
+        self._setup_psd()
 
     def _setup_psd(self) -> None:
         if self.frequency_array is not None and self.psd_array is not None:
