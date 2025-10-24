@@ -164,7 +164,7 @@ def process_batch(
     if detector and "{detector}" in file_name_template:
         file_name_template = file_name_template.replace("{detector}", detector)
 
-    file_name = Path(get_file_name_from_template(file_name_template, simulator))
+    file_name = Path(get_file_name_from_template(file_name_template, simulator, exclude={"detector"}))
     batch_file_name = config.output_directory / file_name
 
     # Check whether the file exists
@@ -383,9 +383,21 @@ def execute_simulator_with_rollback(
         batch_config: Batch processing configuration
         detectors: List of detectors
     """
-    uses_detector_placeholder = "{detector}" in batch_config.file_name_template or any(
-        "{detector}" in str(v) for v in batch_config.output_arguments.values()
+    uses_detector_placeholder = "{detector}" in batch_config.file_name_template.replace(" ", "") or any(
+        "{detector}" in str(v).replace(" ", "") for v in batch_config.output_arguments.values()
     )
+
+    logger.debug("Simulator '%s' uses detector placeholder: %s", simulator, uses_detector_placeholder)
+
+    if uses_detector_placeholder and not hasattr(simulator, "detectors"):
+        logger.error(
+            (
+                "Simulator '%s' does not support multi-detector operation, "
+                "but detector placeholders are used in the output configuration."
+            ),
+            simulator,
+        )
+        raise ValueError("Incompatible simulator and output configuration.")
 
     if uses_detector_placeholder and detectors:
         # Multi-detector simulator: process each detector separately
@@ -424,6 +436,16 @@ def execute_simulator(
     uses_detector_placeholder = "{detector}" in batch_config.file_name_template or any(
         "{detector}" in str(v) for v in batch_config.output_arguments.values()
     )
+
+    if uses_detector_placeholder and not hasattr(simulator, "detectors"):
+        logger.error(
+            (
+                "Simulator '%s' does not support multi-detector operation, "
+                "but detector placeholders are used in the output configuration."
+            ),
+            simulator_name,
+        )
+        raise ValueError("Incompatible simulator and output configuration.")
 
     if uses_detector_placeholder and detectors:
         # Multi-detector simulator: process each detector separately

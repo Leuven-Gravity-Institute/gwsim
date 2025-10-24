@@ -29,7 +29,7 @@ def import_attribute(full_path: str) -> Any:
     return getattr(module, class_name)
 
 
-def get_file_name_from_template(template: str, instance: object) -> str:
+def get_file_name_from_template(template: str, instance: object, exclude: set[str] | None = None) -> str:
     """Get the file name from a template string.
     The template string should use a double curly bracket to indicate the placeholder.
     For example, in '{{ x }}-{{ y }}.txt', x and y are interpreted as placeholders,
@@ -38,13 +38,18 @@ def get_file_name_from_template(template: str, instance: object) -> str:
     Args:
         template (str): A template string.
         instance (object): An instance.
+        exclude (set[str] | None): Set of attribute names to exclude from expansion. Defaults to None.
 
     Returns:
         str: The file name with the placeholders substituted by the values of the attributes of the instance.
     """
+    if exclude is None:
+        exclude = set()
 
     def replace(matched):
         label = matched.group(1).strip()
+        if label in exclude:
+            return matched.group(0)  # Return the original placeholder unchanged
         try:
             return str(getattr(instance, label))
         except AttributeError as e:
