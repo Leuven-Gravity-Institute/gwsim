@@ -5,16 +5,17 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy.interpolate import interp1d
 from pycbc.waveform import get_td_waveform
 from pycbc.types.timeseries import TimeSeries
 
 
-from ..detectors import Detectors
-from ..waveform import CBCWaveform
+# from ..detectors import Detector
+from pycbc.detector import Detector
 from .base import BaseSignal
 
 
-class CBCSignal(Generator):
+class CBCSignal(BaseSignal):
 
     """
     Generate time series frames with gravitational wave signals from CBC using a population file
@@ -28,6 +29,9 @@ class CBCSignal(Generator):
         flow: float,
         sampling_frequency: float,
         duration: float,
+        earth_rotation: bool = False,
+        earth_rotation_timestep: float = 100,
+        time_dependent_timedelay: bool = False,
         start_time: float = 0,
         max_samples: int | None = None,
     ):
@@ -41,6 +45,9 @@ class CBCSignal(Generator):
             flow (float): Low-frequency cutoff in Hz.
             sampling_frequency (float): Sampling frequency in Hz.
             duration (float): Duration of the frame in seconds.
+            earth_rotation (bool, optional): If True, account for Earth's rotation effects in antenna patterns and time delays. Defaults to False.
+            earth_rotation_timestep (float, optional): Time step in seconds for approximating time-varying antenna patterns and delays when earth_rotation is True. Defaults to 100.
+            time_dependent_timedelay (bool, optional): If True, include time-dependent time delays due to Earth's rotation (only applicable if earth_rotation is True). Defaults to False.
             start_time (float, optional): Start time of the frame in seconds. Defaults to 0.0.
             max_samples (int, optional): Maximum number of samples to generate. Defaults to None.
         """
@@ -57,14 +64,17 @@ class CBCSignal(Generator):
             raise ValueError("detector_names must contain at least one detector.")
         self.detectors = [Detector(det_name) for det_name in detector_names]
         self.end_time = self.start_time + self.duration
-        self.approximant = approximant
-        self.flow = flow
-        self.waveform_arguments = dict(approximant=self.approximant,
-                                       flow=self.flow,
-                                       sampling_frequency=self.sampling_frequency)
+        self.waveform_arguments = dict(
+            approximant=approximant,
+            flow=flow,
+            sampling_frequency=sampling_frequency,
+            earth_rotation=earth_rotation,
+            earth_rotation_timestep=earth_rotation_timestep,
+            time_dependent_timedelay=time_dependent_timedelay
+        )
         if not Path(population_file).is_file():
             raise FileNotFoundError(f"Population file {population_file} not found.")
-        self.population_df = self._read_population_file(self.population_file)
+        self.population_df = self._read_population_file(population_file)
 
     def _read_population_file(self, filename: str) -> pd.DataFrame:
         """
@@ -94,7 +104,7 @@ class CBCSignal(Generator):
 
         return population_df  # TODO: the output data frame must have as column the parameters name, and as rows the event names. Each row corresponds to an event
 
-    def select_events_in_frame(events_df: pandas.DataFrame, start_time: float, end_time: float) -> pandas.DataFrame:
+    def select_events_in_frame(self, events_df: pandas.DataFrame, start_time: float, end_time: float) -> pandas.DataFrame:
         """
         Function to select the events that overlap with the frame. This takes events with a piece of signal or full duration in the frame.
 
@@ -114,7 +124,7 @@ class CBCSignal(Generator):
 
     def _adjust_parameters_to_pycbc_convention(self, parameters: dict) -> dict:
         """
-        Auxiliary function to adjust the parameters of the event according to the PyCBC convention.
+        Auxiliary function to adjust the parameters of the event according to the PyCBC convention. (#TODO)
 
         Args:
             parameters (dict): Dictionary with the parameters of the event
@@ -122,13 +132,13 @@ class CBCSignal(Generator):
         Returns:
             dict: Dictionary with the parameters of the event adjusted according to the PyCBC convention
         """
-        # TODO
+        parameters_adjusted = parameters  # TODO
 
         return parameters_adjusted
 
     def get_polarization_at_time(self, parameters: dict, waveform_arguments: dict) -> (pycbc.TimeSeries, pycbc.TimeSeries):
         """
-        Function to make the polarization of the events at the correct time (# TO CHECK: Earth rotation)
+        Function to make the polarization of the events at the correct time
 
         Args:
             parameters (dict): Dictionary with the parameters of the event
@@ -160,7 +170,8 @@ class CBCSignal(Generator):
 
         return hp, hc
 
-    def inject_signal_in_frame(hp: pycbc.TimeSeries,
+    def inject_signal_in_frame(self,
+                               hp: pycbc.TimeSeries,
                                hc: pycbc.TimeSeries,
                                parameters: dict,
                                detector: Detector,
@@ -169,7 +180,7 @@ class CBCSignal(Generator):
                                frame_start_time: float,
                                frame_end_time: float) -> np.ndarray:
         """
-        Inject a signal into the frame data (# TO CHECK: the function does NOT include effects of Earth rotation).
+        Inject a signal into the frame data.
 
         Parameters:
             hp (TimeSeries): TimeSeries of the plus polarization
@@ -189,13 +200,48 @@ class CBCSignal(Generator):
         """
         # TODO: Incorporate Earth rotation effects if required
 
-        # Compute antenna patterns and signal
-        Fp, Fc = detector.antenna_pattern(
-            right_ascension=parameters['right_ascension'],
-            declination=parameters['declination'],
-            polarization=parameters['polarization_angle'],
-            t_gps=parameters['geocent_time']
-        )
+        if self.waveform_arguments['earth_rotation']:
+
+            t_gps = np.arange(parameters['geocent_time'] - hp.duration,
+                              parameters['geocent_time'] +
+                              self.waveform_arguments['earth_rotation_timestep'],
+                              self.waveform_arguments['earth_rotation_timestep'])
+
+            repeat_count = int(self.waveform_arguments['earth_rotation_timestep'] *
+                               self.waveform_arguments['sampling_frequency'])
+
+            Fp, Fc = detector.antenna_pattern(
+                right_ascension=parameters['right_ascension'],
+                declination=parameters['declination'],
+                polarization=parameters['polarization_angle'],
+                t_gps=t_gps
+            )
+            Fp = np.repeat(Fp, repeat_count)[:len(hp)]
+            Fc = np.repeat(Fc, repeat_count)[:len(hp)]
+
+            if self.waveform_arguments['time_dependent_timedelay']:
+
+                tdelayArr = detector.time_delay_from_earth_center(
+                    parameters['right_ascension'], parameters['declination'], t_gps)
+                tdelayArr = np.repeat(tdelayArr, repeat_count)[:len(hp)]
+
+                # Now evaluate h at u = t + tau(t)
+                u = hp.sample_times.data + tdelayArr
+
+                hp.data = interp1d(hp.sample_times.data, hp.data,
+                                   kind='cubic', fill_value='extrapolate')(u)
+                hc.data = interp1d(hc.sample_times.data, hc.data,
+                                   kind='cubic', fill_value='extrapolate')(u)
+        else:
+
+            # Compute antenna patterns and signal
+            Fp, Fc = detector.antenna_pattern(
+                right_ascension=parameters['right_ascension'],
+                declination=parameters['declination'],
+                polarization=parameters['polarization_angle'],
+                t_gps=parameters['geocent_time']
+            )
+
         signal = Fp*hp + Fc*hc
 
         # Define signal start and end time
@@ -232,7 +278,7 @@ class CBCSignal(Generator):
             idx_frame_end = idx_frame_start + signal_slice_length
 
         try:
-            frame_data[idx_frame_start: idx_frame_end] += signal[idx_signal_start: idx_signal_end]
+            frame_data[idx_frame_start: idx_frame_end] += signal.data[idx_signal_start: idx_signal_end]
         except ValueError as e:
             raise ValueError(
                 f"Error injecting signal: {str(e)}. Check array dimensions and sampling consistency.")
@@ -259,23 +305,24 @@ class CBCSignal(Generator):
             parameters = self._adjust_parameters_to_pycbc_convention(row.to_dict())
 
             # Compute the polarizations
-            hp, hc = get_polarization_at_time(parameters, self.waveform_arguments)
+            hp, hc = self.get_polarization_at_time(parameters, self.waveform_arguments)
 
             # Inject the event
             for i, ifo in enumerate(self.detectors):
-                frame_data[i, :] = inject_signal_in_frame(hp, hc,
-                                                          parameters,
-                                                          ifo,
-                                                          frame_data[i, :],
-                                                          self.sampling_frequency,
-                                                          self.start_time,
-                                                          self.end_time)
-            return frame_data
+                frame_data[i, :] = self.inject_signal_in_frame(hp, hc,
+                                                               parameters,
+                                                               ifo,
+                                                               frame_data[i, :],
+                                                               self.sampling_frequency,
+                                                               self.start_time,
+                                                               self.end_time)
+        return frame_data
 
     def update_state(self) -> None:
         """Update the internal state for the next batch."""
         self.sample_counter += 1
         self.start_time += self.duration
+        self.end_time += self.duration
 
     def save_batch(self, batch: np.ndarray, file_name: str | Path, overwrite: bool = False, **kwargs) -> None:
         """
