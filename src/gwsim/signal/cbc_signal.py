@@ -63,7 +63,6 @@ class CBCSignal(BaseSignal):
         if self.N_det == 0:
             raise ValueError("detector_names must contain at least one detector.")
         self.detectors = [Detector(det_name) for det_name in detector_names]
-        self.end_time = self.start_time + self.duration
         self.waveform_arguments = dict(
             approximant=approximant,
             flow=flow,
@@ -75,6 +74,10 @@ class CBCSignal(BaseSignal):
         if not Path(population_file).is_file():
             raise FileNotFoundError(f"Population file {population_file} not found.")
         self.population_df = self._read_population_file(population_file)
+
+    @property
+    def end_time(self) -> float:
+        return self.start_time + self.duration
 
     def _read_population_file(self, filename: str) -> pd.DataFrame:
         """
@@ -322,7 +325,6 @@ class CBCSignal(BaseSignal):
         """Update the internal state for the next batch."""
         self.sample_counter += 1
         self.start_time += self.duration
-        self.end_time += self.duration
 
     def save_batch(self, batch: np.ndarray, file_name: str | Path, overwrite: bool = False, **kwargs) -> None:
         """
