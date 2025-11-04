@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import bilby
 from scipy.interpolate import interp1d
 from pycbc.waveform import get_td_waveform
 from pycbc.types.timeseries import TimeSeries
@@ -118,7 +119,23 @@ class CBCSignal(BaseSignal):
 
         Returns:
             pandas.DataFrame: Data frame containing the events in the frame, sorted by geocentric time
+
+        Raises:
+            ValueError: If the signal durations reported in the population file do not match the expected ones computed with the given flow
         """
+        # Check that signals duration is close to the expected one
+        expected_durations = np.array([
+            bilby.gw.utils.calculate_time_to_merger(
+                self.waveform_arguments['flow'],
+                row['mass_1'] * (1 + row.get('redshift', 0.0)),
+                row['mass_2'] * (1 + row.get('redshift', 0.0)),
+                safety=1.2
+            ) for _, row in events_df.iterrows()
+        ])
+        if not np.allclose(events_df['duration'].values, expected_durations, rtol=1e-3):
+            raise ValueError(
+                f"Reported signal durations in population file do not match the expected durations computed with the given flow = {self.waveform_arguments['flow']} Hz.")
+
         # An event overlaps the frame if it starts before the frame ends and ends after the frame starts
         time_mask = (events_df['geocent_time'] > start_time) & (
             events_df['geocent_time'] - events_df['duration'] < end_time)
@@ -165,6 +182,7 @@ class CBCSignal(BaseSignal):
                                  distance=parameters['luminosity_distance'],
                                  coa_phase=parameters['phase'],
                                  inclination=parameters['iota'],
+                                 polarization_angle=parameters['polarization_angle'],
                                  f_lower=waveform_arguments['flow'],
                                  delta_t=1./waveform_arguments['sampling_frequency'])
 
@@ -201,7 +219,6 @@ class CBCSignal(BaseSignal):
         Notes:
             Assumes consistent sampling frequency between signal and frame data.
         """
-        # TODO: Incorporate Earth rotation effects if required
 
         if self.waveform_arguments['earth_rotation']:
 

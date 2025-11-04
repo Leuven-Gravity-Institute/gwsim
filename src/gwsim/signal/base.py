@@ -22,7 +22,7 @@ class BaseSignal(Generator):
         sampling_frequency: float,
         duration: float,
         start_time: float = 0,
-        max_samples: int | None = None
+        max_samples: int | None = None,
     ) -> None:
         super().__init__(max_samples=max_samples)
         self.sampling_frequency = sampling_frequency
