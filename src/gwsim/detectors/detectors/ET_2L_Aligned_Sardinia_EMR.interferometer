@@ -1,0 +1,9 @@
+# Configuration for ET 2L aligned configuration, following LAL convention.
+# E1 is located at Sardinia location (latitude 40◦31’, longitude 9◦25’) from COBA paper.
+# E2 is located at Meuse-Rhine location (latitude 50◦43’23”, longitude 5◦55’14”) from COBA paper.
+# Generated on 7/11/2025
+; The detector arms are defined on the tangent plane at the vertex position.
+; The arm 1 of E1 has the same azimuth angle (0.33916285632 rad) and altitude (0.0 rad) of the Virgo arm 1 in the local horizontal coordinate system center at the E1 vertex.
+; Both vertices have the same height of the Virgo V1 vertex (51.88399887084961 m).
+; Each detector is oriented w.r.t. its local North. The aligned configuration corresponds to a relative angle of 0◦, from COBA paper.
+
