@@ -1,12 +1,12 @@
-""" Script to test whether the ET detector manually computed and added with PyCBC is equivalent to the LAL detector configuration"""
-
 import numpy as np
 import pymap3d as pm
 
 from pycbc.detector import add_detector_on_earth, Detector
 
+# TODO Solve import issue
 
-def get_unit_vector_angles(unit_vector: np.ndarray, ellipsoid_position: np.ndarray):
+
+def get_unit_vector_angles(unit_vector: np.ndarray, ellipsoid_position: np.ndarray) -> np.ndarray:
     """
     Compute the azimuthal angle and altitude (elevation) of a given unit vector relative to the local tangent plane at the specified ellipsoid position.
 
@@ -52,7 +52,7 @@ def add_ET_Triangular_detector_at_location(E1_latitude: float, E1_longitude: flo
         E1_latitude (float): E1 vertex latitude (rad)
         E1_longitude (float): E1 vertex longitude (rad)
         E1_height (float): E1 vertex height above the standard reference ellipsoidal earth (meters)
-        location_name (str): Name of the ET location (e.g., Sardinia, EMR, Cascina, ...)
+        location_name (str): Name of the ET location (e.g., Sardinia, EMR, Cascina, ...) for detector naming convention
         ETArmL (float, optional): ET arm length (meters). Default to 10000 meters.
 
     Returns:
@@ -72,9 +72,8 @@ def add_ET_Triangular_detector_at_location(E1_latitude: float, E1_longitude: flo
     ])
 
     # Azimuth and altitude of Virgo arm 1 from LAL
-    Virgo_lal = Detector('V1')
-    V1Arm1_az = Virgo_lal.info['xangle']
-    V1Arm1_alt = Virgo_lal.info['xaltitude']
+    V1Arm1_az = 0.3391628563404083
+    V1Arm1_alt = 0.0
 
     # Define the arm 1 of E1 with the same azimuth and altitude of the Virgo arm 1 (ECEF coordinates)
     E1Arm1 = np.array(pm.aer2ecef(
@@ -173,31 +172,82 @@ def add_ET_Triangular_detector_at_location(E1_latitude: float, E1_longitude: flo
 
 if __name__ == "__main__":
 
-    V1_PyCBC = Detector('V1')
+    V1_lat = 0.7615118398400004
+    V1_lon = 0.18333805213
+    V1_height = 51.88399887084961
 
-    Sardinia_latitude = np.deg2rad(40 + 31/60)
-    Sardinia_longitude = np.deg2rad(9 + 25/60)
+    Sardinia_lat = np.deg2rad(40 + 31/60)
+    Sardinia_lon = np.deg2rad(9 + 25/60)
+
+    EMR_lat = np.deg2rad(50 + 43/60 + 23/3600)
+    EMR_lon = np.deg2rad(5 + 55/60 + 14/3600)
 
     ifo1, ifo2, ifo3 = add_ET_Triangular_detector_at_location(
-        E1_latitude=Sardinia_latitude,
-        E1_longitude=Sardinia_longitude,
-        E1_height=V1_PyCBC.info['height'],
+        E1_latitude=V1_lat,
+        E1_longitude=V1_lon,
+        E1_height=V1_height,
         location_name="Cascina",
         ETArmL=10000
     )
 
-    # print("\n=== Difference E1 hard code vs PyCBC ===")
-    # for key, val in ifo1.info.items():
-    #     print(key, "\n", val - Detector('E1').info[key])
-    #
-    # print("\n=== Difference E2 hard code vs PyCBC ===")
-    # for key, val in ifo2.info.items():
-    #     print(key, "\n", val - Detector('E2').info[key])
-    #
-    # print("\n=== Difference E3 hard code vs PyCBC ===")
-    # for key, val in ifo3.info.items():
-    #     print(key, "\n", val - Detector('E3').info[key])
+    E1 = Detector('E1')
+    E2 = Detector('E2')
+    E3 = Detector('E3')
 
-    print(f"\nHard code Null Stream:\n", ifo1.response + ifo2.response + ifo3.response)
-    print(f"PyCBC Null Stream:\n", Detector('E1').response +
-          Detector('E2').response + Detector('E3').response)
+    # ===  COMPARE ANTENNA PATTERNS WITH PYCBC BUILT-IN ET DETECTOR  ===
+
+    ra, dec = np.meshgrid(np.arange(0, np.pi*2.0, 0.01),
+                          np.arange(-np.pi / 2.0, np.pi / 2.0, 0.01))
+    ra = ra.flatten()
+    dec = dec.flatten()
+    pol = 0
+    time = 1e10 + 8000
+
+    fp_pycbc, fc_pycbc = E1.antenna_pattern(ra, dec, pol, time)
+    fp, fc = ifo1.antenna_pattern(ra, dec, pol, time)
+
+    print(np.allclose(fp, fp_pycbc, atol=1e-6, rtol=1e-5))
+    print(np.allclose(fc, fc_pycbc, atol=1e-6, rtol=1e-5))
+
+    color = (fp_pycbc - fp)**2 + (fc_pycbc - fc)**2
+
+    plt.figure(figsize=(8, 21))
+    ax1 = plt.subplot(311, projection="mollweide")
+    ra[ra > np.pi] -= np.pi * 2.0
+    sc = ax1.scatter(ra, dec, c=fp**2 + fc**2)
+    plt.colorbar(sc, ax=ax1, orientation="horizontal", pad=0.1)
+    ax1.grid(True)
+    ax1.set_title('This code')
+
+    ax2 = plt.subplot(312, projection="mollweide")
+    ra[ra > np.pi] -= np.pi * 2.0
+    sc = ax2.scatter(ra, dec, c=fp_pycbc**2 + fc_pycbc**2)
+    plt.colorbar(sc, ax=ax2, orientation="horizontal", pad=0.1)
+    ax2.grid(True)
+    ax2.set_title('PyCBC')
+
+    ax3 = plt.subplot(313, projection="mollweide")
+    ra[ra > np.pi] -= np.pi * 2.0
+    sc = ax3.scatter(ra, dec, c=color)
+    plt.colorbar(sc, ax=ax3, orientation="horizontal", pad=0.1)
+    ax3.grid(True)
+    ax3.set_title('Difference')
+    plt.show()
+
+    # ===  COMPARE CONFIGURATIONS WITH PYCBC BUILT-IN ET DETECTOR  ===
+
+    print("\n=== Difference with E1 PyCBC configuration ===")
+    for key, val in ifo1.info.items():
+        print(key, "\n", val - E1.info[key])
+
+    print("\n=== Difference with E2 PyCBC configuration ===")
+    for key, val in ifo2.info.items():
+        print(key, "\n", val - E2.info[key])
+
+    print("\n=== Difference with E3 PyCBC configuration ===")
+    for key, val in ifo3.info.items():
+        print(key, "\n", val - E3.info[key])
+
+    print(f"\nNull Stream:\n", ifo1.response + ifo2.response + ifo3.response)
+    print(f"Null Stream from PyCBC configuration:\n", E1.response +
+          E2.response + E3.response)
