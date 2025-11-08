@@ -10,9 +10,8 @@ from scipy.interpolate import interp1d
 from pycbc.waveform import get_td_waveform
 from pycbc.types.timeseries import TimeSeries
 
-
-# from ..detectors import Detector
-from pycbc.detector import Detector
+from ..utils import read_pycbc_population_file
+from ..detectors import Detector
 from .base import BaseSignal
 
 
@@ -89,24 +88,10 @@ class CBCSignal(BaseSignal):
 
         Returns:
             pandas.DataFrame: DataFrame with event parameters as columns and events as rows.
-
-        Raises:
-            FileNotFoundError: If the population file does not exist.
-            ValueError: If the file is missing required columns.
         """
-        if not Path(filename).is_file():
-            raise FileNotFoundError(f"Population file {filename} not found.")
 
-        population_df = pd.read_csv(filename)  # TODO: Adjust based on input from gwsim#11
-
-        # Check for missing parameters
-        required_columns = ['mass_1', 'mass_2', 'geocent_time', 'luminosity_distance',
-                            'spin_1x', 'spin_1y', 'spin_1z', 'spin_2x', 'spin_2y', 'spin_2z',
-                            'right_ascension', 'declination', 'polarization_angle', 'iota', 'phase']
-        if not all(col in population_df.columns for col in required_columns):
-            raise ValueError(f"Population file must contain columns: {required_columns}")
-
-        return population_df  # TODO: the output data frame must have as column the parameters name, and as rows the event names. Each row corresponds to an event
+        # TODO: the output data frame must have as column the parameters name, and as rows the event names. Each row corresponds to an event
+        return read_pycbc_population_file(filename)
 
     def select_events_in_frame(self, events_df: pandas.DataFrame, start_time: float, end_time: float) -> pandas.DataFrame:
         """
@@ -168,23 +153,29 @@ class CBCSignal(BaseSignal):
             (TimeSeries, TimeSeries): PyCBC TimeSeries of the plus and cross polarization, hp and hc
         """
 
-        # TODO: Adjust parmaters for NS events, adding tidal deformability
+        kwargs = {
+            'approximant': waveform_arguments['approximant'],
+            'mass1': parameters['mass_1'] * (1 + parameters['redshift']),
+            'mass2': parameters['mass_2'] * (1 + parameters['redshift']),
+            'spin1x': parameters['spin_1x'],
+            'spin1y': parameters['spin_1y'],
+            'spin1z': parameters['spin_1z'],
+            'spin2x': parameters['spin_2x'],
+            'spin2y': parameters['spin_2y'],
+            'spin2z': parameters['spin_2z'],
+            'distance': parameters['luminosity_distance'],
+            'coa_phase': parameters['phase'],
+            'inclination': parameters['iota'],
+            'polarization_angle': parameters['polarization_angle'],
+            'f_lower': waveform_arguments['flow'],
+            'delta_t': 1. / waveform_arguments['sampling_frequency']
+        }
 
-        hp, hc = get_td_waveform(approximant=waveform_arguments['approximant'],
-                                 mass1=parameters['mass_1']*(1+parameters['redshift']),
-                                 mass2=parameters['mass_2']*(1+parameters['redshift']),
-                                 spin1x=parameters['spin_1x'],
-                                 spin1y=parameters['spin_1y'],
-                                 spin1z=parameters['spin_1z'],
-                                 spin2x=parameters['spin_2x'],
-                                 spin2y=parameters['spin_2y'],
-                                 spin2z=parameters['spin_2z'],
-                                 distance=parameters['luminosity_distance'],
-                                 coa_phase=parameters['phase'],
-                                 inclination=parameters['iota'],
-                                 polarization_angle=parameters['polarization_angle'],
-                                 f_lower=waveform_arguments['flow'],
-                                 delta_t=1./waveform_arguments['sampling_frequency'])
+        if 'lambda_2' in parameters:
+            kwargs['lambda2'] = parameters['lambda_2']
+            kwargs['lambda1'] = parameters.get('lambda_1', 0)
+
+        hp, hc = get_td_waveform(**kwargs)
 
         hp.start_time += parameters['geocent_time']
         hc.start_time += parameters['geocent_time']
