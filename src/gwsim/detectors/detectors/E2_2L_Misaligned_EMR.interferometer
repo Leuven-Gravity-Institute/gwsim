@@ -1,0 +1,31 @@
+# Configuration for detector E2 of the ET 2L misaligned network, following LAL convention.
+# E1 is located in Sardinia.
+# The coordinates of the Sardinia location (latitude 40◦31’, longitude 9◦25’) follows the COBA paper [Marica Branchesi et al JCAP07(2023)068].
+# E2 is located in the Meuse-Rhine region.
+# The coordinates of the Meuse-Rhine region (latitude 50◦43’23”, longitude 5◦55’14”) follows the COBA paper [Marica Branchesi et al JCAP07(2023)068].
+# Generated on 7/11/2025
+; The detector arms are defined on the tangent plane at the vertex position.
+; The arm 1 of E1 has the same azimuth angle (0.33916285632 rad) and altitude (0.0 rad) of the Virgo arm 1 in the local horizontal coordinate system center at the E1 vertex.
+; Both vertices have the same height of the Virgo V1 vertex (51.88399887084961 m).
+; Each detector is oriented w.r.t. its local North. The misaligned configuration corresponds to a relative angle of 45◦ between E1 and E2, from COBA paper.
+; All the angles are measured clockwise in the local horizontal coordinate system (North to East)
+
+[E2]
+LATITUDE = 0.88528432612 ; E2 vertex latitude (radians)
+LONGITUDE = 0.10333318799 ; E2 vertex longitude (radians)
+ELEVATION = 51.884 ; E2 vertex elevation (meters)
+X_AZIMUTH = 1.12456101969 ; E2 X arm azimuth (radians)
+Y_AZIMUTH = 2.69535734649 ; E2 Y arm azimuth (radians)
+X_ALTITUDE = -9.32242464849e-11 ; E2 X arm altitude (radians)
+Y_ALTITUDE = 1.01691246358e-17 ; E2 Y arm altitude (radians)
+VERTEX_LOCATION_X = 4.02437788247e+06 ; E2 x-component of vertex location (ECEF, meters)
+VERTEX_LOCATION_Y = 4.17338265653e+05 ; E2 y-component of vertex location (ECEF, meters)
+VERTEX_LOCATION_Z = 4.91413835193e+06 ; E2 z-component of vertex location (ECEF, meters)
+ARM_X_DIRECTION_X = -0.425344968672 ; E2 x-component of unit vector pointing along X arm (ECEF)
+ARM_X_DIRECTION_Y = 0.862806471864 ; E2 y-component of unit vector pointing along X arm (ECEF)
+ARM_X_DIRECTION_Z = 0.273215390737 ; E2 z-component of unit vector pointing along X arm (ECEF)
+ARM_Y_DIRECTION_X = 0.650053026541 ; E2 x-component of unit vector pointing along Y arm (ECEF)
+ARM_Y_DIRECTION_Y = 0.501299119457 ; E2 y-component of unit vector pointing along Y arm (ECEF)
+ARM_Y_DIRECTION_Z = -0.571078151846 ; E2 z-component of unit vector pointing along Y arm (ECEF)
+X_LENGTH = 15000 ; E2 X arm length (meters)
+Y_LENGTH = 15000 ; E2 Y arm length (meters)

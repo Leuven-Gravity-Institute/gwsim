@@ -1,0 +1,27 @@
+# Configuration for detector E2 of the ET Triangle network located in the Meuse-Rhine region, following LAL convention.
+# The coordinates of the Meuse-Rhine region (latitude 50◦43’23”, longitude 5◦55’14”) follows the COBA paper [Marica Branchesi et al JCAP07(2023)068].
+# Generated on 7/11/2025
+; The ET triangular configuration is derived from T1400308.
+; The arms 1 and 2 of E1 are defined on the tangent plane at the E1 vertex position.
+; The arm 1 of E1 has the same azimuth angle (0.33916285632 rad) and altitude (0.0 rad) of the Virgo arm 1 in the local horizontal coordinate system center at the E1 vertex.
+; The E1 vertex has the same height of the Virgo V1 vertex (51.88399887084961 m)
+
+[E2]
+LATITUDE = 0.88676369331 ; E2 vertex latitude (radians)
+LONGITUDE = 0.10415697042 ; E2 vertex longitude (radians)
+ELEVATION = 59.726 ; E2 vertex elevation (meters)
+X_AZIMUTH = 4.52859166486 ; E2 X arm azimuth (radians)
+Y_AZIMUTH = 3.48139358261 ; E2 Y arm azimuth (radians)
+X_ALTITUDE = -7.83073175756e-04 ; E2 X arm altitude (radians)
+Y_ALTITUDE = -1.56844142222e-03 ; E2 Y arm altitude (radians)
+VERTEX_LOCATION_X = 4.01677367033e+06 ; E2 x-component of vertex location (ECEF, meters)
+VERTEX_LOCATION_Y = 4.19894508657e+05 ; E2 y-component of vertex location (ECEF, meters)
+VERTEX_LOCATION_Z = 4.92010840882e+06 ; E2 z-component of vertex location (ECEF, meters)
+ARM_X_DIRECTION_X = 0.242605586637 ; E2 x-component of unit vector pointing along X arm (ECEF)
+ARM_X_DIRECTION_Y = -0.963152813689 ; E2 y-component of unit vector pointing along X arm (ECEF)
+ARM_X_DIRECTION_Z = -0.116099900154 ; E2 z-component of unit vector pointing along X arm (ECEF)
+ARM_Y_DIRECTION_X = 0.760421214656 ; E2 x-component of unit vector pointing along Y arm (ECEF)
+ARM_Y_DIRECTION_Y = -0.255624300403 ; E2 y-component of unit vector pointing along Y arm (ECEF)
+ARM_Y_DIRECTION_Z = -0.597005689541 ; E2 z-component of unit vector pointing along Y arm (ECEF)
+X_LENGTH = 10000 ; E2 X arm length (meters)
+Y_LENGTH = 10000 ; E2 Y arm length (meters)

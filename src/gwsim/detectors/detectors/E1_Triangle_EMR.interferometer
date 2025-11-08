@@ -1,0 +1,27 @@
+# Configuration for detector E1 of the ET Triangle network located in the Meuse-Rhine region, following LAL convention.
+# The coordinates of the Meuse-Rhine region (latitude 50◦43’23”, longitude 5◦55’14”) follows the COBA paper [Marica Branchesi et al JCAP07(2023)068].
+# Generated on 7/11/2025
+; The ET triangular configuration is derived from T1400308.
+; The arms 1 and 2 of E1 are defined on the tangent plane at the E1 vertex position.
+; The arm 1 of E1 has the same azimuth angle (0.33916285632 rad) and altitude (0.0 rad) of the Virgo arm 1 in the local horizontal coordinate system center at the E1 vertex.
+; The E1 vertex has the same height of the Virgo V1 vertex (51.88399887084961 m)
+
+[E1]
+LATITUDE = 0.88528432612 ; E1 vertex latitude (radians)
+LONGITUDE = 0.10333318799 ; E1 vertex longitude (radians)
+ELEVATION = 51.884 ; E1 vertex elevation (meters)
+X_AZIMUTH = 0.33916285634 ; E1 X arm azimuth (radians)
+Y_AZIMUTH = 5.57515061233 ; E1 Y arm azimuth (radians)
+X_ALTITUDE = 2.93896654317e-10 ; E1 X arm altitude (radians)
+Y_ALTITUDE = 2.93896646164e-10 ; E1 Y arm altitude (radians)
+VERTEX_LOCATION_X = 4.02437788247e+06 ; E1 x-component of vertex location (ECEF, meters)
+VERTEX_LOCATION_Y = 4.17338265653e+05 ; E1 y-component of vertex location (ECEF, meters)
+VERTEX_LOCATION_Z = 4.91413835193e+06 ; E1 z-component of vertex location (ECEF, meters)
+ARM_X_DIRECTION_X = -0.760421214656 ; E1 x-component of unit vector pointing along X arm (ECEF)
+ARM_X_DIRECTION_Y = 0.255624300403 ; E1 y-component of unit vector pointing along X arm (ECEF)
+ARM_X_DIRECTION_Z = 0.597005689541 ; E1 z-component of unit vector pointing along X arm (ECEF)
+ARM_Y_DIRECTION_X = -0.51781562802 ; E1 x-component of unit vector pointing along Y arm (ECEF)
+ARM_Y_DIRECTION_Y = -0.707528513286 ; E1 y-component of unit vector pointing along Y arm (ECEF)
+ARM_Y_DIRECTION_Z = 0.480905789387 ; E1 z-component of unit vector pointing along Y arm (ECEF)
+X_LENGTH = 10000 ; E1 X arm length (meters)
+Y_LENGTH = 10000 ; E1 Y arm length (meters)
