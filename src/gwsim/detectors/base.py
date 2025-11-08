@@ -8,14 +8,20 @@ from pycbc.detector import get_available_detectors, add_detector_on_earth
 # Store the original for reference
 _original_get_available_detectors = get_available_detectors
 
+# Define the path to the available .interferometer config files
+detectors_dir = str(Path(__file__).parent / "detectors")
+if not Path(detectors_dir).exists() or not Path(detectors_dir).is_dir():
+    print(
+        f"Warning: Detector config directory {path.absolute()} does not exist or is not a directory.")
 
-def load_interferometer_config(config_name: str, config_path: str = './detector') -> list[str]:
+
+def load_interferometer_config(config_name: str, config_path: str = detectors_dir) -> list[str]:
     """
     Load a .interferometer config file and add its individual detectors using pycbc.detector.add_detector_on_earth.
 
     Args:
         config_name (str): The base name of the config file (e.g., "ET_Triangle_Sardinia").
-        config_path (str, optional): Directory where .interferometer files are stored (default: './detector').
+        config_path (str, optional): Directory where .interferometer files are stored (default: './detectors').
 
     Returns:
         list: List of added detector names (e.g., ["E1", "E2", "E3"]).
@@ -36,15 +42,15 @@ def load_interferometer_config(config_name: str, config_path: str = './detector'
         det_name = section
 
         # Parse parameters (assume radians for angles/lat/lon, meters for lengths/heights)
-        latitude = float(params['latitude'])
-        longitude = float(params['longitude'])
-        height = float(params.get('height', 0))
-        xangle = float(params['xangle'])
-        yangle = float(params['yangle'])
-        xaltitude = float(params.get('xaltitude', 0))
-        yaltitude = float(params.get('yaltitude', 0))
-        xlength = float(params.get('xlength', 10000))
-        ylength = float(params.get('ylength', 10000))
+        latitude = float(params['LATITUDE'].split(';')[0].strip())
+        longitude = float(params['LONGITUDE'].split(';')[0].strip())
+        height = float(params.get('ELEVATION', 0).split(';')[0].strip())
+        xangle = float(params['X_AZIMUTH'].split(';')[0].strip())
+        yangle = float(params['Y_AZIMUTH'].split(';')[0].strip())
+        xaltitude = float(params.get('X_ALTITUDE', 0).split(';')[0].strip())
+        yaltitude = float(params.get('Y_ALTITUDE', 0).split(';')[0].strip())
+        xlength = float(params.get('X_LENGTH', 10000).split(';')[0].strip())
+        ylength = float(params.get('Y_LENGTH', 10000).split(';')[0].strip())
 
         # Add detector configuration
         add_detector_on_earth(
@@ -64,7 +70,7 @@ def load_interferometer_config(config_name: str, config_path: str = './detector'
     return added_detectors
 
 
-def extended_get_available_detectors(config_path: str = './detector') -> list[str]:
+def extended_get_available_detectors(config_path: str = detectors_dir) -> list[str]:
     """ Extended version of pycbc.detector.get_available_detectors that includes both built-in detectors and available .interferometer config names. """
     built_in_dets = _original_get_available_detectors()
     path = Path(config_path)
@@ -74,10 +80,10 @@ def extended_get_available_detectors(config_path: str = './detector') -> list[st
 
 
 # Monkey-patch get_available_detectors to include config/group names
-pycbc.detector.get_available_detectors = extended_get_available_detectors
+get_available_detectors = extended_get_available_detectors
 
 
-def Detector(name: str, config_path: str = './detector') -> BaseDetector | tuple[BaseDetector, ...]:
+def Detector(name: str, config_path: str = detectors_dir) -> BaseDetector | tuple[BaseDetector, ...]:
     """
     Factory function to create pycbc.detector.Detector objects.
     If `name` is a PyCBC built-in detector (e.g., 'V1'), returns a single pycbc.detector.Detector instance.
@@ -85,7 +91,7 @@ def Detector(name: str, config_path: str = './detector') -> BaseDetector | tuple
 
     Args:
         name (str): The detector name or config/group name.
-        config_path (str, optional): Directory where .interferometer files are stored (default: './detector').
+        config_path (str, optional): Directory where .interferometer files are stored (default: './detectors').
 
     Returns:
         pycbc.detector.Detector or tuple of pycbc.detector.Detector instances
