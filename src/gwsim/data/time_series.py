@@ -223,3 +223,18 @@ class TimeSeries(JSONSerializable):
             "sampling_frequency": self.sampling_frequency.value,
             "sampling_frequency_unit": str(self.sampling_frequency.unit),
         }
+
+    @classmethod
+    def from_json_dict(cls, json_dict: dict) -> TimeSeries:
+        """Create a TimeSeries object from a JSON-serializable dictionary.
+
+        Args:
+            json_dict: JSON-serializable dictionary representation of the TimeSeries.
+
+        Returns:
+            TimeSeries: An instance of the TimeSeries class created from the dictionary.
+        """
+        data = np.array(json_dict["data"])
+        start_time = Quantity(json_dict["start_time"], unit=json_dict["start_time_unit"])
+        sampling_frequency = Quantity(json_dict["sampling_frequency"], unit=json_dict["sampling_frequency_unit"])
+        return cls(data=data, start_time=start_time, sampling_frequency=sampling_frequency)
