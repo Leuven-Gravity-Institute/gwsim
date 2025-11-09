@@ -8,7 +8,7 @@ from typing import Any, cast, overload
 from gwsim.data.time_series import TimeSeries
 
 
-class TimeSeriesList:
+class TimeSeriesList(Iterable[TimeSeries]):
     """List of TimeSeries objects with validation."""
 
     def __init__(self, iterable: list[TimeSeries] | None = None):
