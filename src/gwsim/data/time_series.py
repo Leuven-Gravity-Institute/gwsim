@@ -30,6 +30,12 @@ class TimeSeries:
         """
         if data.ndim != 2:
             raise ValueError("Data must be a 2D numpy array with shape (num_channels, num_samples).")
+
+        if isinstance(start_time, int):
+            start_time = Quantity(start_time, unit="s")
+        if isinstance(sampling_frequency, (int, float)):
+            sampling_frequency = Quantity(sampling_frequency, unit="Hz")
+
         self._data: list[GWpyTimeSeries] = [
             GWpyTimeSeries(
                 data=data[i],
