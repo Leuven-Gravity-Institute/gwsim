@@ -12,7 +12,7 @@ from gwpy.timeseries import TimeSeries as GWpyTimeSeries
 from gwpy.types.index import Index
 from scipy.interpolate import interp1d
 
-from gwsim.data.serializable import JSONSerializable
+from gwsim.data.serialize.serializable import JSONSerializable
 
 logger = logging.getLogger("gwsim")
 
