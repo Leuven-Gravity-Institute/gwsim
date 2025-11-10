@@ -9,6 +9,7 @@ from functools import wraps
 from pathlib import Path
 
 import numpy as np
+from numpy.typing import NDArray
 
 logger = logging.getLogger("gwsim")
 
@@ -60,7 +61,9 @@ def check_file_exist():
     return decorator
 
 
-def get_file_name_from_template(template: str, instance: object, exclude: set[str] | None = None) -> str | np.ndarray:
+def get_file_name_from_template(
+    template: str, instance: object, exclude: set[str] | None = None
+) -> str | NDArray[np.str_]:
     """Get the file name(s) from a template string.
 
     The template string uses double curly brackets for placeholders (e.g., '{{ x }}-{{ y }}.txt').
