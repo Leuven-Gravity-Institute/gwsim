@@ -105,7 +105,6 @@ class ColoredNoise(BaseNoise):
         """
         Initialize frequency and time properties for noise generation
         """
-        # self.T = 256 if self.duration >= 256 else self.duration
         self.T = self.T_window * 3
         self.df = 1.0 / self.T
         self.dt = 1.0 / self.sampling_frequency
