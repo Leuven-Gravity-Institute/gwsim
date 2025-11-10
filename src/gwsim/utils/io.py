@@ -98,8 +98,8 @@ def get_file_name_from_template(
     # Collect values for each placeholder
     values_dict = {}
     for label in placeholders:
-        # if label in exclude:
-        #     continue
+        if label in exclude:
+            continue
         try:
             value = getattr(instance, label)
         except AttributeError as e:
