@@ -18,7 +18,7 @@ from gwsim.utils.random import get_state
 
 
 class NoiseSimulator(
-    Simulator, RandomnessMixin, DetectorMixin, TimeSeriesMixin, GWFOutputMixin
+    RandomnessMixin, DetectorMixin, TimeSeriesMixin, GWFOutputMixin, Simulator
 ):  # pylint: disable=duplicate-code
     """Base class for noise simulators."""
 
