@@ -190,11 +190,11 @@ class Simulator(ABC):
         """
         file_name = Path(file_name)
 
-        if not file_name.exists():
-            raise FileNotFoundError(f"File '{file_name}' does not exist.")
-
         if file_name.suffix.lower() != ".json":
             raise ValueError(f"Unsupported file format: {file_name.suffix}. Supported: .json")
+
+        if not file_name.exists():
+            raise FileNotFoundError(f"File '{file_name}' does not exist.")
 
         with file_name.open("r", encoding=encoding) as f:
             state = json.load(f)
