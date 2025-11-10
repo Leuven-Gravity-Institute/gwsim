@@ -79,11 +79,9 @@ class CorrelatedNoise(BaseNoise):
         self.T_window = 1 / self.f_window
         self.T_overlap = self.T_window / 2.0
         self.N_overlap = int(self.T_overlap * self.sampling_frequency)
-        self.w0 = 0.5 + np.cos(2 * np.pi * self.f_window *
-                               np.linspace(0, self.T_overlap, self.N_overlap)) / 2
+        self.w0 = 0.5 + np.cos(2 * np.pi * self.f_window * np.linspace(0, self.T_overlap, self.N_overlap)) / 2
         self.w1 = (
-            0.5 + np.sin(2 * np.pi * self.f_window * np.linspace(0,
-                         self.T_overlap, self.N_overlap) - np.pi / 2) / 2
+            0.5 + np.sin(2 * np.pi * self.f_window * np.linspace(0, self.T_overlap, self.N_overlap) - np.pi / 2) / 2
         )
 
     def _initialize_frequency_properties(self) -> None:
@@ -165,8 +163,7 @@ class CorrelatedNoise(BaseNoise):
         for n in range(self.N_freq):
             submatrix = np.array(
                 [
-                    [d0[n] if row == col else d1[n] if row <
-                        col else np.conj(d1[n]) for row in range(self.N_det)]
+                    [d0[n] if row == col else d1[n] if row < col else np.conj(d1[n]) for row in range(self.N_det)]
                     for col in range(self.N_det)
                 ]
             )
@@ -211,15 +208,15 @@ class CorrelatedNoise(BaseNoise):
 
         # Generate the initial single noise realization and apply the final part of the window
         strain_buffer = self.single_noise_realization(self.spectral_matrix)
-        strain_buffer[:, -self.N_overlap:] *= self.w0
+        strain_buffer[:, -self.N_overlap :] *= self.w0
 
         # Extend the strain buffer until it has more valid data than a single frame
         while strain_buffer.shape[-1] - self.N_overlap < N_frame:
             new_strain = self.single_noise_realization(self.spectral_matrix)
             new_strain[:, : self.N_overlap] *= self.w1
-            new_strain[:, -self.N_overlap:] *= self.w0
-            strain_buffer[:, -self.N_overlap:] += new_strain[:, : self.N_overlap]
-            strain_buffer = np.concatenate((strain_buffer, new_strain[:, self.N_overlap:]), axis=1)
+            new_strain[:, -self.N_overlap :] *= self.w0
+            strain_buffer[:, -self.N_overlap :] += new_strain[:, : self.N_overlap]
+            strain_buffer = np.concatenate((strain_buffer, new_strain[:, self.N_overlap :]), axis=1)
 
         return strain_buffer[:, :N_frame]
 
