@@ -14,3 +14,4 @@ pycbc
 realisation
 retryable
 Uncatched
+coo
