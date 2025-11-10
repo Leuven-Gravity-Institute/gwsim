@@ -8,6 +8,8 @@ import re
 from functools import wraps
 from pathlib import Path
 
+import numpy as np
+
 logger = logging.getLogger("gwsim")
 
 
@@ -58,7 +60,7 @@ def check_file_exist():
     return decorator
 
 
-def get_file_name_from_template(template: str, instance: object, exclude: set[str] | None = None) -> str | list:
+def get_file_name_from_template(template: str, instance: object, exclude: set[str] | None = None) -> str | np.ndarray:
     """Get the file name(s) from a template string.
 
     The template string uses double curly brackets for placeholders (e.g., '{{ x }}-{{ y }}.txt').
@@ -75,7 +77,7 @@ def get_file_name_from_template(template: str, instance: object, exclude: set[st
         exclude (set[str] | None): Set of attribute names to exclude from expansion. Defaults to None.
 
     Returns:
-        str | list: A single file name string if no array-like attributes are used,
+        str | np.ndarray: A single file name string if no array-like attributes are used,
         otherwise a nested list structure matching the dimensionality of the array placeholders.
 
     Raises:
@@ -142,6 +144,6 @@ def get_file_name_from_template(template: str, instance: object, exclude: set[st
                 nested.append(reshape_to_nested(sub_list, lengths[1:]))
             return nested
 
-        return reshape_to_nested(results, lengths)
+        return np.array(reshape_to_nested(results, lengths))
     # No arrays: return single string
     return results[0] if results else ""
