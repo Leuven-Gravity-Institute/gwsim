@@ -12,7 +12,7 @@ import numpy as np
 
 from gwsim import __version__
 from gwsim.simulator.state import StateAttribute
-from gwsim.utils.io import check_file_exist, get_file_name_from_template
+from gwsim.utils.io import get_file_name_from_template
 
 logger = logging.getLogger("gwsim")
 
@@ -49,7 +49,11 @@ class Simulator(ABC):
             logger.debug("Unused kwargs in Simulator.__init__: %s", kwargs)
 
         # Non-state attributes
-        self.max_samples = max_samples
+        if max_samples is None:
+            self.max_samples = np.inf
+            logger.debug("max_samples set to None, interpreted as infinite.")
+        else:
+            self.max_samples = max_samples
 
     @property
     def max_samples(self) -> int | float:
@@ -61,7 +65,7 @@ class Simulator(ABC):
         return self._max_samples
 
     @max_samples.setter
-    def max_samples(self, value: int | float | None) -> None:
+    def max_samples(self, value: int | float) -> None:
         """Set the maximum number of samples.
 
         Args:
@@ -70,10 +74,6 @@ class Simulator(ABC):
         Raises:
             ValueError: If value is negative.
         """
-        if value is None:
-            self._max_samples = np.inf
-            logger.debug("max_samples set to None, interpreted as infinite.")
-            return
         if value < 0:
             raise ValueError("Max samples cannot be negative.")
         self._max_samples = value
@@ -86,7 +86,7 @@ class Simulator(ABC):
             Dictionary containing all state attributes.
         """
         # Get state attributes from all classes in MRO (set by StateAttribute descriptors)
-        state_attrs = []
+        state_attrs: list[Any] = []
         for cls in self.__class__.__mro__:
             state_attrs.extend(getattr(cls, "_state_attributes", []))
         # Remove duplicates while preserving order
@@ -105,7 +105,7 @@ class Simulator(ABC):
             ValueError: If state contains unregistered attributes.
         """
         # Get state attributes from all classes in MRO (set by StateAttribute descriptors)
-        state_attrs = []
+        state_attrs: list[Any] = []
         for cls in self.__class__.__mro__:
             state_attrs.extend(getattr(cls, "_state_attributes", []))
         # Remove duplicates while preserving order
@@ -154,58 +154,74 @@ class Simulator(ABC):
         self.update_state()
         return sample
 
-    # # State persistence
-    def save_state(self, file_name: Path, overwrite: bool = False) -> None:  # pylint: disable=unused-argument
+    def save_state(self, file_name: str | Path, overwrite: bool = False, encoding: str = "utf-8") -> None:
         """Save simulator state to file.
 
         Args:
             file_name: Output file path (must have .json extension).
             overwrite: Whether to overwrite existing files.
+            encoding: File encoding to use when writing the file.
 
         Raises:
             ValueError: If file extension is not .json.
             FileExistsError: If file exists and overwrite=False.
         """
+        file_name = Path(file_name)
+
         if file_name.suffix.lower() != ".json":
             raise ValueError(f"Unsupported file format: {file_name.suffix}. Supported: .json")
 
-        with file_name.open("w") as f:
+        if not overwrite and file_name.exists():
+            raise FileExistsError(f"File '{file_name}' already exists. Use overwrite=True to overwrite it.")
+
+        with file_name.open("w", encoding=encoding) as f:
             json.dump(self.state, f)
 
-    @check_file_exist()
-    def load_state(self, file_name: Path) -> None:
+    def load_state(self, file_name: str | Path, encoding: str = "utf-8") -> None:
         """Load simulator state from file.
 
         Args:
             file_name: Input file path (must have .json extension).
+            encoding: File encoding to use when reading the file.
 
         Raises:
             FileNotFoundError: If file doesn't exist.
             ValueError: If file extension is not .json.
         """
+        file_name = Path(file_name)
+
+        if not file_name.exists():
+            raise FileNotFoundError(f"File '{file_name}' does not exist.")
+
         if file_name.suffix.lower() != ".json":
             raise ValueError(f"Unsupported file format: {file_name.suffix}. Supported: .json")
 
-        with file_name.open("r") as f:
+        with file_name.open("r", encoding=encoding) as f:
             state = json.load(f)
 
         self.state = state
 
-    def save_metadata(self, file_name: Path, overwrite: bool = False) -> None:  # pylint: disable=unused-argument
+    def save_metadata(self, file_name: str | Path, overwrite: bool = False, encoding: str = "utf-8") -> None:
         """Save simulator metadata to file.
 
         Args:
             file_name: Output file path (must have .json extension).
             overwrite: Whether to overwrite existing files.
+            encoding: File encoding to use when writing the file.
 
         Raises:
             ValueError: If file extension is not .json.
             FileExistsError: If file exists and overwrite=False.
         """
+        file_name = Path(file_name)
+
         if file_name.suffix.lower() != ".json":
             raise ValueError(f"Unsupported file format: {file_name.suffix}. Supported: .json")
 
-        with file_name.open("w") as f:
+        if not overwrite and file_name.exists():
+            raise FileExistsError(f"File '{file_name}' already exists. Use overwrite=True to overwrite it.")
+
+        with file_name.open("w", encoding=encoding) as f:
             json.dump(self.metadata, f)
 
     def update_state(self) -> None:
