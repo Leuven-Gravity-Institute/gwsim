@@ -97,6 +97,28 @@ class TimeSeries(JSONSerializable):
         """
         return iter(self._data)
 
+    def __eq__(self, other: object) -> bool:
+        """Check equality with another TimeSeries object.
+
+        Args:
+            other: Another TimeSeries object to compare with.
+
+        Returns:
+            True if the two TimeSeries objects are equal, False otherwise.
+        """
+        if not isinstance(other, TimeSeries):
+            return False
+        if self.num_channels != other.num_channels:
+            return False
+        for i in range(self.num_channels):
+            if not np.array_equal(self[i].value, other[i].value):
+                return False
+            if self[i].t0 != other[i].t0:
+                return False
+            if self[i].sample_rate != other[i].sample_rate:
+                return False
+        return True
+
     @property
     def start_time(self) -> Quantity:
         """Get the start time of the time series.
