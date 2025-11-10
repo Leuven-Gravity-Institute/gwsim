@@ -1,4 +1,5 @@
 astropy
+coo
 freqs
 gengli
 gwpy
@@ -13,6 +14,7 @@ Nyquist
 pycbc
 realisation
 retryable
+submatrix
 Uncatched
 coo
 freqs

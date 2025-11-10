@@ -3,9 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from gwpy import time
-from gwpy.detector import Channel
-from gwpy.timeseries import TimeSeries
 from scipy.interpolate import interp1d
 from scipy.linalg import cholesky
 from scipy.sparse import block_diag, coo_matrix
@@ -66,8 +63,7 @@ class CorrelatedNoise(BaseNoise):
         if self.N_det == 0:
             raise ValueError("detector_names must contain at least one detector.")
         self.flow = flow
-        self.fhigh = fhigh if (fhigh is not None and fhigh <=
-                               sampling_frequency / 2) else sampling_frequency / 2
+        self.fhigh = fhigh if (fhigh is not None and fhigh <= sampling_frequency / 2) else sampling_frequency / 2
 
         # Initialize
         self._initialize_window_properties()
@@ -83,11 +79,9 @@ class CorrelatedNoise(BaseNoise):
         self.T_window = 1 / self.f_window
         self.T_overlap = self.T_window / 2.0
         self.N_overlap = int(self.T_overlap * self.sampling_frequency)
-        self.w0 = 0.5 + np.cos(2 * np.pi * self.f_window *
-                               np.linspace(0, self.T_overlap, self.N_overlap)) / 2
+        self.w0 = 0.5 + np.cos(2 * np.pi * self.f_window * np.linspace(0, self.T_overlap, self.N_overlap)) / 2
         self.w1 = (
-            0.5 + np.sin(2 * np.pi * self.f_window * np.linspace(0,
-                         self.T_overlap, self.N_overlap) - np.pi / 2) / 2
+            0.5 + np.sin(2 * np.pi * self.f_window * np.linspace(0, self.T_overlap, self.N_overlap) - np.pi / 2) / 2
         )
 
     def _initialize_frequency_properties(self) -> None:
@@ -101,7 +95,7 @@ class CorrelatedNoise(BaseNoise):
         self.kmin = int(self.flow / self.df)
         self.kmax = int(self.fhigh / self.df) + 1
         self.frequency = np.arange(0.0, self.N / 2.0 + 1) * self.df
-        self.N_freq = len(self.frequency[self.kmin: self.kmax])
+        self.N_freq = len(self.frequency[self.kmin : self.kmax])
 
     def _load_array(self, arr_path: str) -> np.ndarray:
         """
@@ -146,13 +140,10 @@ class CorrelatedNoise(BaseNoise):
             raise ValueError("PSD and CSD must have shape (N, 2)")
 
         # Interpolate the PSD and CSD to the relevant frequencies
-        freqs = self.frequency[self.kmin: self.kmax]
-        self.psd = interp1d(psd[:, 0], psd[:, 1], bounds_error=False,
-                            fill_value="extrapolate")(freqs)
-        csd_real = interp1d(csd[:, 0], csd[:, 1].real, bounds_error=False,
-                            fill_value="extrapolate")(freqs)
-        csd_imag = interp1d(csd[:, 0], csd[:, 1].imag, bounds_error=False,
-                            fill_value="extrapolate")(freqs)
+        freqs = self.frequency[self.kmin : self.kmax]
+        self.psd = interp1d(psd[:, 0], psd[:, 1], bounds_error=False, fill_value="extrapolate")(freqs)
+        csd_real = interp1d(csd[:, 0], csd[:, 1].real, bounds_error=False, fill_value="extrapolate")(freqs)
+        csd_imag = interp1d(csd[:, 0], csd[:, 1].imag, bounds_error=False, fill_value="extrapolate")(freqs)
         self.csd_magnitude = np.abs(csd_real + 1j * csd_imag)
         self.csd_phase = np.angle(csd_real + 1j * csd_imag)
 
@@ -172,8 +163,7 @@ class CorrelatedNoise(BaseNoise):
         for n in range(self.N_freq):
             submatrix = np.array(
                 [
-                    [d0[n] if row == col else d1[n] if row <
-                        col else np.conj(d1[n]) for row in range(self.N_det)]
+                    [d0[n] if row == col else d1[n] if row < col else np.conj(d1[n]) for row in range(self.N_det)]
                     for col in range(self.N_det)
                 ]
             )
@@ -200,8 +190,7 @@ class CorrelatedNoise(BaseNoise):
         colored_strain = spectral_matrix.dot(white_strain)
 
         # Split the frequency strain for each detector
-        freq_series[:, self.kmin: self.kmax] += np.transpose(
-            np.reshape(colored_strain, (self.N_freq, self.N_det)))
+        freq_series[:, self.kmin : self.kmax] += np.transpose(np.reshape(colored_strain, (self.N_freq, self.N_det)))
 
         # transform each frequency strain into the time domain
         time_series = np.fft.irfft(freq_series, n=self.N, axis=1) * self.df * self.N
@@ -219,15 +208,15 @@ class CorrelatedNoise(BaseNoise):
 
         # Generate the initial single noise realization and apply the final part of the window
         strain_buffer = self.single_noise_realization(self.spectral_matrix)
-        strain_buffer[:, -self.N_overlap:] *= self.w0
+        strain_buffer[:, -self.N_overlap :] *= self.w0
 
         # Extend the strain buffer until it has more valid data than a single frame
         while strain_buffer.shape[-1] - self.N_overlap < N_frame:
             new_strain = self.single_noise_realization(self.spectral_matrix)
             new_strain[:, : self.N_overlap] *= self.w1
-            new_strain[:, -self.N_overlap:] *= self.w0
-            strain_buffer[:, -self.N_overlap:] += new_strain[:, : self.N_overlap]
-            strain_buffer = np.concatenate((strain_buffer, new_strain[:, self.N_overlap:]), axis=1)
+            new_strain[:, -self.N_overlap :] *= self.w0
+            strain_buffer[:, -self.N_overlap :] += new_strain[:, : self.N_overlap]
+            strain_buffer = np.concatenate((strain_buffer, new_strain[:, self.N_overlap :]), axis=1)
 
         return strain_buffer[:, :N_frame]
 
@@ -253,8 +242,7 @@ class CorrelatedNoise(BaseNoise):
         file_name = Path(file_name)
 
         if batch.shape[0] != self.N_det:
-            raise ValueError(
-                f"Batch first dimension ({batch.shape[0]}) must match number of detectors ({self.N_det}).")
+            raise ValueError(f"Batch first dimension ({batch.shape[0]}) must match number of detectors ({self.N_det}).")
 
         for i, det_name in enumerate(self.detector_names):
             # Adjust filename per detector
@@ -265,20 +253,14 @@ class CorrelatedNoise(BaseNoise):
                 dataset_name = kwargs.get("dataset_name", "strain")
                 det_dataset_name = f"{det_name}:{dataset_name}"
                 self._save_batch_hdf5(
-                    batch=batch[i, :],
-                    file_name=det_file_name,
-                    overwrite=overwrite,
-                    dataset_name=det_dataset_name
+                    batch=batch[i, :], file_name=det_file_name, overwrite=overwrite, dataset_name=det_dataset_name
                 )
             elif file_name.suffix == ".gwf":
                 # Prepare channel
                 channel = kwargs.get("channel", "strain")
                 det_channel = f"{det_name}:{channel}"
                 self._save_batch_gwf(
-                    batch=batch[i, :],
-                    file_name=det_file_name,
-                    overwrite=overwrite,
-                    channel=det_channel
+                    batch=batch[i, :], file_name=det_file_name, overwrite=overwrite, channel=det_channel
                 )
             else:
                 raise ValueError(
