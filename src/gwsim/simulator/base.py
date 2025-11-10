@@ -48,9 +48,6 @@ class Simulator(ABC):
         if kwargs:
             logger.debug("Unused kwargs in Simulator.__init__: %s", kwargs)
 
-        # Initialize StateAttribute system
-        super().__init__(**kwargs)
-
         # Non-state attributes
         self.max_samples = max_samples
 

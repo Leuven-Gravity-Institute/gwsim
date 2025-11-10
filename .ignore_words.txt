@@ -1,9 +1,11 @@
+astropy
 freqs
 gengli
 gwpy
 gwsim
 infft
 Inspiral
+interp
 levelname
 LIGO
 NSBH
