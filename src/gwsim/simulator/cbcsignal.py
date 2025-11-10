@@ -27,9 +27,10 @@ class CBCSignalGenerator(Generator):
     def next(self):
         if self.index < len(self.population_df):
             parameters = self.population_df.iloc[self.index]
-            print(parameters)
+
             # Compute the hp and hc using pycbc
             hp, hc = get_td_waveform(**parameters, **self.waveform_arguments)
+
             # Compute the F+ and Fx
             self.data_array = []
             for i in range(len(self.detectors)):
