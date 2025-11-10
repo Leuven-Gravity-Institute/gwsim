@@ -12,7 +12,7 @@ import numpy as np
 
 from gwsim import __version__
 from gwsim.simulator.state import StateAttribute
-from gwsim.utils.io import check_file_exist
+from gwsim.utils.io import check_file_exist, get_file_name_from_template
 
 logger = logging.getLogger("gwsim")
 
@@ -227,8 +227,8 @@ class Simulator(ABC):
         """
 
     @abstractmethod
-    def save_batch(self, batch: Any, file_name: str | Path, overwrite: bool = False, **kwargs) -> None:
-        """Save a batch of samples to file.
+    def _save_data(self, data: Any, file_name: str | Path, **kwargs) -> None:
+        """Internal method to save data to a file.
 
         This method must be implemented by all simulator subclasses.
 
@@ -238,3 +238,47 @@ class Simulator(ABC):
             overwrite: Whether to overwrite existing files.
             **kwargs: Additional arguments for specific file formats.
         """
+
+    def save_data(self, data: Any, file_name: str | Path, overwrite: bool = False, **kwargs) -> None:
+        """Save data to a file.
+
+        This method must be implemented by all simulator subclasses.
+
+        Args:
+            batch: Batch of generated samples.
+            file_name: Output file path.
+                If the file_name contains placeholders (e.g., {{detector}}, {{duration}}),
+                they are filled by the attributes of the simulator.
+            overwrite: Whether to overwrite existing files.
+            **kwargs: Additional arguments for specific file formats.
+        """
+        file_name_resolved = get_file_name_from_template(
+            template=str(file_name),
+            instance=self,
+        )
+
+        if isinstance(file_name_resolved, str):
+            if not overwrite and Path(file_name_resolved).exists():
+                raise FileExistsError(
+                    f"File '{file_name_resolved}' already exists. " f"Use overwrite=True to overwrite it."
+                )
+            self._save_data(data=data, file_name=file_name_resolved, **kwargs)
+        else:
+            # Compare the shape of data with the shape of file_name_resolved
+            if not hasattr(data, "shape"):
+                raise ValueError("Data must have a 'shape' attribute when file_name resolves to multiple files.")
+            # The dimensions of data must be greater than or equal to those of file_name_resolved
+            if len(data.shape) < len(file_name_resolved.shape):
+                raise ValueError("Data must have equal or more dimensions than the resolved file names.")
+            # Check the leading dimensions match
+            if data.shape[: len(file_name_resolved.shape)] != file_name_resolved.shape:
+                raise ValueError("Leading dimensions of data must match the shape of the resolved file names.")
+            # Save each file separately
+            for idx in np.ndindex(file_name_resolved.shape):
+                single_file_name = file_name_resolved[idx]
+                single_data = data[idx]
+                if not overwrite and Path(single_file_name).exists():
+                    raise FileExistsError(
+                        f"File '{single_file_name}' already exists. " f"Use overwrite=True to overwrite it."
+                    )
+                self._save_data(data=single_data, file_name=single_file_name, **kwargs)
