@@ -15,6 +15,12 @@ realisation
 retryable
 Uncatched
 coo
+freqs
+gengli
+gwpy
 gwsim
+LIGO
+NSBH
+Nyquist
 pycbc
 retryable
