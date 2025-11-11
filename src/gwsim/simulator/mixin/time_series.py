@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
+from gwpy.timeseries import TimeSeries as GWPyTimeSeries
 
 from gwsim.data.time_series import TimeSeries
 from gwsim.data.time_series.time_series_list import TimeSeriesList
@@ -107,3 +110,11 @@ class TimeSeriesMixin:  # pylint: disable=too-few-public-methods
             "dtype": str(self.dtype),
         }
         return metadata
+
+    def _save_data(self, data: GWPyTimeSeries, file_name: Path, channel: str | None = None, **kwargs) -> None:
+        if isinstance(data, GWPyTimeSeries):
+            if channel is not None:
+                data.channel = channel
+            data.write(str(file_name), **kwargs)
+        else:
+            raise TypeError("Data must be a GWPy TimeSeries instance to save using TimeSeriesMixin.")
