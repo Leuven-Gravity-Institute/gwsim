@@ -112,7 +112,7 @@ class TimeSeriesMixin:  # pylint: disable=too-few-public-methods
         }
         return metadata
 
-    def _save_data(self, data: Any, file_name: Path, **kwargs) -> None:
+    def _save_data(self, data: Any, file_name: str | Path, **kwargs) -> None:
         """Save time series data to a file.
 
         Args:
@@ -125,7 +125,7 @@ class TimeSeriesMixin:  # pylint: disable=too-few-public-methods
         else:
             raise TypeError("Data must be a GWpy TimeSeries instance to save using TimeSeriesMixin.")
 
-    def _save_gwf_data(self, data: GWPyTimeSeries, file_name: Path, channel: str | None = None, **kwargs) -> None:
+    def _save_gwf_data(self, data: GWPyTimeSeries, file_name: str | Path, channel: str | None = None, **kwargs) -> None:
         """Save GWPy TimeSeries data to a GWF file.
 
         Args:
