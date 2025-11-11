@@ -109,7 +109,7 @@ def get_file_name_from_template(
         if isinstance(value, (list, tuple)) or (hasattr(value, "__iter__") and not isinstance(value, str)):
             values_dict[label] = [str(ele) for ele in list(value)]
         else:
-            values_dict[label] = [value]
+            values_dict[label] = [str(value)]
 
     # Prepare lists for Cartesian product
     product_lists = [values_dict[label] for label in placeholders]
