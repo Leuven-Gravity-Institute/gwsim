@@ -19,7 +19,7 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
         self.detectors = detectors
 
     @property
-    def detectors(self) -> list[str] | list[Detector] | None:
+    def detectors(self) -> list[str | Detector] | None:
         """Get the list of detectors.
 
         Returns:
@@ -43,6 +43,6 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             Dictionary containing the list of detectors.
         """
         metadata = {
-            "detectors": self.detectors,
+            "detectors": [str(det) for det in self.detectors] if self.detectors is not None else [],
         }
         return metadata
