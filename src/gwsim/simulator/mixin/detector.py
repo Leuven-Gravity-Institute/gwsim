@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from gwsim.detector.base import Detector
-from gwsim.detector.utils import DEFAULT_DETECTOR_BASE_PATH
 
 
 class DetectorMixin:  # pylint: disable=too-few-public-methods
@@ -36,14 +33,7 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             self._detectors = None
         else:
             # Check whether the label is a file name
-            detectors = []
-            for det in value:
-                det_path = Path(det)
-                if det_path.is_file() or (DEFAULT_DETECTOR_BASE_PATH / det_path).is_file():
-                    detectors.append(Detector(config_file=det))
-                else:
-                    detectors.append(Detector(name=det))
-            self._detectors = detectors
+            self._detectors = [Detector.get_detector(det) for det in value]
 
     @property
     def metadata(self) -> dict:
