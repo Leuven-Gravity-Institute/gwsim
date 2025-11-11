@@ -1,0 +1,15 @@
+# Configuration for detector E1 of the ET 2L aligned network, following Bilby convention
+# This detector corresponds to gwsim.detectors.detectors.E1_2L_Aligned_Sardinia.interferometer
+# The detector sensitivity follows the COBA paper [Marica Branchesi et al JCAP07(2023)068]
+name = 'E1'
+power_spectral_density = PowerSpectralDensity(psd_file='./noise_curves/ET_15_full_cryo_psd.txt')
+length = 15
+minimum_frequency = 2
+maximum_frequency = 10000
+latitude = 40.5166666668747
+longitude = 9.416666666888249
+elevation = 51.884
+xarm_azimuth = 70.56739976526205
+yarm_azimuth = 340.56739976554263
+xarm_tilt = 2.64278457158e-10
+yarm_tilt = -2.11594666113e-17

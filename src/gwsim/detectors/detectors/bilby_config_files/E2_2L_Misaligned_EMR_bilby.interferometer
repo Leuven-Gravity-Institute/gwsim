@@ -1,0 +1,16 @@
+# Configuration for detector E2 of the ET 2L misaligned network, following Bilby convention
+# This detector corresponds to gwsim.detectors.detectors.E2_2L_Misaligned_EMR.interferometer
+# The detector sensitivity follows the COBA paper [Marica Branchesi et al JCAP07(2023)068]
+name = 'E2'
+power_spectral_density = PowerSpectralDensity(psd_file='./noise_curves/ET_15_full_cryo_psd.txt')
+length = 15
+minimum_frequency = 2
+maximum_frequency = 10000
+latitude = 50.72305555575918
+longitude = 5.920555555458927
+elevation = 51.884
+xarm_azimuth = 25.567399766834725
+yarm_azimuth = 295.56739976654234
+xarm_tilt = -9.32242464849e-11
+yarm_tilt = 1.01691246358e-17
+

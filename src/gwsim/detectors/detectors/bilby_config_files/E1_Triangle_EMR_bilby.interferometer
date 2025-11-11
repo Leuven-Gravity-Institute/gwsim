@@ -1,0 +1,15 @@
+# Configuration for detector E1 of the ET Triangle network located in the Meuse-Rhine region, following Bilby convention
+# This detector corresponds to gwsim.detectors.detectors.E1_Triangle_EMR.interferometer
+# The detector sensitivity follows the COBA paper [Marica Branchesi et al JCAP07(2023)068]
+name = 'E1'
+power_spectral_density = PowerSpectralDensity(psd_file='./noise_curves/ET_10_full_cryo_psd.txt')
+length = 10
+minimum_frequency = 2
+maximum_frequency = 10000
+latitude = 50.72305555575918
+longitude = 5.920555555458927
+elevation = 51.884
+xarm_azimuth = 70.56739976411615
+yarm_azimuth = 130.56739976371443
+xarm_tilt = 2.93896654317e-10
+yarm_tilt = 2.93896646164e-10

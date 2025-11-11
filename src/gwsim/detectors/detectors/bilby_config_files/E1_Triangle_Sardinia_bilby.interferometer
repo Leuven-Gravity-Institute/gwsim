@@ -1,0 +1,15 @@
+# Configuration for detector E1 of the ET Triangle network located in Sardinia, following Bilby convention
+# This detector corresponds to gwsim.detectors.detectors.E1_Triangle_Sardinia.interferometer
+# The detector sensitivity follows the COBA paper [Marica Branchesi et al JCAP07(2023)068]
+name = 'E1'
+power_spectral_density = PowerSpectralDensity(psd_file='./noise_curves/ET_10_full_cryo_psd.txt')
+length = 10
+minimum_frequency = 2
+maximum_frequency = 10000
+latitude = 40.5166666668747
+longitude = 9.416666666888249
+elevation = 51.884
+xarm_azimuth = 70.56739976526205
+yarm_azimuth = 130.56739976543332
+xarm_tilt = 2.64278457158e-10
+yarm_tilt = 2.64278469515e-10
