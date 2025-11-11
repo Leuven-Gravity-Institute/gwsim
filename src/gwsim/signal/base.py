@@ -8,6 +8,9 @@ import numpy as np
 from pycbc.frame import write_frame
 from pycbc.types.timeseries import TimeSeries
 
+from gwsim.simulator.base import Simulator
+from gwsim.simulator.mixin.time_series import TimeSeriesMixin
+
 from ..generator.base import Generator
 from ..generator.state import StateAttribute
 from ..utils.io import check_file_overwrite
@@ -82,8 +85,21 @@ class BaseSignal(Generator):
         self, batch: np.ndarray, file_name: str | Path, overwrite: bool = False, channel: str = "strain"
     ) -> None:
         # Create a pycbc TimeSeries instance.
-        time_series = TimeSeries(initial_array=batch, delta_t=1 /
-                                 self.sampling_frequency, epoch=self.start_time)
+        time_series = TimeSeries(initial_array=batch, delta_t=1 / self.sampling_frequency, epoch=self.start_time)
 
         # Write to frame file.
         write_frame(location=str(file_name), channels=channel, timeseries=time_series)
+
+
+class SignalSimulator(TimeSeriesMixin, Simulator):
+    def __init__(
+        self,
+        population_file: str | Path,
+        start_time: int = 0,
+        duration: float = 1024,
+        sampling_frequency: float = 4096,
+        max_samples: int | None = None,
+        dtype: type = np.float64,
+        **kwargs,
+    ) -> None:
+        pass
