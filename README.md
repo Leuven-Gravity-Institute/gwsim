@@ -29,24 +29,6 @@ pip install -e .
 ```
 ## Quick Start
 
-### Basic Usage
-
-```python
-from gwsim import Simulator
-
-# Create a simulator with noise and signals
-sim = Simulator(
-    detectors=['H1', 'L1'],
-    noise_model='colored',
-    signal_population='bbh_injections.yaml'
-)
-
-# Generate data
-for data in sim:
-    # Process your GW data
-    pass
-```
-
 ### Command Line
 
 ```bash
