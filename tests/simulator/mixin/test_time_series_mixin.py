@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+from gwpy.timeseries import TimeSeries as GWPyTimeSeries
 
 from gwsim.data.time_series import TimeSeries
 from gwsim.data.time_series.time_series_list import TimeSeriesList
@@ -188,3 +189,45 @@ class TestTimeSeriesMixin:
         state = simulator.state
         assert "counter" in state
         # cached_data_chunks is not in state, as it's not a StateAttribute
+
+    @patch("gwpy.timeseries.TimeSeries.write")
+    def test_save_data_gwf_success(self, mock_write):
+        """Test _save_data with valid GWPy TimeSeries and .gwf file."""
+        simulator = MockTimeSeriesSimulator()
+
+        # Create a mock GWPy TimeSeries
+        data = GWPyTimeSeries([1, 2, 3], sample_rate=100)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test.gwf"
+            simulator._save_data(data, file_path)
+
+            # Check that write was called
+            mock_write.assert_called_once_with(str(file_path))
+
+    @patch("gwpy.timeseries.TimeSeries.write")
+    def test_save_data_gwf_with_channel(self, mock_write):
+        """Test _save_data sets channel on GWPy TimeSeries."""
+        simulator = MockTimeSeriesSimulator()
+
+        data = GWPyTimeSeries([1, 2, 3], sample_rate=100)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test.gwf"
+            simulator.save_data(data, file_path, channel="H1:STRAIN")
+
+            # Check that channel was set
+            assert data.channel.name == "H1:STRAIN"
+            mock_write.assert_called_once_with(str(file_path))
+
+    def test_save_data_invalid_data_type(self):
+        """Test _save_data raises error for non-GWPy TimeSeries data."""
+        simulator = MockTimeSeriesSimulator()
+
+        # Use our custom TimeSeries instead
+        data = TimeSeries(np.array([[1, 2, 3]]), start_time=0, sampling_frequency=100)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test.gwf"
+            with pytest.raises(TypeError, match=r"Data must be a GWPy TimeSeries instance"):
+                simulator.save_data(data, file_path)
