@@ -229,5 +229,5 @@ class TestTimeSeriesMixin:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.gwf"
-            with pytest.raises(TypeError, match=r"Data must be a GWPy TimeSeries instance"):
+            with pytest.raises(TypeError, match=r"Data must be a GWpy TimeSeries instance"):
                 simulator.save_data(data, file_path)
