@@ -12,6 +12,8 @@ import pandas as pd
 class PopulationReaderMixin:  # pylint: disable=too-few-public-methods
     """A mixin class to read population files for GW signal simulators."""
 
+    population_counter = 0
+
     def __init__(self, population_file: str | Path, population_file_type: str = "pycbc", **kwargs):
         """Initialize the PopulationReaderMixin.
 
@@ -60,6 +62,20 @@ class PopulationReaderMixin:  # pylint: disable=too-few-public-methods
 
         # Order the DataFrame by the coalescence time 'tc'
         return population_data.sort_values(by="tc").reset_index(drop=True)
+
+    def get_next_injection_parameters(self) -> dict[str, float | int] | None:
+        """Get the next set of injection parameters from the population.
+
+        Returns:
+            A dictionary of injection parameters for the next event,
+                or None if all events have been used.
+        """
+        if self.population_counter < len(self.population_data):
+            output = self.population_data.iloc[self.population_counter].to_dict()
+            self.population_counter += 1
+        else:
+            output = None
+        return output
 
     @property
     def metadata(self) -> dict:
