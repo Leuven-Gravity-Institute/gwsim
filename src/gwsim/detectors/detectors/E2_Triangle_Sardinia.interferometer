@@ -1,27 +1,19 @@
-# Configuration for detector E2 of the ET Triangle network located in Sardinia, following LAL convention.
+# Configuration for detector E2 of the ET Triangle network located in Sardinia, following Bilby convention
 # The coordinates of the Sardinia location (latitude 40◦31’, longitude 9◦25’) follows the COBA paper [Marica Branchesi et al JCAP07(2023)068].
-# Generated on 7/11/2025
-; The ET triangular configuration is derived from T1400308.
-; The arms 1 and 2 of E1 are defined on the tangent plane at the E1 vertex position.
-; The arm 1 of E1 has the same azimuth angle (0.33916285632 rad) and altitude (0.0 rad) of the Virgo arm 1 in the local horizontal coordinate system center at the E1 vertex.
-; The E1 vertex has the same height of the Virgo V1 vertex (51.88399887084961 m)
-
-[E2]
-LATITUDE = 0.70863129556 ; E2 vertex latitude (radians)
-LONGITUDE = 0.16503787679 ; E2 vertex longitude (radians)
-ELEVATION = 59.739 ; E2 vertex elevation (meters)
-X_AZIMUTH = 4.52839967956 ; E2 X arm azimuth (radians)
-Y_AZIMUTH = 3.48120159625 ; E2 Y arm azimuth (radians)
-X_ALTITUDE = -7.83862464265e-04 ; E2 X arm altitude (radians)
-Y_ALTITUDE = -1.57103708480e-03 ; E2 Y arm altitude (radians)
-VERTEX_LOCATION_X = 4.78365191273e+06 ; E2 x-component of vertex location (ECEF, meters)
-VERTEX_LOCATION_Y = 7.96730574130e+05 ; E2 y-component of vertex location (ECEF, meters)
-VERTEX_LOCATION_Z = 4.12896983701e+06 ; E2 z-component of vertex location (ECEF, meters)
-ARM_X_DIRECTION_X = 0.278376692542 ; E2 x-component of unit vector pointing along X arm (ECEF)
-ARM_X_DIRECTION_Y = -0.950299482415 ; E2 y-component of unit vector pointing along X arm (ECEF)
-ARM_X_DIRECTION_Z = -0.139417756295 ; E2 z-component of unit vector pointing along X arm (ECEF)
-ARM_Y_DIRECTION_X = 0.658837666912 ; E2 x-component of unit vector pointing along Y arm (ECEF)
-ARM_Y_DIRECTION_Y = -0.22797544621 ; E2 y-component of unit vector pointing along Y arm (ECEF)
-ARM_Y_DIRECTION_Z = -0.716910123086 ; E2 z-component of unit vector pointing along Y arm (ECEF)
-X_LENGTH = 10000 ; E2 X arm length (meters)
-Y_LENGTH = 10000 ; E2 Y arm length (meters)
+# The ET triangular configuration is derived from T1400308.
+# The arms 1 and 2 of E1 are defined on the tangent plane at the E1 vertex position.
+# The arm 1 of E1 has the same azimuth angle (0.33916285632 rad) and altitude (0.0 rad) of the Virgo arm 1 in the local horizontal coordinate system center at the E1 vertex.
+# The E1 vertex has the same height of the Virgo V1 vertex (51.88399887084961 m)
+# The detector sensitivity follows the COBA paper [Marica Branchesi et al JCAP07(2023)068]
+name = 'E2'
+power_spectral_density = PowerSpectralDensity(psd_file='./noise_curves/ET_10_full_cryo_psd.txt')
+length = 10
+minimum_frequency = 2
+maximum_frequency = 10000
+latitude = 40.60158246647564
+longitude = 9.455973799867088
+elevation = 59.739
+xarm_azimuth = 190.5418104128176
+yarm_azimuth = 250.54184090066977
+xarm_tilt = -0.000783862464265
+yarm_tilt = -0.0015710370848
