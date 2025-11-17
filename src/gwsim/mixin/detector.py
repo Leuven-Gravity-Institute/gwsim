@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import cast
 
+import numpy as np
+from gwpy.timeseries import TimeSeries as GWpyTimeSeries
+from scipy.interpolate import interp1d
+
+from gwsim.data.time_series.time_series import TimeSeries
 from gwsim.detector.base import Detector
 
 
 class DetectorMixin:  # pylint: disable=too-few-public-methods
     """Mixin class to add detector information to simulators."""
 
-    def __init__(self, detectors: list[str | Detector] | None = None, **kwargs):  # pylint: disable=unused-argument
+    def __init__(self, detectors: list[str] | None = None, **kwargs):  # pylint: disable=unused-argument
         """Initialize the DetectorMixin.
 
         Args:
@@ -21,7 +26,7 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
         self.detectors = detectors
 
     @property
-    def detectors(self) -> list[str | Detector] | None:
+    def detectors(self) -> list[Detector]:
         """Get the list of detectors.
 
         Returns:
@@ -30,7 +35,7 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
         return self._detectors
 
     @detectors.setter
-    def detectors(self, value: list[str | Detector] | None) -> None:
+    def detectors(self, value: list[str] | None) -> None:
         """Set the list of detectors.
 
         Args:
@@ -39,16 +44,122 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
                 If None, no detectors are set.
         """
         if value is None:
-            self._detectors = None
+            self._detectors = []
         if isinstance(value, list):
-            if all(isinstance(det, Detector) for det in value):
-                self._detectors = value
-                return
-            if all(isinstance(det, str) for det in value) or all(isinstance(det, Path) for det in value):
-                self._detectors = [Detector.get_detector(det) for det in value]
-                return
-            raise ValueError("All elements in detectors list must be of the same type: str, Path, or Detector.")
-        raise ValueError("Detectors must be a list of str, Path, or Detector instances, or None.")
+            self._detectors = [Detector.get_detector(det) for det in value]
+        raise ValueError("detectors must be a list.")
+
+    def project_polarizations(  # pylint: disable=too-many-locals
+        self,
+        polarizations: dict[str, GWpyTimeSeries],
+        right_ascension: float,
+        declination: float,
+        polarization_angle: float,
+        earth_rotation: bool = True,
+    ) -> dict[str, TimeSeries]:
+        """Project waveform polarizations onto detectors using antenna patterns.
+
+        This method projects the plus and cross polarizations of a gravitational wave
+        onto each detector in the network, accounting for antenna response and
+        time delays.
+
+        Args:
+            polarizations: Dictionary with 'plus' and 'cross' keys containing
+                TimeSeries objects of the waveform polarizations.
+            right_ascension: RA of source in radians.
+            declination: Declination of source in radians.
+            polarization_angle: Polarization angle in radians.
+            earth_rotation: If True, account for Earth's rotation by computing
+                antenna patterns at multiple times and interpolating.
+                Defaults to True.
+
+        Returns:
+            Dictionary mapping detector names (str) to projected TimeSeries objects.
+            Keys are detector names, values are projected strain TimeSeries.
+
+        Raises:
+            ValueError: If polarizations dict doesn't contain 'plus' and 'cross' keys,
+                or if detector is not initialized.
+            TypeError: If polarizations values are not TimeSeries objects.
+        """
+        # Validate inputs
+        if not isinstance(polarizations, dict):
+            raise TypeError("polarizations must be a dictionary")
+        if "plus" not in polarizations or "cross" not in polarizations:
+            raise ValueError("polarizations dict must contain 'plus' and 'cross' keys")
+        if not isinstance(polarizations["plus"], TimeSeries):
+            raise TypeError("polarizations['plus'] must be a TimeSeries")
+        if not isinstance(polarizations["cross"], TimeSeries):
+            raise TypeError("polarizations['cross'] must be a TimeSeries")
+
+        hp = polarizations["plus"]
+        hc = polarizations["cross"]
+
+        # Convert TimeSeries data to numpy arrays for computation
+        # Interpolate the hp and hc data to ensure smooth evaluation
+        time_array = cast(np.ndarray, hp.times.to_value())
+        hp_func = interp1d(time_array, hp.to_value(), kind="cubic", bounds_error=False, fill_value=0.0)
+        hc_func = interp1d(time_array, hc.to_value(), kind="cubic", bounds_error=False, fill_value=0.0)
+
+        if earth_rotation:
+            # Calculate the antenna patterns at multiple times
+            antenna_patterns = [
+                det.antenna_pattern(
+                    right_ascension=right_ascension,
+                    declination=declination,
+                    polarization=polarization_angle,
+                    t_gps=time_array,
+                    polarization_type="tensor",
+                )
+                for det in self.detectors
+            ]
+
+            # Calculate the time delays
+            time_delays = [
+                det.time_delay_from_earth_center(
+                    right_ascension=right_ascension, declination=declination, t_gps=time_array
+                )
+                for det in self.detectors
+            ]
+
+        else:
+            # Calculate the antenna patterns at the reference time
+            reference_time = 0.5 * (time_array[0] + time_array[-1])
+            antenna_patterns = [
+                det.antenna_pattern(
+                    right_ascension=right_ascension,
+                    declination=declination,
+                    polarization=polarization_angle,
+                    t_gps=reference_time,
+                    polarization_type="tensor",
+                )
+                for det in self.detectors
+            ]
+
+            # Calculate the time delays at the reference time
+            time_delays = [
+                det.time_delay_from_earth_center(
+                    right_ascension=right_ascension, declination=declination, t_gps=reference_time
+                )
+                for det in self.detectors
+            ]
+
+        # Evaluate the detector responses
+        detector_responses = np.zeros((len(self.detectors), len(time_array)))
+        for i, (fp_vals, fc_vals) in enumerate(antenna_patterns):
+            time_delay = time_delays[i]
+
+            # Shift the waveform data according to time delays
+            shifted_times = time_array + time_delay
+
+            hp_shifted = hp_func(shifted_times)
+            hc_shifted = hc_func(shifted_times)
+
+            detector_responses[i, :] = fp_vals * hp_shifted + fc_vals * hc_shifted
+
+        # Create TimeSeries for projected strain
+        projected_ts = TimeSeries(data=detector_responses, start_time=time_array[0], sampling_frequency=hp.sample_rate)
+        return projected_ts
 
     @property
     def metadata(self) -> dict:
@@ -58,6 +169,6 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             Dictionary containing the list of detectors.
         """
         metadata = {
-            "detectors": [str(det) for det in self.detectors] if self.detectors is not None else [],
+            "detectors": [str(det) for det in self.detectors],
         }
         return metadata
