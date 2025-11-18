@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from numbers import Number
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -24,16 +25,18 @@ if TYPE_CHECKING:
 class TimeSeries(JSONSerializable):
     """Class representing a time series data for multiple channels."""
 
-    def __init__(self, data: np.ndarray, start_time: int | Quantity, sampling_frequency: float | Quantity):
+    def __init__(self, data: np.ndarray, start_time: int | float | Quantity, sampling_frequency: float | Quantity):
         """Initialize the TimeSeries with a list of GWPy TimeSeries objects.
 
         Args:
-            channels: List of GWPy TimeSeries objects representing different channels.
+            data: 2D numpy array of shape (num_channels, num_samples) containing the time series data.
+            start_time: Start time of the time series in GPS seconds.
+            sampling_frequency: Sampling frequency of the time series in Hz.
         """
         if data.ndim != 2:
             raise ValueError("Data must be a 2D numpy array with shape (num_channels, num_samples).")
 
-        if isinstance(start_time, int):
+        if isinstance(start_time, Number):
             start_time = Quantity(start_time, unit="s")
         if isinstance(sampling_frequency, (int, float)):
             sampling_frequency = Quantity(sampling_frequency, unit="Hz")
