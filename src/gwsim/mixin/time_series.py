@@ -115,9 +115,13 @@ class TimeSeriesMixin:  # pylint: disable=too-few-public-methods
             Dictionary containing timing parameters and other metadata.
         """
         metadata = {
-            "duration": self.duration,
-            "sampling_frequency": self.sampling_frequency,
-            "dtype": str(self.dtype),
+            "arguments:": {
+                "start_time": self.start_time,
+                "duration": self.duration,
+                "sampling_frequency": self.sampling_frequency,
+                "num_of_channels": self.num_of_channels,
+                "dtype": str(self.dtype),
+            }
         }
         return metadata
 
