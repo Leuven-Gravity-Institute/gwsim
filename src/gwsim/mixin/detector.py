@@ -48,7 +48,8 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             self._detectors = []
         elif isinstance(value, list):
             self._detectors = [Detector.get_detector(det) for det in value]
-        raise ValueError("detectors must be a list.")
+        else:
+            raise ValueError("detectors must be a list.")
 
     def detectors_are_configured(self) -> bool:
         """Check if all detectors are configured.
