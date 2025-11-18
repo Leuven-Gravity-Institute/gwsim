@@ -90,7 +90,7 @@ def get_file_name_from_template(
         exclude = set()
 
     # Find all unique placeholders in the template
-    placeholders = list(set(re.findall(r"\{\{\s*(\w+)\s*\}\}", template)))
+    placeholders = list(dict.fromkeys(re.findall(r"\{\{\s*(\w+)\s*\}\}", template)))
 
     # Remove excluded placeholders from the list
     placeholders = [p for p in placeholders if p not in exclude]
