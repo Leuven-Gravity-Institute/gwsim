@@ -25,7 +25,7 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             **kwargs: Additional arguments.
         """
         super().__init__(**kwargs)
-        self._metadata = {"arguments": detectors}
+        self._metadata = {"detector": {"arguments": {"detectors": detectors}}}
         self.detectors = detectors
 
     @property
