@@ -23,6 +23,7 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             **kwargs: Additional arguments.
         """
         super().__init__(**kwargs)
+        self._metadata = {"arguments": detectors}
         self.detectors = detectors
 
     @property
@@ -49,14 +50,25 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             self._detectors = [Detector.get_detector(det) for det in value]
         raise ValueError("detectors must be a list.")
 
-    def project_polarizations(  # pylint: disable=too-many-locals
+    def detectors_are_configured(self) -> bool:
+        """Check if all detectors are configured.
+
+        Returns:
+            True if all detectors are configured, False otherwise.
+        """
+        if all(det.is_configured() for det in self.detectors):
+            return True
+        return False
+
+    def project_polarizations(  # pylint: disable=too-many-locals,unused-argument
         self,
         polarizations: dict[str, GWpyTimeSeries],
         right_ascension: float,
         declination: float,
         polarization_angle: float,
         earth_rotation: bool = True,
-    ) -> dict[str, TimeSeries]:
+        **kwargs,
+    ) -> TimeSeries:
         """Project waveform polarizations onto detectors using antenna patterns.
 
         This method projects the plus and cross polarizations of a gravitational wave
@@ -78,10 +90,15 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             Keys are detector names, values are projected strain TimeSeries.
 
         Raises:
+            ValueError: If detectors are not configured.
             ValueError: If polarizations dict doesn't contain 'plus' and 'cross' keys,
                 or if detector is not initialized.
             TypeError: If polarizations values are not TimeSeries objects.
         """
+        # Validate the detector list
+        if not self.detectors_are_configured():
+            raise ValueError("Detectors are not configured in the simulator.")
+
         # Validate inputs
         if not isinstance(polarizations, dict):
             raise TypeError("polarizations must be a dictionary")
@@ -158,7 +175,8 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             detector_responses[i, :] = fp_vals * hp_shifted + fc_vals * hc_shifted
 
         # Create TimeSeries for projected strain
-        projected_ts = TimeSeries(data=detector_responses, start_time=time_array[0], sampling_frequency=hp.sample_rate)
+        start_time = cast(float, time_array[0])
+        projected_ts = TimeSeries(data=detector_responses, start_time=start_time, sampling_frequency=hp.sample_rate)
         return projected_ts
 
     @property
@@ -168,7 +186,4 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
         Returns:
             Dictionary containing the list of detectors.
         """
-        metadata = {
-            "detectors": [str(det) for det in self.detectors],
-        }
-        return metadata
+        return self._metadata
