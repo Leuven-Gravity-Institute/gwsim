@@ -34,7 +34,7 @@ class TestTimeSeriesInitialization:
 
     def test_init_with_valid_data(self, sample_timeseries: TimeSeries):
         """Test initialization with valid 2D array."""
-        assert sample_timeseries.num_channels == 2
+        assert sample_timeseries.num_of_channels == 2
         assert sample_timeseries.dtype == np.float64
         assert len(sample_timeseries) == 2
 
@@ -197,13 +197,13 @@ class TestTimeSeriesSerialization:
         assert "sampling_frequency" in data
         assert "sampling_frequency_unit" in data
         assert isinstance(data["data"], list)
-        assert len(data["data"]) == sample_timeseries.num_channels
+        assert len(data["data"]) == sample_timeseries.num_of_channels
 
     def test_from_json_dict_round_trip(self, sample_timeseries: TimeSeries):
         """Test round-trip serialization."""
         json_data = sample_timeseries.to_json_dict()
         reconstructed = TimeSeries.from_json_dict(json_data)
-        assert reconstructed.num_channels == sample_timeseries.num_channels
+        assert reconstructed.num_of_channels == sample_timeseries.num_of_channels
         assert reconstructed.start_time == sample_timeseries.start_time
         assert reconstructed.sampling_frequency == sample_timeseries.sampling_frequency
         np.testing.assert_array_equal(reconstructed[0].value, sample_timeseries[0].value)

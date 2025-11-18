@@ -29,12 +29,12 @@ class TimeSeries(JSONSerializable):
         """Initialize the TimeSeries with a list of GWPy TimeSeries objects.
 
         Args:
-            data: 2D numpy array of shape (num_channels, num_samples) containing the time series data.
+            data: 2D numpy array of shape (num_of_channels, num_samples) containing the time series data.
             start_time: Start time of the time series in GPS seconds.
             sampling_frequency: Sampling frequency of the time series in Hz.
         """
         if data.ndim != 2:
-            raise ValueError("Data must be a 2D numpy array with shape (num_channels, num_samples).")
+            raise ValueError("Data must be a 2D numpy array with shape (num_of_channels, num_samples).")
 
         if isinstance(start_time, Number):
             start_time = Quantity(start_time, unit="s")
@@ -49,7 +49,7 @@ class TimeSeries(JSONSerializable):
             )
             for i in range(data.shape[0])
         ]
-        self.num_channels = data.shape[0]
+        self.num_of_channels = data.shape[0]
         self.dtype = data.dtype
 
     def __len__(self) -> int:
@@ -58,7 +58,7 @@ class TimeSeries(JSONSerializable):
         Returns:
             Number of channels in the time series.
         """
-        return self.num_channels
+        return self.num_of_channels
 
     def __getitem__(self, index: int) -> GWpyTimeSeries:
         """Get the GWPy TimeSeries object for a specific channel.
@@ -111,9 +111,9 @@ class TimeSeries(JSONSerializable):
         """
         if not isinstance(other, TimeSeries):
             return False
-        if self.num_channels != other.num_channels:
+        if self.num_of_channels != other.num_of_channels:
             return False
-        for i in range(self.num_channels):
+        for i in range(self.num_of_channels):
             if not np.array_equal(self[i].value, other[i].value):
                 return False
             if self[i].t0 != other[i].t0:
@@ -183,7 +183,7 @@ class TimeSeries(JSONSerializable):
         Returns:
             Cropped TimeSeries instance.
         """
-        for i in range(self.num_channels):
+        for i in range(self.num_of_channels):
             self._data[i] = GWpyTimeSeries(self._data[i].crop(start=start_time, end=end_time, copy=True))
         return self
 
@@ -239,7 +239,7 @@ class TimeSeries(JSONSerializable):
                 sampling_frequency=other.sampling_frequency,
             )
 
-        for i in range(self.num_channels):
+        for i in range(self.num_of_channels):
             self[i] = self[i].inject(other[i])
 
         if other.end_time > self.end_time:
@@ -274,7 +274,7 @@ class TimeSeries(JSONSerializable):
         """
         return {
             "__type__": "TimeSeries",
-            "data": [self[i].value.tolist() for i in range(self.num_channels)],
+            "data": [self[i].value.tolist() for i in range(self.num_of_channels)],
             "start_time": self.start_time.value,
             "start_time_unit": str(self.start_time.unit),
             "sampling_frequency": self.sampling_frequency.value,
