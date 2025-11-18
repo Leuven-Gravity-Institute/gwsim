@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from gwsim.utils.io import get_file_name_from_template
@@ -37,7 +38,8 @@ class TestGetFileNameFromTemplate:
         instance = MockInstance(items=[1, 2, 3])
         template = "file_{{ items }}.txt"
         result = get_file_name_from_template(template, instance)
-        assert result == ["file_1.txt", "file_2.txt", "file_3.txt"]
+
+        assert np.array_equal(result, np.array(["file_1.txt", "file_2.txt", "file_3.txt"]))
 
     def test_multiple_placeholders_no_arrays(self):
         """Test multiple non-array placeholders."""
@@ -52,7 +54,7 @@ class TestGetFileNameFromTemplate:
         template = "{{ prefix }}_{{ numbers }}_{{ letters }}.txt"
         result = get_file_name_from_template(template, instance)
         expected = [["data_1_a.txt", "data_1_b.txt"], ["data_2_a.txt", "data_2_b.txt"]]
-        assert result == expected
+        assert np.array_equal(result, np.array(expected))
 
     def test_excluded_placeholders(self):
         """Test excluded placeholders are not substituted."""
@@ -80,14 +82,14 @@ class TestGetFileNameFromTemplate:
         instance = MockInstance(items=(1, 2))
         template = "file_{{ items }}.txt"
         result = get_file_name_from_template(template, instance)
-        assert result == ["file_1.txt", "file_2.txt"]
+        assert np.array_equal(result, np.array(["file_1.txt", "file_2.txt"]))
 
     def test_iterable_non_string(self):
         """Test iterable (non-string) is treated as array-like."""
         instance = MockInstance(items=range(3))
         template = "file_{{ items }}.txt"
         result = get_file_name_from_template(template, instance)
-        assert result == ["file_0.txt", "file_1.txt", "file_2.txt"]
+        assert np.array_equal(result, np.array(["file_0.txt", "file_1.txt", "file_2.txt"]))
 
     def test_string_not_treated_as_array(self):
         """Test string is not treated as array-like."""
@@ -116,4 +118,4 @@ class TestGetFileNameFromTemplate:
         template = "{{ included }}_{{ excluded }}.txt"
         result = get_file_name_from_template(template, instance, exclude={"excluded"})
         expected = ["1_{{ excluded }}.txt", "2_{{ excluded }}.txt"]
-        assert result == expected
+        assert np.array_equal(result, np.array(expected))
