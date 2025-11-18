@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 import numpy as np
@@ -10,6 +11,7 @@ from scipy.interpolate import interp1d
 
 from gwsim.data.time_series.time_series import TimeSeries
 from gwsim.detector.base import Detector
+from gwsim.detector.utils import DEFAULT_DETECTOR_BASE_PATH
 
 
 class DetectorMixin:  # pylint: disable=too-few-public-methods
@@ -47,7 +49,12 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
         if value is None:
             self._detectors = []
         elif isinstance(value, list):
-            self._detectors = [Detector.get_detector(det) for det in value]
+            self._detectors = []
+            for det in value:
+                if Path(det).is_file() or (DEFAULT_DETECTOR_BASE_PATH / det).is_file():
+                    self._detectors.append(Detector(configuration_file=det))
+                else:
+                    self._detectors.append(Detector(name=str(det)))
         else:
             raise ValueError("detectors must be a list.")
 
