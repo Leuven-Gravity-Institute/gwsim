@@ -17,7 +17,7 @@ class TestDetector:
 
     def test_init_with_name(self):
         """Test initialization with a built-in detector name."""
-        with patch("pycbc.detector.Detector") as mock_det_class:
+        with patch("gwsim.detector.base.PyCBCDetector") as mock_det_class:
             mock_det = mock_det_class.return_value
             det = Detector(name="H1")
             mock_det_class.assert_called_once_with("H1")
@@ -28,7 +28,7 @@ class TestDetector:
         """Test initialization with an absolute path to a config file."""
         with (
             patch("gwsim.detector.base.load_interferometer_config") as mock_load,
-            patch("pycbc.detector.Detector") as mock_det_class,
+            patch("gwsim.detector.base.PyCBCDetector") as mock_det_class,
         ):
             mock_load.return_value = "V1"
             mock_det = mock_det_class.return_value
@@ -37,7 +37,7 @@ class TestDetector:
                 file_path = Path(f.name)
 
             try:
-                det = Detector(config_file=file_path)
+                det = Detector(configuration_file=file_path)
                 mock_load.assert_called_once_with(config_file=file_path)
                 mock_det_class.assert_called_once_with("V1")
                 assert det.name == "V1"
@@ -49,7 +49,7 @@ class TestDetector:
         """Test initialization with a relative path to a config file in DEFAULT_DETECTOR_BASE_PATH."""
         with (
             patch("gwsim.detector.base.load_interferometer_config") as mock_load,
-            patch("pycbc.detector.Detector") as mock_det_class,
+            patch("gwsim.detector.base.PyCBCDetector") as mock_det_class,
             patch("gwsim.detector.base.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
         ):
             mock_load.return_value = "L1"
@@ -59,7 +59,7 @@ class TestDetector:
                 return str(self) == "/fake/base/L1.interferometer"
 
             with patch.object(Path, "is_file", mock_is_file):
-                det = Detector(config_file="L1.interferometer")
+                det = Detector(configuration_file="L1.interferometer")
                 expected_path = Path("/fake/base/L1.interferometer")
                 mock_load.assert_called_once_with(config_file=expected_path)
                 mock_det_class.assert_called_once_with("L1")
@@ -69,28 +69,30 @@ class TestDetector:
         """Test initialization with relative path when file doesn't exist in DEFAULT_DETECTOR_BASE_PATH."""
         with patch("gwsim.detector.base.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")):
             with patch.object(Path, "is_file", return_value=False):
-                with pytest.raises(FileNotFoundError, match=re.escape("Config file L1.interferometer not found")):
-                    Detector(config_file="L1.interferometer")
+                with pytest.raises(
+                    FileNotFoundError, match=re.escape("Configuration file 'L1.interferometer' not found")
+                ):
+                    Detector(configuration_file="L1.interferometer")
 
     def test_init_both_name_and_config_file(self):
         """Test that specifying both name and config_file raises ValueError."""
-        with pytest.raises(ValueError, match="Specify either 'name' or 'config_file', not both"):
-            Detector(name="H1", config_file="file.interferometer")
+        with pytest.raises(ValueError, match="Specify either 'name' or 'configuration_file', not both"):
+            Detector(name="H1", configuration_file="file.interferometer")
 
     def test_init_neither_name_nor_config_file(self):
         """Test that specifying neither name nor config_file raises ValueError."""
-        with pytest.raises(ValueError, match="Either 'name' or 'config_file' must be specified"):
+        with pytest.raises(ValueError, match="Either 'name' or 'configuration_file' must be provided"):
             Detector()
 
     def test_init_config_file_absolute_not_found(self):
         """Test FileNotFoundError for non-existent absolute config file path."""
         nonexistent = Path("/nonexistent/file.interferometer")
-        with pytest.raises(FileNotFoundError, match=f"Config file {nonexistent} not found"):
-            Detector(config_file=nonexistent)
+        with pytest.raises(FileNotFoundError, match=f"Configuration file '{nonexistent}' not found"):
+            Detector(configuration_file=nonexistent)
 
     def test_antenna_pattern(self):
         """Test antenna_pattern method delegates to underlying detector."""
-        with patch("pycbc.detector.Detector") as mock_det_class:
+        with patch("gwsim.detector.base.PyCBCDetector") as mock_det_class:
             mock_det = mock_det_class.return_value
             mock_det.antenna_pattern.return_value = (0.7, 0.4)
 
@@ -102,7 +104,7 @@ class TestDetector:
 
     def test_time_delay_from_earth_center(self):
         """Test time_delay_from_earth_center method delegates to underlying detector."""
-        with patch("pycbc.detector.Detector") as mock_det_class:
+        with patch("gwsim.detector.base.PyCBCDetector") as mock_det_class:
             mock_det = mock_det_class.return_value
             mock_det.time_delay_from_earth_center.return_value = 0.02
 
@@ -114,7 +116,7 @@ class TestDetector:
 
     def test_getattr_delegation(self):
         """Test __getattr__ delegates attribute access to underlying detector."""
-        with patch("pycbc.detector.Detector") as mock_det_class:
+        with patch("gwsim.detector.base.PyCBCDetector") as mock_det_class:
             mock_det = mock_det_class.return_value
             mock_det.latitude = 46.4551
 
@@ -123,6 +125,6 @@ class TestDetector:
 
     def test_str_method(self):
         """Test __str__ returns the detector name."""
-        with patch("pycbc.detector.Detector"):
+        with patch("gwsim.detector.base.PyCBCDetector"):
             det = Detector(name="H1")
             assert str(det) == "H1"
