@@ -44,6 +44,7 @@ class TestPyCBCWaveformWrapper:
             "mass2": 30.0,
             "spin1z": 0.5,
             "spin2z": -0.3,
+            "minimum_frequency": 20.0,
         }
 
     def test_wrapper_basic_call(self, default_params, mock_pycbc_waveform):
@@ -60,6 +61,7 @@ class TestPyCBCWaveformWrapper:
             assert call_kwargs["delta_t"] == 1.0 / 4096
             assert call_kwargs["mass1"] == 40.0
             assert call_kwargs["mass2"] == 30.0
+            assert call_kwargs["f_lower"] == 20.0
 
     def test_wrapper_returns_dict_with_plus_cross(self, default_params, mock_pycbc_waveform):
         """Test that wrapper returns dict with 'plus' and 'cross' keys."""
@@ -125,7 +127,6 @@ class TestPyCBCWaveformWrapper:
         params = {
             **default_params,
             "eccentricity": 0.1,
-            "f_lower": 20.0,
             "f_ref": 100.0,
         }
 
