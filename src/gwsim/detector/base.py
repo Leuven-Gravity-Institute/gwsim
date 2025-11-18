@@ -151,7 +151,7 @@ class Detector:
                 logger.warning("Setting up detector with no configuration.")
                 self._detector = None
                 self.name = str(name)
-        elif configuration_file is not None:
+        elif name is None and configuration_file is not None:
             configuration_file = Path(configuration_file)
 
             if configuration_file.is_file():
@@ -169,8 +169,8 @@ class Detector:
                 raise FileNotFoundError(f"Configuration file '{configuration_file}' not found.")
             self._detector = pycbc.detector.Detector(prefix)
             self.name = prefix
-            if name is not None:
-                logger.warning("Using the detector prefix as the name. Ignoring provided name: %s", name)
+        elif name is not None and configuration_file is not None:
+            raise ValueError("Specify either 'name' or 'configuration_file', not both.")
         else:
             raise ValueError("Either name or configuration_file must be provided.")
 
