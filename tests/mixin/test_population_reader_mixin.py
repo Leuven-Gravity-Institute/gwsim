@@ -24,6 +24,10 @@ class MockPopulationSimulator(PopulationReaderMixin, Simulator):
         """Mock save data method."""
         pass
 
+    @property
+    def metadata(self):
+        return super().metadata
+
 
 class TestPopulationReaderMixin:
     """Test suite for PopulationReaderMixin."""
@@ -81,9 +85,9 @@ class TestPopulationReaderMixin:
             try:
                 simulator = MockPopulationSimulator(file_path, population_file_type="pycbc", start_time=0, duration=100)
                 metadata = simulator.metadata
-                assert metadata["population_file"] == file_path
-                assert metadata["population_file_type"] == "pycbc"
-                assert metadata["simulation"] == "test"
-                assert metadata["version"] == 1
+                assert metadata["population_reader"]["arguments"]["population_file"] == file_path
+                assert metadata["population_reader"]["arguments"]["population_file_type"] == "pycbc"
+                assert metadata["population_reader"]["simulation"] == "test"
+                assert metadata["population_reader"]["version"] == 1
             finally:
                 os.unlink(file_path)
