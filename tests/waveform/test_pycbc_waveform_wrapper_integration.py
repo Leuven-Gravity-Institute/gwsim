@@ -27,7 +27,7 @@ class TestPyCBCWaveformWrapperIntegration:
             mass2=30.0,
             spin1z=0.5,
             spin2z=-0.3,
-            f_lower=20.0,
+            minimum_frequency=20.0,
         )
 
         pycbc_hp, _pycbc_hc = get_td_waveform(
@@ -68,7 +68,7 @@ class TestPyCBCWaveformWrapperIntegration:
             waveform_model="IMRPhenomD",
             mass1=40.0,
             mass2=30.0,
-            f_lower=20.0,
+            minimum_frequency=20.0,
         )
 
         # Check that GWpy conversion preserved the data
