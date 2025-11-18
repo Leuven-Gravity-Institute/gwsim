@@ -219,7 +219,7 @@ class Detector:
         return f"Detector(name={self.name}, configured={self.is_configured()})"
 
     @staticmethod
-    def get_detector(name: str | Path) -> Detector | str:
+    def get_detector(name: str | Path) -> Detector:
         """A helper function to get a Detector instance or return the name string.
 
         Args:
