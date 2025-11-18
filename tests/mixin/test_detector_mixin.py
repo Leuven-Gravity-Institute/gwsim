@@ -20,6 +20,12 @@ class MockSimulator(DetectorMixin, Simulator):
         """Mock _save_data method."""
         pass
 
+    @property
+    def metadata(self):
+        """Mock metadata property."""
+        meta = super().metadata
+        return meta
+
 
 class TestDetectorMixin:
     """Test suite for the DetectorMixin class."""
@@ -27,15 +33,17 @@ class TestDetectorMixin:
     def test_init_with_detectors_none(self):
         """Test initialization with detectors=None."""
         sim = MockSimulator(detectors=None)
-        assert sim.detectors is None
+        assert sim.detectors == []
 
     def test_init_with_detectors_list_of_names(self):
         """Test initialization with a list of detector names."""
-        with patch("gwsim.simulator.mixin.detector.Detector") as mock_detector_class:
+        with patch("gwsim.mixin.detector.Detector") as mock_detector_class:
             mock_detector = mock_detector_class.return_value
             detectors = ["H1", "L1"]
             sim = MockSimulator(detectors=detectors)
+
             assert sim._detectors == [mock_detector, mock_detector]
+
             assert mock_detector_class.call_count == 2
             mock_detector_class.assert_any_call(name="H1")
             mock_detector_class.assert_any_call(name="L1")
@@ -43,7 +51,7 @@ class TestDetectorMixin:
     def test_init_with_detectors_list_of_config_files(self):
         """Test initialization with a list of config file paths."""
         with (
-            patch("gwsim.simulator.mixin.detector.Detector") as mock_detector_class,
+            patch("gwsim.mixin.detector.Detector") as mock_detector_class,
             patch("pathlib.Path.is_file", return_value=True),
         ):
             mock_detector = mock_detector_class.return_value
@@ -51,14 +59,14 @@ class TestDetectorMixin:
             sim = MockSimulator(detectors=detectors)
             assert sim._detectors == [mock_detector, mock_detector]
             assert mock_detector_class.call_count == 2
-            mock_detector_class.assert_any_call(config_file="H1.interferometer")
-            mock_detector_class.assert_any_call(config_file="L1.interferometer")
+            mock_detector_class.assert_any_call(configuration_file="H1.interferometer")
+            mock_detector_class.assert_any_call(configuration_file="L1.interferometer")
 
     def test_init_with_detectors_list_of_relative_config_files(self):
         """Test initialization with a list of relative config file paths in DEFAULT_DETECTOR_BASE_PATH."""
         with (
-            patch("gwsim.simulator.mixin.detector.Detector") as mock_detector_class,
-            patch("gwsim.simulator.mixin.detector.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
+            patch("gwsim.mixin.detector.Detector") as mock_detector_class,
+            patch("gwsim.mixin.detector.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
             patch.object(Path, "is_file", lambda self: str(self).startswith("/fake/base/")),
         ):
             mock_detector = mock_detector_class.return_value
@@ -67,15 +75,15 @@ class TestDetectorMixin:
             sim = MockSimulator(detectors=detectors)
             assert sim._detectors == [mock_detector, mock_detector]
             assert mock_detector_class.call_count == 2
-            mock_detector_class.assert_any_call(config_file="H1.interferometer")
-            mock_detector_class.assert_any_call(config_file="L1.interferometer")
+            mock_detector_class.assert_any_call(configuration_file="H1.interferometer")
+            mock_detector_class.assert_any_call(configuration_file="L1.interferometer")
 
     def test_detectors_property_getter(self):
         """Test the detectors property getter."""
         sim = MockSimulator(detectors=None)
-        assert sim.detectors is None
+        assert sim.detectors == []
 
-        with patch("gwsim.simulator.mixin.detector.Detector"):
+        with patch("gwsim.mixin.detector.Detector"):
             sim = MockSimulator(detectors=["H1"])
             assert sim.detectors is not None
             assert len(sim.detectors) == 1
@@ -84,9 +92,9 @@ class TestDetectorMixin:
         """Test the detectors property setter."""
         sim = MockSimulator()
         sim.detectors = None
-        assert sim._detectors is None
+        assert sim._detectors == []
 
-        with patch("gwsim.simulator.mixin.detector.Detector") as mock_detector_class:
+        with patch("gwsim.mixin.detector.Detector") as mock_detector_class:
             mock_detector = mock_detector_class.return_value
             sim.detectors = ["H1", "L1"]
             assert sim._detectors == [mock_detector, mock_detector]
@@ -95,10 +103,10 @@ class TestDetectorMixin:
         """Test the metadata property."""
         sim = MockSimulator(detectors=None)
         metadata = sim.metadata
-        assert metadata == {"detectors": None}
+        assert metadata == {"detector": {"arguments": {"detectors": None}}}
 
-        with patch("gwsim.simulator.mixin.detector.Detector"):
+        with patch("gwsim.mixin.detector.Detector"):
             sim = MockSimulator(detectors=["H1"])
             metadata = sim.metadata
-            assert "detectors" in metadata
-            assert len(metadata["detectors"]) == 1
+            assert "detector" in metadata
+            assert len(metadata["detector"]["arguments"]["detectors"]) == 1
