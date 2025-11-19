@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any, Callable
 
+import astropy.units
 import numpy as np
 
 from gwsim.data.time_series.time_series_list import TimeSeriesList
@@ -110,7 +111,7 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
             output.append(strain)
 
             # Check whether the end time of the strain exceeds the end time of the current segment
-            if strain.end_time >= self.end_time:
+            if strain.end_time.to(astropy.units.second).value >= self.end_time:  # pylint: disable=no-member
                 break
         return TimeSeriesList(output)
 

@@ -147,7 +147,8 @@ class TimeSeries(JSONSerializable):
         Returns:
             End time of the time series.
         """
-        return self.start_time + self.duration
+        end_time: Quantity = self.start_time + self.duration
+        return end_time
 
     @property
     def sampling_frequency(self) -> Quantity:
