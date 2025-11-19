@@ -194,7 +194,7 @@ def process_batch(
 
     # Write the metadata to file.
     if config.metadata:
-        metadata_file_name = config.metadata_directory / file_name.with_suffix(".json")
+        metadata_file_name = config.metadata_directory / file_name.with_suffix(".yaml")
         logger.debug("Saving metadata to file: %s", metadata_file_name)
         simulator.save_metadata(file_name=metadata_file_name, overwrite=config.overwrite)
 
@@ -274,8 +274,8 @@ def setup_simulation_directories(simulator_name: str, simulator_config: dict, me
     checkpoint_directory = working_directory / "checkpoints"
     checkpoint_directory.mkdir(exist_ok=True)
 
-    checkpoint_file = checkpoint_directory / f"{simulator_name}_checkpoint.json"
-    checkpoint_file_backup = checkpoint_directory / f"{simulator_name}_checkpoint.json.bak"
+    checkpoint_file = checkpoint_directory / f"{simulator_name}_checkpoint.yaml"
+    checkpoint_file_backup = checkpoint_directory / f"{simulator_name}_checkpoint.yaml.bak"
 
     output_directory = working_directory / simulator_config.get("output-directory", "output")
     output_directory.mkdir(exist_ok=True)
@@ -331,7 +331,7 @@ def setup_batch_config(
     file_name_template = output_config.get("file_name", f"{simulator_name}-{{{{ start_time }}}}-{{{{ duration }}}}.gwf")
     output_arguments = output_config.get("arguments", {})
 
-    simulator_checkpoint = setup.checkpoint_file.parent / f"checkpoint_{simulator_name}.json"
+    simulator_checkpoint = setup.checkpoint_file.parent / f"checkpoint_{simulator_name}.yaml"
 
     return BatchProcessingConfig(
         file_name_template=file_name_template,
@@ -341,7 +341,7 @@ def setup_batch_config(
         overwrite=overwrite,
         metadata=metadata,
         checkpoint_file=simulator_checkpoint,
-        checkpoint_file_backup=simulator_checkpoint.with_suffix(".json.bak"),
+        checkpoint_file_backup=simulator_checkpoint.with_suffix(".yaml.bak"),
     )
 
 
