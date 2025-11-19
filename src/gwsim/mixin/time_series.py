@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from gwpy.timeseries import TimeSeries as GWPyTimeSeries
@@ -127,7 +127,9 @@ class TimeSeriesMixin:  # pylint: disable=too-few-public-methods
         }
         return metadata
 
-    def _save_data(self, data: Any, file_name: str | Path, **kwargs) -> None:
+    def _save_data(
+        self, data: TimeSeries, file_name: str | Path | np.ndarray[Any, np.dtype[np.object_]], **kwargs
+    ) -> None:
         """Save time series data to a file.
 
         Args:
@@ -135,12 +137,25 @@ class TimeSeriesMixin:  # pylint: disable=too-few-public-methods
             file_name: Path to the output file.
             **kwargs: Additional arguments for the saving function.
         """
-        if isinstance(data, GWPyTimeSeries):
-            self._save_gwf_data(data=data, file_name=file_name, **kwargs)
+        if data.num_of_channels == 1 and isinstance(file_name, (str, Path)):
+            self._save_gwf_data(data=data[0], file_name=file_name, **kwargs)
+        elif (
+            data.num_of_channels > 1
+            and isinstance(file_name, np.ndarray)
+            and len(file_name.shape) == 1
+            and file_name.shape[0] == data.num_of_channels
+        ):
+            for i in range(data.num_of_channels):
+                single_file_name = cast(Path, file_name[i])
+                self._save_gwf_data(data=data[i], file_name=single_file_name, **kwargs)
         else:
-            raise TypeError("Data must be a GWpy TimeSeries instance to save using TimeSeriesMixin.")
+            raise ValueError(
+                "file_name must be a single path for single-channel data or an array of paths for multi-channel data."
+            )
 
-    def _save_gwf_data(self, data: GWPyTimeSeries, file_name: str | Path, channel: str | None = None, **kwargs) -> None:
+    def _save_gwf_data(  # pylint: disable=unused-argument
+        self, data: GWPyTimeSeries, file_name: str | Path, channel: str | None = None, **kwargs
+    ) -> None:
         """Save GWPy TimeSeries data to a GWF file.
 
         Args:
@@ -151,4 +166,4 @@ class TimeSeriesMixin:  # pylint: disable=too-few-public-methods
         """
         if channel is not None:
             data.channel = channel
-        data.write(str(file_name), **kwargs)
+        data.write(str(file_name))
