@@ -61,8 +61,8 @@ def check_file_exist():
     return decorator
 
 
-def get_file_name_from_template(
-    template: str, instance: object, exclude: set[str] | None = None
+def get_file_name_from_template(  # pylint: disable=too-many-locals
+    template: str, instance: object, output_directory: str | Path | None = None, exclude: set[str] | None = None
 ) -> str | NDArray[np.str_]:
     """Get the file name(s) from a template string.
 
@@ -77,6 +77,7 @@ def get_file_name_from_template(
     Args:
         template (str): A template string with placeholders.
         instance (object): An instance from which to retrieve attribute values.
+        output_directory (str | Path | None): Optional output directory to prepend to the file names.
         exclude (set[str] | None): Set of attribute names to exclude from expansion. Defaults to None.
 
     Returns:
@@ -128,7 +129,12 @@ def get_file_name_from_template(
         return re.sub(r"\{\{\s*(\w+)\s*\}\}", replace, template)
 
     # Substitute for each combination
-    results = [substitute_template(dict(zip(placeholders, combo))) for combo in combinations]
+    results = [Path(substitute_template(dict(zip(placeholders, combo)))) for combo in combinations]
+
+    if output_directory is not None:
+        output_directory = Path(output_directory)
+        results = [output_directory / result for result in results]
+
     # Reshape into nested list if there are array placeholders
     array_placeholders = [p for p in placeholders if len(values_dict[p]) > 1]
     if array_placeholders:
