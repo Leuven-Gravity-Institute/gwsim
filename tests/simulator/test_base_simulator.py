@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 
 import numpy as np
 import pytest
+import yaml
 
 from gwsim.simulator.base import Simulator
 
@@ -21,8 +21,8 @@ class MockSimulator(Simulator):
 
     def _save_data(self, data: int, file_name: str | Path, **kwargs) -> None:
         """Save data as JSON."""
-        with open(file_name, "w") as f:
-            json.dump(data, f)
+        with Path(file_name).open("w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f)
 
 
 @pytest.fixture
@@ -140,13 +140,13 @@ class TestSimulatorFileIO:
     def test_save_state(self, simulator: MockSimulator):
         """Test save_state."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / "state.json"
+            file_path = Path(temp_dir) / "state.yaml"
 
             simulator.save_state(file_path)
             assert file_path.exists()
 
-            with open(file_path) as f:
-                state = json.load(f)
+            with file_path.open(encoding="utf-8") as f:
+                state = yaml.safe_load(f)
             assert state["counter"] == 0
 
     def test_save_state_invalid_extension(self, simulator: MockSimulator):
@@ -157,7 +157,7 @@ class TestSimulatorFileIO:
     def test_save_state_overwrite_false(self, simulator: MockSimulator):
         """Test save_state overwrite=False."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / "state.json"
+            file_path = Path(temp_dir) / "state.yaml"
 
             simulator.save_state(file_path)
             with pytest.raises(FileExistsError):
@@ -166,20 +166,20 @@ class TestSimulatorFileIO:
     def test_save_state_overwrite_true(self, simulator: MockSimulator):
         """Test save_state overwrite=True."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / "state.json"
+            file_path = Path(temp_dir) / "state.yaml"
 
             simulator.save_state(file_path)
             simulator.counter = 1
             simulator.save_state(file_path, overwrite=True)
 
-            with open(file_path) as f:
-                state = json.load(f)
+            with file_path.open(encoding="utf-8") as f:
+                state = yaml.safe_load(f)
             assert state["counter"] == 1
 
     def test_load_state(self, simulator: MockSimulator):
         """Test load_state."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / "state.json"
+            file_path = Path(temp_dir) / "state.yaml"
 
             # Save state
             simulator.counter = 3
@@ -193,7 +193,7 @@ class TestSimulatorFileIO:
     def test_load_state_file_not_found(self, simulator: MockSimulator):
         """Test load_state with non-existent file."""
         with pytest.raises(FileNotFoundError):
-            simulator.load_state("nonexistent.json")
+            simulator.load_state("nonexistent.yaml")
 
     def test_load_state_invalid_extension(self, simulator: MockSimulator):
         """Test load_state with invalid extension."""
@@ -204,13 +204,13 @@ class TestSimulatorFileIO:
     def test_save_metadata(self, simulator: MockSimulator):
         """Test save_metadata."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / "metadata.json"
+            file_path = Path(temp_dir) / "metadata.yaml"
 
             simulator.save_metadata(file_path)
             assert file_path.exists()
 
-            with open(file_path) as f:
-                metadata = json.load(f)
+            with file_path.open(encoding="utf-8") as f:
+                metadata = yaml.safe_load(f)
             assert metadata["counter"] == 0
             assert "version" in metadata
 
@@ -221,14 +221,14 @@ class TestSimulatorSaveData:
     def test_save_data_single_file(self, simulator: MockSimulator):
         """Test save_data with single file."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / "data.json"
+            file_path = Path(temp_dir) / "data.yaml"
 
             data = 42
             simulator.save_data(data, file_path)
             assert file_path.exists()
 
-            with open(file_path) as f:
-                loaded_data = json.load(f)
+            with file_path.open(encoding="utf-8") as f:
+                loaded_data = yaml.safe_load(f)
             assert loaded_data == 42
 
     def test_save_data_with_template(self, simulator: MockSimulator):
@@ -237,15 +237,15 @@ class TestSimulatorSaveData:
         simulator.duration = 4
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            template = f"{temp_dir}/{{{{detector}}}}-{{{{duration}}}}.json"
+            template = f"{temp_dir}/{{{{detector}}}}-{{{{duration}}}}.yaml"
             data = 100
             simulator.save_data(data, template)
 
-            expected_path = Path(f"{temp_dir}/H1-4.json")
+            expected_path = Path(f"{temp_dir}/H1-4.yaml")
             assert expected_path.exists()
 
-            with open(expected_path) as f:
-                loaded_data = json.load(f)
+            with expected_path.open(encoding="utf-8") as f:
+                loaded_data = yaml.safe_load(f)
             assert loaded_data == 100
 
     def test_save_data_array_files(self, simulator_with_attrs: MockSimulator):
@@ -255,20 +255,20 @@ class TestSimulatorSaveData:
         data = np.array([[1, 2], [3, 4]], dtype=object)
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            template = f"{temp_dir}/{{{{detector}}}}-{{{{duration}}}}.json"
+            template = f"{temp_dir}/{{{{detector}}}}-{{{{duration}}}}.yaml"
             sim.save_data(data, template)
 
             # Check files exist
-            assert Path(f"{temp_dir}/H1-4.json").exists()
-            assert Path(f"{temp_dir}/H1-8.json").exists()
-            assert Path(f"{temp_dir}/L1-4.json").exists()
-            assert Path(f"{temp_dir}/L1-8.json").exists()
+            assert Path(f"{temp_dir}/H1-4.yaml").exists()
+            assert Path(f"{temp_dir}/H1-8.yaml").exists()
+            assert Path(f"{temp_dir}/L1-4.yaml").exists()
+            assert Path(f"{temp_dir}/L1-8.yaml").exists()
 
             # Check contents
-            with open(f"{temp_dir}/H1-4.json") as f:
-                assert json.load(f) == 1
-            with open(f"{temp_dir}/L1-8.json") as f:
-                assert json.load(f) == 4
+            with open(f"{temp_dir}/H1-4.yaml", encoding="utf-8") as f:
+                assert yaml.safe_load(f) == 1
+            with open(f"{temp_dir}/L1-8.yaml", encoding="utf-8") as f:
+                assert yaml.safe_load(f) == 4
 
     def test_save_data_array_shape_mismatch(self, simulator_with_attrs: MockSimulator):
         """Test save_data with mismatched data shape."""
@@ -277,7 +277,7 @@ class TestSimulatorSaveData:
         data = np.array([1, 2])
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            template = f"{temp_dir}/{{{{detector}}}}-{{{{duration}}}}.json"
+            template = f"{temp_dir}/{{{{detector}}}}-{{{{duration}}}}.yaml"
             with pytest.raises(
                 ValueError, match="Data must have equal or more dimensions than the resolved file names"
             ):
@@ -286,7 +286,7 @@ class TestSimulatorSaveData:
     def test_save_data_overwrite_false(self, simulator: MockSimulator):
         """Test save_data overwrite=False."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / "data.json"
+            file_path = Path(temp_dir) / "data.yaml"
 
             simulator.save_data(1, file_path)
             with pytest.raises(FileExistsError):
@@ -295,11 +295,11 @@ class TestSimulatorSaveData:
     def test_save_data_overwrite_true(self, simulator: MockSimulator):
         """Test save_data overwrite=True."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / "data.json"
+            file_path = Path(temp_dir) / "data.yaml"
 
             simulator.save_data(1, file_path)
             simulator.save_data(2, file_path, overwrite=True)
 
-            with open(file_path) as f:
-                loaded_data = json.load(f)
+            with open(file_path, encoding="utf-8") as f:
+                loaded_data = yaml.safe_load(f)
             assert loaded_data == 2
