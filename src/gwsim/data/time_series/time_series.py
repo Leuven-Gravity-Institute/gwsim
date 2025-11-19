@@ -123,6 +123,15 @@ class TimeSeries(JSONSerializable):
         return True
 
     @property
+    def shape(self) -> tuple[int, int]:
+        """Get the shape of the time series data.
+
+        Returns:
+            Tuple representing the shape of the time series data (num_of_channels, num_samples).
+        """
+        return (self.num_of_channels, self[0].size)
+
+    @property
     def start_time(self) -> Quantity:
         """Get the start time of the time series.
 
