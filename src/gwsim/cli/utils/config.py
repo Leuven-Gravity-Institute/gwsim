@@ -54,7 +54,12 @@ class SimulatorConfig(BaseModel):
 
 
 class GlobalsConfig(BaseModel):
-    """Global configuration applying to all simulators."""
+    """Global configuration applying to all simulators.
+
+    This configuration provides universal directory settings and fallback arguments
+    for simulators and output handlers. The simulator_arguments and output_arguments
+    are agnostic to simulator type, supporting both time-series and population simulators.
+    """
 
     working_directory: str = Field(
         default=".", alias="working-directory", description="Base working directory for all output"
@@ -67,14 +72,18 @@ class GlobalsConfig(BaseModel):
         alias="metadata-directory",
         description="Default metadata directory (can be overridden per simulator)",
     )
-    sampling_frequency: float | None = Field(
-        default=None, alias="sampling-frequency", description="Default sampling frequency in Hz"
+    simulator_arguments: dict[str, Any] = Field(
+        default_factory=dict,
+        alias="simulator-arguments",
+        description="Global default arguments for simulators (e.g., sampling-frequency, duration, seed). "
+        "Simulator-specific arguments override these.",
     )
-    duration: float | None = Field(default=None, description="Default segment duration in seconds")
-    max_samples: int | None = Field(
-        default=None, alias="max-samples", description="Maximum number of segments to generate"
+    output_arguments: dict[str, Any] = Field(
+        default_factory=dict,
+        alias="output-arguments",
+        description="Global default arguments for output handlers (e.g., channel names). "
+        "Simulator-specific output arguments override these.",
     )
-    seed: int | None = Field(default=None, description="Base seed for random number generation")
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
@@ -249,6 +258,9 @@ def resolve_class_path(class_spec: str, section_name: str | None) -> str:
 def merge_parameters(globals_config: GlobalsConfig, simulator_args: dict[str, Any]) -> dict[str, Any]:
     """Merge global and simulator-specific parameters.
 
+    Flattens simulator_arguments from globals into the result, then applies
+    simulator-specific overrides.
+
     Args:
         globals_config: GlobalsConfig dataclass instance
         simulator_args: Simulator-specific arguments dict
@@ -257,14 +269,23 @@ def merge_parameters(globals_config: GlobalsConfig, simulator_args: dict[str, An
         Merged parameters with simulator args taking precedence
 
     Note:
-        All non-private fields from globals_config are merged into the result.
+        Simulator_arguments from globals_config are flattened into the result.
+        Directory settings (working-directory, output-directory, metadata-directory)
+        are included. Output_arguments are not included (handled separately).
     """
-    # Convert globals to dict, excluding None values and private fields
-    merged = {
-        k: v for k, v in globals_config.model_dump(by_alias=True).items() if v is not None and not k.startswith("_")
-    }
+    # Start with directory settings from globals
+    merged = {}
+    if globals_config.working_directory:
+        merged["working-directory"] = globals_config.working_directory
+    if globals_config.output_directory:
+        merged["output-directory"] = globals_config.output_directory
+    if globals_config.metadata_directory:
+        merged["metadata-directory"] = globals_config.metadata_directory
 
-    # Override with simulator-specific arguments
+    # Flatten simulator_arguments from globals
+    merged.update(globals_config.simulator_arguments)
+
+    # Override with simulator-specific arguments (takes precedence)
     merged.update(simulator_args)
 
     return merged
