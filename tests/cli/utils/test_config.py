@@ -542,6 +542,113 @@ class TestGetOutputDirectories:
         assert out_dir == Path("/global/output")  # From global
         assert meta_dir == Path("/custom/metadata")  # From simulator
 
+    def test_get_output_directories_relative_simulator_path(self):
+        """Test that relative paths in simulator config are prepended with working_dir."""
+        globals_cfg = GlobalsConfig(working_directory="/work")
+        sim_cfg = SimulatorConfig(
+            class_="Noise",
+            output=SimulatorOutputConfig(
+                file_name="noise.gwf",
+                output_directory="data/output",  # Relative path
+                metadata_directory="data/metadata",  # Relative path
+            ),
+        )
+        out_dir, meta_dir = get_output_directories(globals_cfg, sim_cfg, "noise")
+        assert out_dir == Path("/work/data/output")
+        assert meta_dir == Path("/work/data/metadata")
+
+    def test_get_output_directories_relative_global_path(self):
+        """Test that relative paths in global config are prepended with working_dir."""
+        globals_cfg = GlobalsConfig(
+            working_directory="/work",
+            output_directory="output",  # Relative path
+            metadata_directory="metadata",  # Relative path
+        )
+        sim_cfg = SimulatorConfig(class_="Noise")
+        out_dir, meta_dir = get_output_directories(globals_cfg, sim_cfg, "noise")
+        assert out_dir == Path("/work/output")
+        assert meta_dir == Path("/work/metadata")
+
+    def test_get_output_directories_absolute_paths_not_prepended(self):
+        """Test that absolute paths are NOT prepended with working_dir."""
+        globals_cfg = GlobalsConfig(working_directory="/work")
+        sim_cfg = SimulatorConfig(
+            class_="Noise",
+            output=SimulatorOutputConfig(
+                file_name="noise.gwf",
+                output_directory="/absolute/output",  # Absolute path
+                metadata_directory="/absolute/metadata",  # Absolute path
+            ),
+        )
+        out_dir, meta_dir = get_output_directories(globals_cfg, sim_cfg, "noise")
+        assert out_dir == Path("/absolute/output")  # Not prepended
+        assert meta_dir == Path("/absolute/metadata")  # Not prepended
+
+    def test_get_output_directories_mixed_absolute_relative(self):
+        """Test mixed absolute and relative paths."""
+        globals_cfg = GlobalsConfig(
+            working_directory="/work",
+            output_directory="./output",  # Relative
+        )
+        sim_cfg = SimulatorConfig(
+            class_="Noise",
+            output=SimulatorOutputConfig(
+                file_name="noise.gwf",
+                metadata_directory="/var/data/metadata",  # Absolute
+            ),
+        )
+        out_dir, meta_dir = get_output_directories(globals_cfg, sim_cfg, "noise")
+        assert out_dir == Path("/work/./output")  # Relative prepended
+        assert meta_dir == Path("/var/data/metadata")  # Absolute not prepended
+
+    def test_get_output_directories_relative_default_working_dir(self):
+        """Test relative paths when working_directory itself is relative."""
+        globals_cfg = GlobalsConfig(working_directory=".")
+        sim_cfg = SimulatorConfig(
+            class_="Noise",
+            output=SimulatorOutputConfig(
+                file_name="noise.gwf",
+                output_directory="output",  # Relative to working_dir
+            ),
+        )
+        out_dir, meta_dir = get_output_directories(globals_cfg, sim_cfg, "noise")
+        assert out_dir == Path("./output")
+        assert meta_dir == Path("./metadata/noise")  # Default falls back to working_dir
+
+    def test_get_output_directories_simulator_relative_overrides_global_absolute(self):
+        """Test that simulator relative path is resolved relative to working_dir."""
+        globals_cfg = GlobalsConfig(
+            working_directory="/work",
+            output_directory="/global/output",  # Absolute
+        )
+        sim_cfg = SimulatorConfig(
+            class_="Noise",
+            output=SimulatorOutputConfig(
+                file_name="noise.gwf",
+                output_directory="custom/output",  # Relative - takes precedence
+            ),
+        )
+        out_dir, meta_dir = get_output_directories(globals_cfg, sim_cfg, "noise")
+        # Simulator relative path is resolved relative to working_dir, not global path
+        assert out_dir == Path("/work/custom/output")
+        assert meta_dir == Path("/work/metadata/noise")  # Falls back to default
+
+    def test_get_output_directories_custom_working_dir_parameter(self):
+        """Test using custom working_directory parameter."""
+        globals_cfg = GlobalsConfig(working_directory="/default/work")
+        sim_cfg = SimulatorConfig(
+            class_="Noise",
+            output=SimulatorOutputConfig(
+                file_name="noise.gwf",
+                output_directory="output",  # Relative path
+            ),
+        )
+        custom_work_dir = Path("/custom/work")
+        out_dir, meta_dir = get_output_directories(globals_cfg, sim_cfg, "noise", working_directory=custom_work_dir)
+        # Should use custom working_dir, not globals_cfg.working_directory
+        assert out_dir == Path("/custom/work/output")
+        assert meta_dir == Path("/custom/work/metadata/noise")
+
 
 class TestConfigRoundTrip:
     """Integration tests for loading and saving configs."""
