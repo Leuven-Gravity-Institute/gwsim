@@ -436,6 +436,66 @@ class TestRetryWithBackoff:
         # Total time should be at least: 0.05 + 0.1 = 0.15 seconds
         assert total_time >= 0.14  # Allow some margin for execution time
 
+    def test_retry_with_state_restoration(self):
+        """Test that state restoration function is called before retries."""
+        call_count = 0
+        restore_count = 0
+        state = {"value": 0}
+
+        def state_func():
+            nonlocal call_count, state
+            call_count += 1
+            if call_count < 2:
+                # First attempt: fail and modify state
+                state["value"] = 999
+                raise RuntimeError("First attempt fails")
+            # Second attempt: state should have been restored
+            return state["value"]
+
+        def restore_func():
+            nonlocal restore_count
+            restore_count += 1
+            state["value"] = 0
+
+        result = retry_with_backoff(state_func, max_retries=1, initial_delay=0.01, state_restore_func=restore_func)
+
+        assert result == 0  # State was restored
+        assert call_count == 2
+        assert restore_count == 1
+
+    def test_retry_state_restoration_failure_raises_error(self):
+        """Test that failure to restore state raises error."""
+        call_count = 0
+
+        def state_func():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("First attempt fails")
+            return "success"
+
+        def bad_restore_func():
+            raise ValueError("Cannot restore state")
+
+        with pytest.raises(RuntimeError, match=r"Cannot retry.*failed to restore state"):
+            retry_with_backoff(state_func, max_retries=1, initial_delay=0.01, state_restore_func=bad_restore_func)
+
+    def test_retry_state_restoration_not_called_on_success(self):
+        """Test that state restoration is not called if first attempt succeeds."""
+        restore_count = 0
+
+        def success_func():
+            return "success"
+
+        def restore_func():
+            nonlocal restore_count
+            restore_count += 1
+
+        result = retry_with_backoff(success_func, max_retries=3, state_restore_func=restore_func)
+
+        assert result == "success"
+        assert restore_count == 0  # Should never be called
+
 
 class TestValidatePlan:
     """Test validate_plan function."""
