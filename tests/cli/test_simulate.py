@@ -155,6 +155,37 @@ class TestInstantiateSimulator:
         with pytest.raises((ImportError, AttributeError)):
             instantiate_simulator(config)
 
+    def test_instantiate_simulator_with_global_arguments(self):
+        """Test that global simulator arguments are merged with simulator arguments."""
+        global_args = {"seed": 99, "max_samples": 100}
+        simulator_args = {"seed": 42}  # Override seed, use global max_samples
+
+        config = SimulatorConfig(
+            class_="tests.cli.test_simulate.MockSimulator",
+            arguments=simulator_args,
+        )
+
+        sim = instantiate_simulator(config, global_simulator_arguments=global_args)
+
+        # Simulator-specific seed should override global
+        assert sim.seed == 42
+        # Max samples from global should be used since not in simulator args
+        assert sim.max_samples == 100
+
+    def test_instantiate_simulator_global_only(self):
+        """Test simulator instantiation with only global arguments."""
+        global_args = {"seed": 77, "max_samples": 50}
+        config = SimulatorConfig(
+            class_="tests.cli.test_simulate.MockSimulator",
+            arguments={},  # No simulator-specific arguments
+        )
+
+        sim = instantiate_simulator(config, global_simulator_arguments=global_args)
+
+        # All arguments should come from global
+        assert sim.seed == 77
+        assert sim.max_samples == 50
+
 
 class TestRestoreBatchState:
     """Test restore_batch_state function."""
@@ -715,7 +746,7 @@ class TestCreateSimulationPlanFromConfig:
         config = Config(
             globals=GlobalsConfig(
                 working_directory=".",
-                sampling_frequency=4096,
+                simulator_arguments={"sampling_frequency": 4096},
             ),
             simulators={
                 "mock": SimulatorConfig(
