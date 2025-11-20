@@ -5,7 +5,6 @@ Utility functions to load and save configuration files.
 from __future__ import annotations
 
 import logging
-import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -318,85 +317,6 @@ def get_output_directories(
         metadata_directory = working_dir / "metadata" / simulator_name
 
     return output_directory, metadata_directory
-
-
-def expand_templates(text: str, context: dict) -> str:
-    """Expand template variables in text strings.
-
-    Args:
-        text: String that may contain template variables like {{ key }}
-        context: Dictionary containing template variable values
-
-    Returns:
-        String with template variables expanded
-
-    Examples:
-        expand_templates("file-{{ duration }}.gwf", {"duration": 4}) -> "file-4.gwf"
-    """
-
-    def replace_var(match):
-        var_name = match.group(1).strip()
-        # Support nested access like globals.duration
-        keys = var_name.split(".")
-        value = context
-        try:
-            for key in keys:
-                value = value[key]
-            return str(value)
-        except (KeyError, TypeError):
-            logger.warning("Template variable '%s' not found in context", var_name)
-            return match.group(0)  # Return original if not found
-
-    # Match {{ variable }} or {{ nested.variable }}
-    pattern = r"\{\{\s*([^}]+)\s*\}\}"
-    return re.sub(pattern, replace_var, text)
-
-
-def expand_detector_templates(config: Any, detectors: list[str] | None = None) -> Any:
-    """Expand {detector} placeholders in configuration.
-
-    Args:
-        config: Configuration value (dict, list, str, or other)
-        detectors: List of detector names to expand for
-
-    Returns:
-        Configuration with expanded detector templates
-
-    Note:
-        This function handles {detector} placeholders which are different from
-        {{ variable }} template variables. The {detector} placeholder is used
-        for multi-detector file naming patterns.
-    """
-    if detectors is None:
-        detectors = []
-
-    if isinstance(config, str):
-        # Preserve all strings unchanged - {detector} placeholders are handled at runtime
-        return config
-    if isinstance(config, dict):
-        return {key: expand_detector_templates(value, detectors) for key, value in config.items()}
-    if isinstance(config, list):
-        return [expand_detector_templates(item, detectors) for item in config]
-    return config
-
-
-def expand_config_templates(config: Any, context: dict) -> Any:
-    """Recursively expand template variables in configuration.
-
-    Args:
-        config: Configuration value (dict, list, str, or other)
-        context: Template variable context
-
-    Returns:
-        Configuration with expanded templates
-    """
-    if isinstance(config, str):
-        return expand_templates(config, context)
-    if isinstance(config, dict):
-        return {key: expand_config_templates(value, context) for key, value in config.items()}
-    if isinstance(config, list):
-        return [expand_config_templates(item, context) for item in config]
-    return config
 
 
 def normalize_config(config: dict) -> dict:
