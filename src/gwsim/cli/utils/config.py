@@ -248,23 +248,27 @@ def resolve_class_path(class_spec: str, section_name: str) -> str:
     return class_spec
 
 
-def merge_parameters(globals_config: dict, simulator_config: dict) -> dict:
+def merge_parameters(globals_config: GlobalsConfig, simulator_args: dict[str, Any]) -> dict[str, Any]:
     """Merge global and simulator-specific parameters.
 
     Args:
-        globals_config: Global configuration parameters
-        simulator_config: Simulator-specific configuration
+        globals_config: GlobalsConfig dataclass instance
+        simulator_args: Simulator-specific arguments dict
 
     Returns:
-        Merged parameters with simulator config taking precedence
+        Merged parameters with simulator args taking precedence
 
     Note:
-        All global parameters are passed to simulators. Simulator-specific
-        arguments override global parameters when the same key exists.
+        All non-private fields from globals_config are merged into the result.
     """
-    # Start with all global parameters
-    merged = globals_config.copy() if globals_config else {}
-    merged.update(simulator_config)
+    # Convert globals to dict, excluding None values and private fields
+    merged = {
+        k: v for k, v in globals_config.model_dump(by_alias=True).items() if v is not None and not k.startswith("_")
+    }
+
+    # Override with simulator-specific arguments
+    merged.update(simulator_args)
+
     return merged
 
 
