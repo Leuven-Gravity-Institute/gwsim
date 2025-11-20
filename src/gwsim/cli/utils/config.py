@@ -272,6 +272,54 @@ def merge_parameters(globals_config: GlobalsConfig, simulator_args: dict[str, An
     return merged
 
 
+def get_output_directories(
+    globals_config: GlobalsConfig,
+    simulator_config: SimulatorConfig,
+    simulator_name: str,
+    working_directory: Path | None = None,
+) -> tuple[Path, Path]:
+    """Get output and metadata directories for a simulator.
+
+    Args:
+        globals_config: Global configuration
+        simulator_config: Simulator-specific configuration
+        simulator_name: Name of the simulator
+        working_directory: Override working directory (for testing)
+
+    Returns:
+        Tuple of (output_directory, metadata_directory)
+
+    Priority (highest to lowest):
+        1. Simulator output.output_directory / output.metadata_directory
+        2. Global output-directory / metadata-directory
+        3. working-directory / output / {simulator_name}
+
+    Examples:
+        >>> globals_cfg = GlobalsConfig(working_directory="/data")
+        >>> sim_cfg = SimulatorConfig(class_="Noise")
+        >>> get_output_directories(globals_cfg, sim_cfg, "noise")
+        (Path("/data/output/noise"), Path("/data/output/noise"))
+    """
+    working_dir = working_directory or Path(globals_config.working_directory)
+
+    # Simulator-specific overrides
+    if simulator_config.output.output_directory:
+        output_directory = Path(simulator_config.output.output_directory)
+    elif globals_config.output_directory:
+        output_directory = Path(globals_config.output_directory)
+    else:
+        output_directory = working_dir / "output" / simulator_name
+
+    if simulator_config.output.metadata_directory:
+        metadata_directory = Path(simulator_config.output.metadata_directory)
+    elif globals_config.metadata_directory:
+        metadata_directory = Path(globals_config.metadata_directory)
+    else:
+        metadata_directory = working_dir / "metadata" / simulator_name
+
+    return output_directory, metadata_directory
+
+
 def expand_templates(text: str, context: dict) -> str:
     """Expand template variables in text strings.
 
