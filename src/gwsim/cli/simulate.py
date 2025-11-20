@@ -35,14 +35,17 @@ def retry_with_backoff(
     max_retries: int = 3,
     initial_delay: float = 0.1,
     backoff_factor: float = 2.0,
+    state_restore_func: Any = None,
 ) -> Any:
-    """Retry a function with exponential backoff.
+    """Retry a function with exponential backoff and optional state restoration.
 
     Args:
         func: Callable to retry
         max_retries: Maximum number of retries
         initial_delay: Initial delay in seconds
         backoff_factor: Multiplier for delay after each retry
+        state_restore_func: Optional callable to restore state before each retry.
+                           Called before each retry attempt (not before first attempt).
 
     Returns:
         Result of function call
@@ -68,6 +71,15 @@ def retry_with_backoff(
                 )
                 time.sleep(delay)
                 delay *= backoff_factor
+
+                # Restore state before retry if function provided
+                if state_restore_func is not None:
+                    try:
+                        state_restore_func()
+                        logger.debug("State restored before retry attempt %d", attempt + 2)
+                    except Exception as restore_error:
+                        logger.error("Failed to restore state before retry: %s", restore_error)
+                        raise RuntimeError(f"Cannot retry: failed to restore state: {restore_error}") from restore_error
             else:
                 logger.error("All %d attempts failed for batch: %s", max_retries + 1, str(e))
 
@@ -344,7 +356,7 @@ def validate_plan(plan: SimulationPlan) -> None:
     logger.info("Simulation plan validation completed successfully")
 
 
-def execute_plan(
+def execute_plan(  # pylint: disable=too-many-locals
     plan: SimulationPlan,
     output_directory: Path,
     metadata_directory: Path,
@@ -405,15 +417,17 @@ def execute_plan(
                         simulator_name,
                     )
 
-                    def execute_batch(_simulator=simulator, _batch=batch, _output_directory=output_directory):
+                    # Capture pre-batch state first for potential retries
+                    restore_batch_state(simulator, batch)
+                    pre_batch_state = copy.deepcopy(simulator.state)
+
+                    def execute_batch(
+                        _simulator=simulator,
+                        _batch=batch,
+                        _output_directory=output_directory,
+                        _pre_batch_state=pre_batch_state,
+                    ):
                         """Execute a single batch with state management."""
-                        # If reproducing from metadata, restore the pre-batch state
-                        restore_batch_state(_simulator, _batch)
-
-                        # Capture the pre-batch state (state before generation)
-                        # This state is needed to reproduce this exact batch
-                        pre_batch_state = copy.deepcopy(_simulator.state)
-
                         # Generate data by calling next() - this advances simulator state
                         batch_data = next(_simulator)
 
@@ -433,11 +447,19 @@ def execute_plan(
                             _batch,
                             metadata_directory,
                             output_files,
-                            pre_batch_state=pre_batch_state,
+                            pre_batch_state=_pre_batch_state,
                         )
 
-                    # Execute batch with retry mechanism
-                    retry_with_backoff(execute_batch, max_retries=max_retries)
+                    def restore_state_for_retry(_simulator=simulator, _pre_batch_state=pre_batch_state):
+                        """Restore simulator state to pre-batch state before retry."""
+                        _simulator.state = copy.deepcopy(_pre_batch_state)
+
+                    # Execute batch with retry mechanism that restores state on failure
+                    retry_with_backoff(
+                        execute_batch,
+                        max_retries=max_retries,
+                        state_restore_func=restore_state_for_retry,
+                    )
                     p_bar.update(1)
 
                 except Exception as e:
