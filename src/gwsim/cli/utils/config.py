@@ -13,8 +13,6 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from gwsim.utils.io import check_file_overwrite
-
 logger = logging.getLogger("gwsim")
 
 
@@ -134,6 +132,48 @@ def load_config(file_name: Path, encoding: str = "utf-8") -> Config:
         raise ValueError(f"Configuration validation failed: {e}") from e
 
 
+def save_config(
+    file_name: Path, config: Config, overwrite: bool = False, encoding: str = "utf-8", backup: bool = True
+) -> None:
+    """Save configuration to YAML file safely.
+
+    Args:
+        file_name: Path to save configuration to
+        config: Config dataclass instance
+        overwrite: If True, overwrite existing file
+        encoding: File encoding (default: utf-8)
+        backup: If True and overwriting, create backup
+
+    Raises:
+        FileExistsError: If file exists and overwrite=False
+    """
+    if file_name.exists() and not overwrite:
+        raise FileExistsError(f"File already exists: {file_name}. Use overwrite=True to overwrite.")
+
+    # Create backup if needed
+    if file_name.exists() and overwrite and backup:
+        backup_path = file_name.with_suffix(f"{file_name.suffix}.backup")
+        logger.info("Creating backup: %s", backup_path)
+        backup_path.write_text(file_name.read_text(encoding=encoding), encoding=encoding)
+
+    # Atomic write
+    temp_file = file_name.with_suffix(f"{file_name.suffix}.tmp")
+    try:
+        # Convert to dict, excluding internal fields
+        config_dict = config.model_dump(by_alias=True, exclude_none=False)
+
+        with temp_file.open("w", encoding=encoding) as f:
+            yaml.safe_dump(config_dict, f, default_flow_style=False, sort_keys=False)
+
+        temp_file.replace(file_name)
+        logger.info("Configuration saved to: %s", file_name)
+
+    except Exception as e:
+        if temp_file.exists():
+            temp_file.unlink()
+        raise ValueError(f"Failed to save configuration: {e}") from e
+
+
 def validate_config(config: dict) -> None:
     """Validate configuration structure and provide helpful error messages.
 
@@ -185,47 +225,6 @@ def validate_config(config: dict) -> None:
             raise ValueError("'globals' must be a dictionary")
 
     logger.info("Configuration validation passed")
-
-
-@check_file_overwrite()
-def save_config(
-    file_name: Path, config: dict, overwrite: bool = False, encoding: str = "utf-8", backup: bool = True
-) -> None:
-    """Save configuration file safely with optional backup.
-
-    Args:
-        file_name (Path): File name.
-        config (dict): A dictionary of configuration.
-        overwrite (bool, optional): If True, overwrite the existing file, or otherwise raise an error.
-            Defaults to False.
-        encoding (str, optional): File encoding. Defaults to "utf-8".
-        backup (bool, optional): If True and overwriting, create a backup of the existing file.
-            Defaults to True.
-
-    Raises:
-        FileExistsError: If file_name exists and overwrite is False, raise an error.
-    """
-    # Create backup if file exists and we're overwriting
-    if file_name.exists() and overwrite and backup:
-        backup_path = file_name.with_suffix(f"{file_name.suffix}.backup")
-        logger.info("Creating backup: %s", backup_path)
-        backup_path.write_text(file_name.read_text(encoding=encoding), encoding=encoding)
-
-    # Atomic write using temporary file
-    temp_file = file_name.with_suffix(f"{file_name.suffix}.tmp")
-    try:
-        with open(temp_file, "w", encoding=encoding) as f:
-            yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
-
-        # Atomic move (rename) - this is atomic on most filesystems
-        temp_file.replace(file_name)
-        logger.info("Configuration saved to: %s", file_name)
-
-    except Exception:
-        # Clean up temp file if something went wrong
-        if temp_file.exists():
-            temp_file.unlink()
-        raise
 
 
 def resolve_class_path(class_spec: str, section_name: str) -> str:
