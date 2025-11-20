@@ -26,7 +26,7 @@ class SimulationBatch:
     signal simulator are different batches.
 
     Metadata can contain two types of information:
-    - Configuration metadata: Full config + num_batches (for reproducibility with fresh state)
+    - Configuration metadata: Full config + max_samples (for reproducibility with fresh state)
     - State metadata: Pre-batch state (RNG state, etc.) for exact reproduction of a specific batch
     """
 
@@ -236,11 +236,11 @@ def create_plan_from_config(config: Config, checkpoint_dir: Path) -> SimulationP
     # For each simulator, create batches (each simulator can generate multiple batches)
     for simulator_name, simulator_config in config.simulators.items():
         # Determine number of batches for this simulator
-        # This could come from simulator_config if it specifies num_batches or similar
+        # This comes from simulator_arguments in globals_config (max_samples parameter)
         # For now, default to 1 batch per simulator, but this can be customized
-        num_batches = getattr(simulator_config, "num_batches", 1)
+        max_samples = getattr(simulator_config, "max_samples", 1)
 
-        for batch_idx in range(num_batches):
+        for batch_idx in range(max_samples):
             batch = SimulationBatch(
                 simulator_name=simulator_name,
                 simulator_config=simulator_config,

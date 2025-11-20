@@ -404,9 +404,9 @@ class TestCreatePlanFromConfig:
         """Test creating a plan where a simulator generates multiple batches."""
         from gwsim.cli.utils.config import Config
 
-        # Mock simulator config with num_batches attribute
+        # Mock simulator config with max_samples attribute
         sim_config = MagicMock(spec=SimulatorConfig)
-        sim_config.num_batches = 3
+        sim_config.max_samples = 3
         sim_config.model_dump = simulator_config.model_dump
 
         config = MagicMock(spec=Config)
