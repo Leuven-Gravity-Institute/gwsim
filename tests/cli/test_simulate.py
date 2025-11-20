@@ -865,3 +865,56 @@ class TestSimulateCommandIntegration:
 
             assert "data" in data
             assert "counter" in data
+
+    def test_simulate_command_with_hyphenated_yaml_keys(self):
+        """Test simulate command properly handles hyphenated YAML keys (e.g., 'sampling-frequency')."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create config using dict and dump to YAML (more reliable than f-strings)
+            config_dict = {
+                "globals": {
+                    "working-directory": str(tmpdir_path),
+                    "simulator-arguments": {
+                        "sampling-frequency": 2048,
+                        "max-samples": 3,
+                    },
+                    "output-directory": "output",
+                    "metadata-directory": "metadata",
+                },
+                "simulators": {
+                    "mock": {
+                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "arguments": {
+                            "seed": 42,
+                        },
+                        "output": {
+                            "file_name": "data.json",
+                        },
+                    }
+                },
+            }
+
+            config_file = tmpdir_path / "config.yaml"
+            with config_file.open("w") as f:
+                yaml.safe_dump(config_dict, f)
+
+            # This should not raise any errors about unused kwargs with hyphens
+            simulate_command(str(config_file), overwrite=True, metadata=True)
+
+            # Verify output was created successfully
+            output_file = tmpdir_path / "output" / "data.json"
+            assert output_file.exists(), "Output file not created - hyphenated key conversion may have failed"
+
+            # Verify metadata was created - should have 3 files (one per batch)
+            metadata_dir = tmpdir_path / "metadata"
+            assert metadata_dir.exists(), "Metadata directory not created"
+
+            # Check for all 3 batch metadata files
+            metadata_files = list(metadata_dir.glob("mock-*.metadata.yaml"))
+            assert len(metadata_files) == 3, (
+                f"Expected 3 batch metadata files (max-samples: 3), "
+                f"but found {len(metadata_files)}: {metadata_files}"
+            )
+
+            assert (metadata_dir / "index.yaml").exists(), "Index file not created"
