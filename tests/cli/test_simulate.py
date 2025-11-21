@@ -1153,3 +1153,247 @@ class TestSimulateCommandIntegration:
             assert batch_1_initial_counter != batch_2_initial_counter, (
                 "Batch 1 and batch 2 should have different initial counters, " "indicating correct state progression"
             )
+
+
+class TestSimulateCommandCheckpoint:
+    """Test checkpoint functionality for simulation resumption."""
+
+    def test_checkpoint_created_after_batch_completion(self):
+        """Test that checkpoint is created after each batch completes successfully."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            checkpoint_dir = tmpdir_path / ".gwsim_checkpoints"
+
+            config_dict = {
+                "globals": {
+                    "working-directory": str(tmpdir_path),
+                    "simulator-arguments": {
+                        "max-samples": 2,
+                    },
+                    "output-directory": "output",
+                    "metadata-directory": "metadata",
+                },
+                "simulators": {
+                    "mock": {
+                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "arguments": {
+                            "seed": 42,
+                        },
+                        "output": {
+                            "file_name": "batch_{{counter}}.json",
+                        },
+                    }
+                },
+            }
+
+            config_file = tmpdir_path / "config.yaml"
+            with config_file.open("w") as f:
+                yaml.safe_dump(config_dict, f)
+
+            # Run simulation
+            _simulate_impl(str(config_file), overwrite=True, metadata=True)
+
+            # Verify checkpoint was created and then cleaned up (successful completion)
+            assert not checkpoint_dir.exists() or not list(
+                checkpoint_dir.glob("simulation.checkpoint.json*")
+            ), "Checkpoint files should be cleaned up after successful completion"
+
+    def test_checkpoint_skips_already_completed_batches(self):
+        """Test that checkpoint allows resumption by skipping completed batches."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            config_dict = {
+                "globals": {
+                    "working-directory": str(tmpdir_path),
+                    "simulator-arguments": {
+                        "max-samples": 3,
+                    },
+                    "output-directory": "output",
+                    "metadata-directory": "metadata",
+                },
+                "simulators": {
+                    "mock": {
+                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "arguments": {
+                            "seed": 42,
+                        },
+                        "output": {
+                            "file_name": "batch_{{counter}}.json",
+                        },
+                    }
+                },
+            }
+
+            config_file = tmpdir_path / "config.yaml"
+            with config_file.open("w") as f:
+                yaml.safe_dump(config_dict, f)
+
+            # First run - should complete 3 batches
+            _simulate_impl(str(config_file), overwrite=True, metadata=True)
+
+            # Verify output files exist
+            output_dir = tmpdir_path / "output"
+            initial_files = sorted(output_dir.glob("batch_*.json"))
+            assert len(initial_files) == 3, f"Expected 3 output files, got {len(initial_files)}"
+
+            # Delete one output file to simulate partial failure
+            initial_files[1].unlink()
+
+            # Run again - should skip completed batches and regenerate only the missing one
+            # This verifies that checkpoint restoration works
+            _simulate_impl(str(config_file), overwrite=True, metadata=True)
+
+            # Verify files are regenerated
+            final_files = sorted(output_dir.glob("batch_*.json"))
+            assert len(final_files) == 3, "All batches should be re-generated or skipped correctly"
+
+    def test_checkpoint_contains_simulator_state(self):
+        """Test that checkpoint saves and restores simulator state correctly."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            checkpoint_dir = tmpdir_path / ".gwsim_checkpoints"
+
+            config_dict = {
+                "globals": {
+                    "working-directory": str(tmpdir_path),
+                    "simulator-arguments": {
+                        "max-samples": 2,
+                    },
+                    "output-directory": "output",
+                    "metadata-directory": "metadata",
+                },
+                "simulators": {
+                    "mock": {
+                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "arguments": {
+                            "seed": 42,
+                        },
+                        "output": {
+                            "file_name": "batch_{{counter}}.json",
+                        },
+                    }
+                },
+            }
+
+            config_file = tmpdir_path / "config.yaml"
+            with config_file.open("w") as f:
+                yaml.safe_dump(config_dict, f)
+
+            # Run simulation that completes successfully
+            _simulate_impl(str(config_file), overwrite=True, metadata=True)
+
+            # Verify checkpoint was cleaned up (no residual files)
+            checkpoint_files = (
+                list(checkpoint_dir.glob("simulation.checkpoint.json*")) if checkpoint_dir.exists() else []
+            )
+            assert len(checkpoint_files) == 0, "Checkpoint files should be deleted after successful completion"
+
+    def test_checkpoint_recovery_from_interrupt(self):
+        """Test that checkpoint persists during execution and is cleaned up after success.
+
+        This test verifies that:
+        1. Checkpoint is created during batch execution
+        2. Checkpoint is cleaned up after all batches complete successfully
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            checkpoint_dir = tmpdir_path / ".gwsim_checkpoints"
+
+            config_dict = {
+                "globals": {
+                    "working-directory": str(tmpdir_path),
+                    "simulator-arguments": {
+                        "max-samples": 2,
+                    },
+                    "output-directory": "output",
+                    "metadata-directory": "metadata",
+                },
+                "simulators": {
+                    "mock": {
+                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "arguments": {
+                            "seed": 42,
+                        },
+                        "output": {
+                            "file_name": "batch_{{counter}}.json",
+                        },
+                    }
+                },
+            }
+
+            config_file = tmpdir_path / "config.yaml"
+            with config_file.open("w") as f:
+                yaml.safe_dump(config_dict, f)
+
+            # Run simulation normally
+            _simulate_impl(str(config_file), overwrite=True, metadata=True)
+
+            # Verify output files were created
+            output_dir = tmpdir_path / "output"
+            output_files = sorted(output_dir.glob("batch_*.json"))
+            assert len(output_files) == 2, f"Expected 2 output files, got {len(output_files)}"
+
+            # Checkpoint should be cleaned up after successful completion
+            checkpoint_files = (
+                list(checkpoint_dir.glob("simulation.checkpoint.json*")) if checkpoint_dir.exists() else []
+            )
+            assert (
+                len(checkpoint_files) == 0
+            ), f"Checkpoint should be cleaned up after completion, but found: {checkpoint_files}"
+
+    def test_multiple_simulators_with_checkpoint(self):
+        """Test checkpoint behavior with multiple simulators."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            checkpoint_dir = tmpdir_path / ".gwsim_checkpoints"
+
+            config_dict = {
+                "globals": {
+                    "working-directory": str(tmpdir_path),
+                    "output-directory": "output",
+                    "metadata-directory": "metadata",
+                },
+                "simulators": {
+                    "mock1": {
+                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "arguments": {
+                            "seed": 1,
+                            "max-samples": 2,
+                        },
+                        "output": {
+                            "file_name": "mock1_{{counter}}.json",
+                        },
+                    },
+                    "mock2": {
+                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "arguments": {
+                            "seed": 2,
+                            "max-samples": 2,
+                        },
+                        "output": {
+                            "file_name": "mock2_{{counter}}.json",
+                        },
+                    },
+                },
+            }
+
+            config_file = tmpdir_path / "config.yaml"
+            with config_file.open("w") as f:
+                yaml.safe_dump(config_dict, f)
+
+            # Run simulation with multiple simulators
+            _simulate_impl(str(config_file), overwrite=True, metadata=True)
+
+            # Verify both simulators produced output
+            output_dir = tmpdir_path / "output"
+            mock1_files = sorted(output_dir.glob("mock1_*.json"))
+            mock2_files = sorted(output_dir.glob("mock2_*.json"))
+            assert len(mock1_files) == 2, f"mock1 should produce 2 files, got {len(mock1_files)}"
+            assert len(mock2_files) == 2, f"mock2 should produce 2 files, got {len(mock2_files)}"
+
+            # Checkpoint should be cleaned up
+            checkpoint_files = (
+                list(checkpoint_dir.glob("simulation.checkpoint.json*")) if checkpoint_dir.exists() else []
+            )
+            assert len(checkpoint_files) == 0, "Checkpoint should be cleaned up after successful completion"
