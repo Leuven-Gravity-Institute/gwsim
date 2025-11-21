@@ -22,12 +22,14 @@ from gwsim.cli.utils.simulation_plan import (
     SimulationPlan,
     create_batch_metadata,
     create_plan_from_config,
+    create_plan_from_metadata_files,
 )
 from gwsim.cli.utils.utils import handle_signal, import_attribute
 from gwsim.simulator.base import Simulator
 from gwsim.utils.io import get_file_name_from_template
 
 logger = logging.getLogger("gwsim")
+logger.setLevel(logging.DEBUG)
 
 
 def retry_with_backoff(
@@ -197,17 +199,28 @@ def restore_batch_state(simulator: Simulator, batch: SimulationBatch) -> None:
     """
     if batch.has_state_snapshot() and batch.pre_batch_state is not None:
         logger.debug(
-            "Restoring simulator state for batch %d from pre-batch snapshot",
+            "[RESTORE] Batch %d: Restoring state from snapshot - state_keys=%s",
             batch.batch_index,
+            list(batch.pre_batch_state.keys()),
         )
         try:
+            logger.debug(
+                "[RESTORE] Batch %d: Setting state dict - counter=%s",
+                batch.batch_index,
+                batch.pre_batch_state.get("counter"),
+            )
             simulator.state = batch.pre_batch_state
+            logger.debug(
+                "[RESTORE] Batch %d: State restored successfully - new_counter=%s",
+                batch.batch_index,
+                simulator.counter,
+            )
         except Exception as e:
             logger.error("Failed to restore batch state: %s", e)
             raise ValueError(f"Failed to restore state for batch {batch.batch_index}") from e
     else:
         logger.debug(
-            "No pre-batch state snapshot available for batch %d, using fresh state",
+            "[RESTORE] Batch %d: No pre-batch state snapshot available (fresh generation)",
             batch.batch_index,
         )
 
@@ -286,6 +299,12 @@ def process_batch(
         List of Path objects for all generated output files
     """
     output_directory.mkdir(parents=True, exist_ok=True)
+    logger.debug(
+        "[PROCESS] Batch %s: Saving data - counter=%s, file_template=%s",
+        batch.batch_index,
+        simulator.counter,
+        batch.simulator_config.output.file_name,
+    )
 
     # Build output configuration
     output_config = batch.simulator_config.output
@@ -313,6 +332,10 @@ def process_batch(
         # If it's an array (multiple detectors), flatten it
         output_files_list = [Path(str(f)) for f in output_files.flatten()]
 
+    logger.debug(
+        "[PROCESS] Batch %s: Resolved filenames - %s", batch.batch_index, [str(f.name) for f in output_files_list]
+    )
+
     simulator.save_data(
         data=batch_data,
         file_name=file_name_template,
@@ -320,6 +343,8 @@ def process_batch(
         overwrite=overwrite,
         **output_args,
     )
+
+    logger.debug("[PROCESS] Batch %s: Data saved - counter=%s", batch.batch_index, simulator.counter)
 
     return output_files_list
 
@@ -439,8 +464,20 @@ def execute_plan(  # pylint: disable=too-many-locals
                     )
 
                     # Capture pre-batch state first for potential retries
+                    logger.debug(
+                        "[EXECUTE] Batch %s: Before restore - counter=%s, has_state_snapshot=%s",
+                        batch.batch_index,
+                        simulator.counter,
+                        batch.has_state_snapshot(),
+                    )
                     restore_batch_state(simulator, batch)
+                    logger.debug("[EXECUTE] Batch %s: After restore - counter=%s", batch.batch_index, simulator.counter)
                     pre_batch_state = copy.deepcopy(simulator.state)
+                    logger.debug(
+                        "[EXECUTE] Batch %s: Captured pre_batch_state - keys=%s",
+                        batch.batch_index,
+                        list(pre_batch_state.keys()),
+                    )
 
                     def execute_batch(
                         _simulator=simulator,
@@ -450,7 +487,9 @@ def execute_plan(  # pylint: disable=too-many-locals
                     ):
                         """Execute a single batch with state management."""
                         # Generate data by calling next() - this advances simulator state
+                        logger.debug("[BATCH] %s: Before next() - counter=%s", _batch.batch_index, _simulator.counter)
                         batch_data = next(_simulator)
+                        logger.debug("[BATCH] %s: After next() - counter=%s", _batch.batch_index, _simulator.counter)
 
                         # Save the generated data and get all output file paths
                         output_files = process_batch(
@@ -494,79 +533,186 @@ def execute_plan(  # pylint: disable=too-many-locals
                     raise
 
 
-def simulate_command(
-    config_file_name: Annotated[str, typer.Argument(help="Configuration file path")],
-    overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite existing files")] = False,
-    metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files")] = True,
+def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    config_file_names: str | list[str],
+    output_dir: str | None = None,
+    metadata_dir: str | None = None,
+    overwrite: bool = False,
+    metadata: bool = True,
 ) -> None:
-    """Generate gravitational wave simulation data using specified simulators.
+    """Internal implementation of simulate command that accepts both str and list[str].
 
-    This command creates a simulation plan from the provided YAML configuration,
-    validates all parameters, and executes the simulation batches with state
-    tracking for reproducibility.
+    Unified approach: All simulation goes through the same plan execution system.
+    The difference is only in how we create the initial plan:
+    - Config file → SimulationPlan with pre_batch_state=None (fresh simulation)
+    - Metadata files → SimulationPlan with pre_batch_state=<dict> (reproduce)
+
+    Both cases end up calling execute_plan with batches that may or may not have
+    state snapshots. The execute_plan function handles both transparently.
 
     Args:
-        config_file_name: Path to YAML configuration file
+        config_file_names: Path to YAML config file OR one or more metadata files
+        output_dir: Output directory override
+        metadata_dir: Metadata directory override (config mode only)
         overwrite: Whether to overwrite existing files
-        metadata: Whether to save metadata files
+        metadata: Whether to save metadata files (config mode only)
 
     Returns:
         None
     """
-    logger.info("Starting simulation from config: %s", config_file_name)
+    checkpoint_dir = Path(".gwsim_checkpoints")
 
     try:
-        # Load configuration
-        config = load_config(file_name=Path(config_file_name))
-        logger.debug("Configuration loaded successfully from %s", config_file_name)
+        # ===== Normalize input: accept both string and list =====
+        if isinstance(config_file_names, str):
+            config_file_names_list = [config_file_names]
+        else:
+            config_file_names_list = config_file_names
 
-        # Create simulation plan from configuration
-        checkpoint_dir = Path(".gwsim_checkpoints")
-        plan = create_plan_from_config(config, checkpoint_dir)
-        logger.info("Created simulation plan with %d batches", len(plan.batches))
+        # ===== Auto-detect mode: Config file vs Metadata files =====
+        if len(config_file_names_list) == 1:
+            # Single argument: could be YAML config or metadata file
+            single_path = Path(config_file_names_list[0])
+            is_metadata = (
+                single_path.suffix == ".metadata.yaml"
+                or (single_path.is_file() and "metadata" in single_path.name)
+                or single_path.is_dir()  # Directory assumed to be metadata dir
+            )
+        else:
+            # Multiple arguments: must be metadata files
+            is_metadata = True
 
-        # Extract output directories from globals
-        # Resolve relative paths relative to working_directory
-        working_dir = Path(config.globals.working_directory or ".")  # pylint: disable=no-member
-        output_dir_config = config.globals.output_directory or "output"  # pylint: disable=no-member
-        output_dir = (
+        # ===== Create plan (unified approach: both modes create same data structure) =====
+        if is_metadata:
+            logger.info("Reproduction mode: %d metadata file(s)", len(config_file_names_list))
+            metadata_paths = [Path(f) for f in config_file_names_list]
+
+            # If single directory, load all metadata files from it
+            if len(metadata_paths) == 1 and metadata_paths[0].is_dir():
+                metadata_dir_path = metadata_paths[0]
+                metadata_files = list(metadata_dir_path.glob("*.metadata.yaml"))
+                if not metadata_files:
+                    raise ValueError(f"No metadata files found in directory: {metadata_dir_path}")
+                logger.info("Found %d metadata files in directory: %s", len(metadata_files), metadata_dir_path)
+                plan = create_plan_from_metadata_files(metadata_files, checkpoint_dir)
+            else:
+                # Individual metadata files
+                plan = create_plan_from_metadata_files(metadata_paths, checkpoint_dir)
+
+            logger.info(
+                "Created reproduction plan from %d metadata file(s) with %d batches",
+                len(config_file_names_list),
+                plan.total_batches,
+            )
+        else:
+            logger.info("Config mode: %s", config_file_names_list[0])
+            config_path = Path(config_file_names_list[0])
+            config = load_config(file_name=config_path)
+            logger.debug("Configuration loaded successfully from %s", config_file_names_list[0])
+
+            plan = create_plan_from_config(config, checkpoint_dir)
+            logger.info("Created simulation plan with %d batches", plan.total_batches)
+
+        # ===== Determine output directories (same logic for both modes) =====
+        # Get reference config from first batch
+        if not plan.batches:
+            raise ValueError("No batches found in simulation plan")
+
+        first_batch = plan.batches[0]
+        globals_cfg = first_batch.globals_config
+        working_dir = Path(globals_cfg.working_directory or ".")  # pylint: disable=no-member
+        output_dir_config = globals_cfg.output_directory or "output"  # pylint: disable=no-member
+
+        # Handle absolute vs relative paths
+        config_output_dir = (
             Path(output_dir_config) if Path(output_dir_config).is_absolute() else working_dir / output_dir_config
         )
+        final_output_dir = Path(output_dir) if output_dir else config_output_dir
 
-        metadata_dir_config = config.globals.metadata_directory or "metadata"  # pylint: disable=no-member
-        metadata_dir = (
-            (
+        # Metadata directory only used in config mode (fresh simulation)
+        final_metadata_dir = None
+        if not is_metadata and metadata:
+            metadata_dir_config = globals_cfg.metadata_directory or "metadata"  # pylint: disable=no-member
+            config_metadata_dir = (
                 Path(metadata_dir_config)
                 if Path(metadata_dir_config).is_absolute()
                 else working_dir / metadata_dir_config
             )
-            if metadata
-            else None
-        )
+            final_metadata_dir = Path(metadata_dir) if metadata_dir else config_metadata_dir
 
-        logger.debug("Output directory: %s", output_dir)
-        if metadata_dir:
-            logger.debug("Metadata directory: %s", metadata_dir)
+        logger.debug("Output directory: %s", final_output_dir)
+        if final_metadata_dir:
+            logger.debug("Metadata directory: %s", final_metadata_dir)
 
-        # Set up signal handlers for graceful shutdown
-        checkpoint_dirs = [plan.checkpoint_directory] if plan.checkpoint_directory else []
-        setup_signal_handlers(checkpoint_dirs)
-
-        # Validate plan before execution
+        # ===== Validate and execute plan =====
         validate_plan(plan)
         logger.info("Simulation plan validation passed")
 
-        # Execute the plan
         execute_plan(
             plan=plan,
-            output_directory=output_dir,
-            metadata_directory=metadata_dir or Path("metadata"),
+            output_directory=final_output_dir,
+            metadata_directory=final_metadata_dir or Path("metadata"),
             overwrite=overwrite,
             max_retries=3,
         )
 
-        logger.info("Simulation completed successfully. Output written to %s", output_dir)
+        logger.info("Simulation completed successfully. Output written to %s", final_output_dir)
 
     except Exception as e:
         logger.error("Simulation failed: %s", str(e), exc_info=True)
         raise typer.Exit(code=1) from e
+
+
+def simulate_command(
+    config_file_names: Annotated[
+        list[str],
+        typer.Argument(help="Configuration file (YAML) or metadata files (can specify multiple metadata files)"),
+    ],
+    output_dir: Annotated[
+        str | None, typer.Option("--output-dir", help="Output directory (overrides config/metadata defaults)")
+    ] = None,
+    metadata_dir: Annotated[
+        str | None,
+        typer.Option(
+            "--metadata-dir", help="Metadata directory (overrides config/metadata defaults, only for config mode)"
+        ),
+    ] = None,
+    overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite existing files")] = False,
+    metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files (only in config mode)")] = True,
+) -> None:
+    """Generate gravitational wave simulation data using specified simulators.
+
+    This command can run in two modes, automatically detected from the input:
+
+    1. **Config Mode**: Provide a single YAML configuration file to create a simulation plan.
+       Executes all simulators with state tracking for reproducibility.
+       Example: `gwsim simulate config.yaml`
+
+    2. **Reproduction Mode**: Provide one or more metadata files to reproduce specific batches.
+       Each metadata file contains the exact configuration and pre-batch state needed for
+       exact reproducibility. Users can distribute individual metadata files, and anyone
+       can reproduce those specific batches independently.
+       Example: `gwsim simulate signal-0.metadata.yaml signal-1.metadata.yaml`
+
+    Path Overrides:
+    - Use `--output-dir` to specify where output files should be saved
+    - Use `--metadata-dir` to specify where metadata should be saved (config mode only)
+    - These override paths from the configuration or metadata files
+
+    Args:
+        config_file_names: Path to YAML config file OR one or more metadata files
+        output_dir: Output directory override
+        metadata_dir: Metadata directory override (config mode only)
+        overwrite: Whether to overwrite existing files
+        metadata: Whether to save metadata files (config mode only)
+
+    Returns:
+        None
+    """
+    _simulate_impl(
+        config_file_names=config_file_names,
+        output_dir=output_dir,
+        metadata_dir=metadata_dir,
+        overwrite=overwrite,
+        metadata=metadata,
+    )
