@@ -258,39 +258,37 @@ def create_plan_from_config(config: Config, checkpoint_dir: Path) -> SimulationP
     return plan
 
 
-def create_plan_from_metadata(
-    metadata_dir: Path,
+def create_plan_from_metadata_files(
+    metadata_files: list[Path],
     checkpoint_dir: Path,
 ) -> SimulationPlan:
-    """Create a simulation plan from saved metadata files.
+    """Create a simulation plan from individual metadata files.
 
     This allows exact reproduction of specific batches by restoring their pre-batch state.
     Metadata files should follow the naming pattern: SIMULATOR-BATCH_INDEX.metadata.yaml
 
     Args:
-        metadata_dir: Directory containing metadata YAML files
+        metadata_files: List of paths to individual metadata YAML files
         checkpoint_dir: Directory for checkpoints
 
     Returns:
         SimulationPlan with batches reconstructed from metadata
 
     Raises:
-        FileNotFoundError: If metadata_dir doesn't exist
+        FileNotFoundError: If any metadata file doesn't exist
         ValueError: If metadata files are malformed
 
     Example:
-        >>> plan = create_plan_from_metadata(Path("metadata"), Path("checkpoints"))
-        >>> # Reproduces batches with exact state snapshots
+        >>> files = [Path("signal-0.metadata.yaml"), Path("signal-1.metadata.yaml")]
+        >>> plan = create_plan_from_metadata_files(files, Path("checkpoints"))
+        >>> # Reproduces specific batches with exact state snapshots
     """
-    if not metadata_dir.exists():
-        raise FileNotFoundError(f"Metadata directory not found: {metadata_dir}")
-
     plan = SimulationPlan(checkpoint_directory=checkpoint_dir)
 
-    # Find all metadata files
-    metadata_files = sorted(metadata_dir.glob("*.metadata.yaml"))
+    for metadata_file in sorted(metadata_files):
+        if not metadata_file.exists():
+            raise FileNotFoundError(f"Metadata file not found: {metadata_file}")
 
-    for metadata_file in metadata_files:
         metadata = parse_batch_metadata(metadata_file)
 
         # Reconstruct configs from metadata
@@ -320,7 +318,45 @@ def create_plan_from_metadata(
         plan.add_batch(batch)
 
     logger.info(
-        "Created simulation plan from metadata: %d batches from %s",
+        "Created simulation plan from %d metadata files",
+        len(metadata_files),
+    )
+    return plan
+
+
+def create_plan_from_metadata(
+    metadata_dir: Path,
+    checkpoint_dir: Path,
+) -> SimulationPlan:
+    """Create a simulation plan from a directory of metadata files.
+
+    This allows exact reproduction of specific batches by restoring their pre-batch state.
+    Metadata files should follow the naming pattern: SIMULATOR-BATCH_INDEX.metadata.yaml
+
+    Args:
+        metadata_dir: Directory containing metadata YAML files
+        checkpoint_dir: Directory for checkpoints
+
+    Returns:
+        SimulationPlan with batches reconstructed from metadata
+
+    Raises:
+        FileNotFoundError: If metadata_dir doesn't exist
+        ValueError: If metadata files are malformed
+
+    Example:
+        >>> plan = create_plan_from_metadata(Path("metadata"), Path("checkpoints"))
+        >>> # Reproduces batches with exact state snapshots
+    """
+    if not metadata_dir.exists():
+        raise FileNotFoundError(f"Metadata directory not found: {metadata_dir}")
+
+    # Find all metadata files in directory
+    metadata_files = list(metadata_dir.glob("*.metadata.yaml"))
+
+    plan = create_plan_from_metadata_files(metadata_files, checkpoint_dir)
+    logger.info(
+        "Created simulation plan from metadata directory: %d batches from %s",
         plan.total_batches,
         metadata_dir,
     )
