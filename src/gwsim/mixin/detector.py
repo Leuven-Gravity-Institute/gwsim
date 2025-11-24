@@ -112,10 +112,10 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             raise TypeError("polarizations must be a dictionary")
         if "plus" not in polarizations or "cross" not in polarizations:
             raise ValueError("polarizations dict must contain 'plus' and 'cross' keys")
-        if not isinstance(polarizations["plus"], TimeSeries):
-            raise TypeError("polarizations['plus'] must be a TimeSeries")
-        if not isinstance(polarizations["cross"], TimeSeries):
-            raise TypeError("polarizations['cross'] must be a TimeSeries")
+        if not isinstance(polarizations["plus"], GWpyTimeSeries):
+            raise TypeError("polarizations['plus'] must be a GWpyTimeSeries")
+        if not isinstance(polarizations["cross"], GWpyTimeSeries):
+            raise TypeError("polarizations['cross'] must be a GWpyTimeSeries")
 
         hp = polarizations["plus"]
         hc = polarizations["cross"]
