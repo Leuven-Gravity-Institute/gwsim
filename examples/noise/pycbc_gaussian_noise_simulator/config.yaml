@@ -2,8 +2,8 @@ globals:
   working-directory: .
   simulator-arguments:
     sampling-frequency: 2048
-    duration: 4
-    max-samples: 10
+    duration: 128
+    max-samples: 50
   output-directory: output
   metadata-directory: metadata
 simulators:
