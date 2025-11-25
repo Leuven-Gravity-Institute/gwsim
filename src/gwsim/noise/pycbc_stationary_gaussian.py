@@ -10,6 +10,8 @@ import pycbc.psd
 from pycbc.noise import noise_from_psd
 from pycbc.types.frequencyseries import FrequencySeries
 
+from gwsim.data.time_series.time_series import TimeSeries
+from gwsim.data.time_series.time_series_list import TimeSeriesList
 from gwsim.noise.stationary_gaussian import StationaryGaussianNoiseSimulator
 
 logger = logging.getLogger("gwsim")
@@ -91,7 +93,7 @@ class PyCBCStationaryGaussianNoiseSimulator(
         else:
             raise ValueError("Either frequency_array and psd_array or psd_file must be provided.")
 
-    def simulate(self, *args, **kwargs) -> np.ndarray:
+    def _simulate(self, *args, **kwargs) -> TimeSeriesList:
         """Simulate a noise segment.
 
         Returns:
@@ -99,9 +101,12 @@ class PyCBCStationaryGaussianNoiseSimulator(
         """
         if self.rng is None:
             raise RuntimeError("Random number generator not initialized. Set seed in constructor.")
-        return noise_from_psd(
+        data: np.ndarray = noise_from_psd(
             length=int(self.duration * self.sampling_frequency),
             delta_t=1.0 / self.sampling_frequency,
             psd=self.psd,
             seed=int(self.rng.integers(0, 2**31 - 1)),
-        ).numpy()
+        ).numpy()[None, :]
+        return TimeSeriesList(
+            [TimeSeries(data=data, start_time=self.start_time, sampling_frequency=self.sampling_frequency)]
+        )
