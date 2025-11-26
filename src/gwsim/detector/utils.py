@@ -66,6 +66,8 @@ def load_interferometer_config(config_file: str | Path, encoding: str = "utf-8")
                 continue
             split_line = line.split("=")
             key = split_line[0].strip()
+            if key == "power_spectral_density":
+                continue
             value = literal_eval("=".join(split_line[1:]))
             bilby_params[key] = value
 
