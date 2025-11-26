@@ -23,8 +23,10 @@ submatrix
 Uncatched
 xaltitude
 xangle
+xarm
 xlength
 XPHM
 yaltitude
 yangle
+yarm
 ylength

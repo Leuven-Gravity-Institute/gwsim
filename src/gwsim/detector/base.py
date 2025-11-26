@@ -24,36 +24,6 @@ if not det_dir_path.exists() or not det_dir_path.is_dir():
     )
 
 
-def _bilby_to_pycbc_parameters(bilby_params: dict) -> dict:
-    """
-    Convert Bilby detector parameters to PyCBC-compatible parameters.
-
-    This function handles the conversion of units and conventions between Bilby and PyCBC,
-    including latitude/longitude to radians, length from km to meters, and azimuth adjustments
-    due to different reference conventions (Bilby: from East counterclockwise; PyCBC/LAL: from North clockwise).
-
-    Args:
-        bilby_params (dict): Dictionary of Bilby parameters (e.g., 'latitude', 'xarm_azimuth', etc.).
-
-    Returns:
-        dict: Dictionary of converted PyCBC parameters.
-    """
-    pycbc_params = dict()
-
-    pycbc_params["name"] = bilby_params["name"]
-    pycbc_params["latitude"] = np.deg2rad(bilby_params["latitude"])
-    pycbc_params["longitude"] = np.deg2rad(bilby_params["longitude"])
-    pycbc_params["height"] = bilby_params["elevation"]
-    pycbc_params["xangle"] = (np.pi / 2 - np.deg2rad(bilby_params["xarm_azimuth"])) % (2 * np.pi)
-    pycbc_params["yangle"] = (np.pi / 2 - np.deg2rad(bilby_params["yarm_azimuth"])) % (2 * np.pi)
-    pycbc_params["xaltitude"] = bilby_params["xarm_tilt"]
-    pycbc_params["yaltitude"] = bilby_params["yarm_tilt"]
-    pycbc_params["xlength"] = bilby_params["length"] * 1000
-    pycbc_params["ylength"] = bilby_params["length"] * 1000
-
-    return pycbc_params
-
-
 def load_interferometer_config(config_name: str, config_dir: str = detectors_dir) -> str:
     """
     Load a .interferometer config file and add its detector using pycbc.detector.add_detector_on_earth.
