@@ -62,6 +62,15 @@ class PopulationIterationState:  # pylint: disable=too-few-public-methods
                 logger.warning("Failed to load checkpoint %s: %s. Starting fresh.", self.checkpoint_file, e)
 
 
+PARAMETER_NAME_MAPPER = {
+    "pycbc": {
+        "ra": "right_ascension",
+        "dec": "declination",
+        "polarization": "polarization_angle",
+    }
+}
+
+
 class PopulationReaderMixin:  # pylint: disable=too-few-public-methods
     """A mixin class to read population files for GW signal simulators."""
 
@@ -114,7 +123,11 @@ class PopulationReaderMixin:  # pylint: disable=too-few-public-methods
             self._population_metadata = attrs
 
         # Order the DataFrame by the coalescence time 'tc'
-        return population_data.sort_values(by="tc").reset_index(drop=True)
+        return (
+            population_data.sort_values(by="tc")
+            .reset_index(drop=True)
+            .rename(columns=PARAMETER_NAME_MAPPER.get("pycbc", {}))
+        )
 
     def get_next_injection_parameters(self) -> dict[str, float | int] | None:
         """Get the next set of injection parameters from the population.
