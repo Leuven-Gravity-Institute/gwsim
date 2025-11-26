@@ -9,6 +9,7 @@ from functools import wraps
 from pathlib import Path
 
 import numpy as np
+from astropy.units import Quantity
 from numpy.typing import NDArray
 
 logger = logging.getLogger("gwsim")
@@ -106,8 +107,13 @@ def get_file_name_from_template(  # pylint: disable=too-many-locals
         except AttributeError as e:
             raise ValueError(f"Attribute '{label}' not found in instance of type {type(instance).__name__}") from e
 
+        if isinstance(value, Quantity):
+            x = value.value
+            if x.is_integer():
+                x = int(x)
+            values_dict[label] = [str(x)]
         # Check if value is array-like (list, tuple, or iterable but not str)
-        if isinstance(value, (list, tuple)) or (hasattr(value, "__iter__") and not isinstance(value, str)):
+        elif isinstance(value, (list, tuple)) or (hasattr(value, "__iter__") and not isinstance(value, str)):
             values_dict[label] = [str(ele) for ele in list(value)]
         else:
             values_dict[label] = [str(value)]
