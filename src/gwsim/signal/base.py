@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
-import astropy.units
 import numpy as np
 
 from gwsim.data.time_series.time_series_list import TimeSeriesList
@@ -15,15 +14,12 @@ from gwsim.mixin.population_reader import PopulationReaderMixin
 from gwsim.mixin.time_series import TimeSeriesMixin
 from gwsim.mixin.waveform import WaveformMixin
 from gwsim.simulator.base import Simulator
-from gwsim.simulator.state import StateAttribute
 
 logger = logging.getLogger("gwsim")
 
 
 class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, DetectorMixin, Simulator):
     """Base class for signal simulators."""
-
-    start_time = StateAttribute(0)
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
         self,
@@ -111,7 +107,7 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
             output.append(strain)
 
             # Check whether the end time of the strain exceeds the end time of the current segment
-            if strain.end_time.to(astropy.units.second).value >= self.end_time:  # pylint: disable=no-member
+            if strain.end_time >= self.end_time:
                 break
         return TimeSeriesList(output)
 
@@ -123,3 +119,12 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
             Metadata dictionary.
         """
         return super().metadata
+
+    def update_state(self) -> None:
+        """Update internal state after each sample generation.
+
+        This method can be overridden by subclasses to update any internal state
+        after generating a sample. The default implementation does nothing.
+        """
+        self.counter = cast(int, self.counter) + 1
+        self.start_time += self.duration
