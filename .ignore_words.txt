@@ -27,6 +27,8 @@ xangle
 xarm
 xlength
 XPHM
+xspan
+xunit
 yaltitude
 yangle
 yarm
