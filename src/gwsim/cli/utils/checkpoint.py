@@ -7,6 +7,9 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from gwsim.data.serialize.decoder import Decoder
+from gwsim.data.serialize.encoder import Encoder
+
 logger = logging.getLogger("gwsim")
 
 
@@ -70,7 +73,7 @@ class CheckpointManager:
 
         try:
             with self.checkpoint_file.open("r") as f:
-                checkpoint = json.load(f)
+                checkpoint = json.load(f, cls=Decoder)
             logger.debug(
                 "Loaded checkpoint: last_batch=%s, completed=%d batches",
                 checkpoint.get("last_completed_batch_index"),
@@ -109,7 +112,7 @@ class CheckpointManager:
         # Write to temp file first (atomic write pattern)
         try:
             with self.checkpoint_tmp.open("w") as f:
-                json.dump(checkpoint, f, indent=2)
+                json.dump(checkpoint, f, indent=2, cls=Encoder)
 
             # Backup existing checkpoint if it exists
             if self.checkpoint_file.exists():
