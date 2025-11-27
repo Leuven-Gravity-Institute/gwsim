@@ -17,6 +17,7 @@ Nyquist
 pycbc
 pytestmark
 realisation
+representer
 retryable
 SEOBN
 submatrix
