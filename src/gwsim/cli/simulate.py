@@ -261,6 +261,7 @@ def save_batch_metadata(
         simulator_config=batch.simulator_config,
         globals_config=batch.globals_config,
         pre_batch_state=state_to_save,
+        source=batch.source,
     )
 
     # Add output files to metadata for easy discovery
@@ -635,6 +636,7 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
         # ===== Create plan (unified approach: both modes create same data structure) =====
         if is_metadata:
             logger.info("Reproduction mode: %d metadata file(s)", len(config_file_names_list))
+
             metadata_paths = [Path(f) for f in config_file_names_list]
 
             # If single directory, load all metadata files from it
