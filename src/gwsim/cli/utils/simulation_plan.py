@@ -172,7 +172,7 @@ def create_batch_metadata(
     simulator_config: SimulatorConfig,
     globals_config: GlobalsConfig,
     pre_batch_state: dict[str, Any] | None = None,
-    reproduction_mode: str = "config",
+    source: str = "config",
 ) -> dict[str, Any]:
     """Create metadata for a simulation batch.
 
@@ -187,7 +187,7 @@ def create_batch_metadata(
         simulator_config: Configuration for this simulator
         globals_config: Global configuration
         pre_batch_state: Optional state snapshot taken before batch generation
-        reproduction_mode: Mode of reproduction, either 'config' or 'exact'
+        source: Source of this batch: 'config', 'metadata_config', or 'metadata_state'
 
     Returns:
         Metadata dictionary suitable for YAML serialization
@@ -203,10 +203,7 @@ def create_batch_metadata(
     if pre_batch_state is not None:
         metadata["pre_batch_state"] = pre_batch_state
 
-    if reproduction_mode not in ("config", "exact"):
-        raise ValueError(f"Invalid reproduction_mode: {reproduction_mode}")
-
-    metadata["reproduction_mode"] = reproduction_mode
+    metadata["source"] = source
 
     return metadata
 
