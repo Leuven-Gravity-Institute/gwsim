@@ -35,35 +35,51 @@ def inject(timeseries: TimeSeries, other: TimeSeries, interpolate_if_offset: boo
 
     target_times = timeseries.times.value
     other_times = other.times.value
-
-    # determine the slice of target times that overlaps the other file
-    start_idx = int(np.searchsorted(target_times, other_times[0], side="left"))
-    end_idx = int(np.searchsorted(target_times, other_times[-1], side="right") - 1)
-
     sample_spacing = float(timeseries.dt.value)
 
+    # Calculate offset between start times
     offset = (other_times[0] - target_times[0]) / sample_spacing
+
+    # Check if offset is aligned (integer number of samples)
     if not np.isclose(offset, round(offset)):
         if not interpolate_if_offset:
-            # If not interpolating, and offset, but since cropped, perhaps add directly if times match
-            # But since offset not integer, times don't match, so can't add. Return timeseries unchanged.
+            logger.debug("Non-integer offset of %s samples; not interpolating, returning original timeseries", offset)
             return timeseries
+
+        # Interpolate to align grids
+        logger.debug("Injecting with interpolation due to non-integer offset of %s samples", offset)
+
+        # Determine overlap range in target time grid
+        start_idx = int(np.searchsorted(target_times, other_times[0], side="left"))
+        end_idx = int(np.searchsorted(target_times, other_times[-1], side="right")) - 1
 
         if start_idx >= len(target_times) or end_idx < 0 or start_idx > end_idx:
-            # No overlap, return timeseries unchanged
+            logger.debug("No overlap between timeseries and other after searching; returning original timeseries")
             return timeseries
-
-        logger.debug("Injecting with interpolation due to non-integer offset of %s samples", offset)
 
         interp_func = interp1d(other_times, other.value, kind="cubic", axis=0, bounds_error=False, fill_value=0.0)
         resampled = interp_func(target_times[start_idx : end_idx + 1])
 
-        # Create injected timeseries
         injected = timeseries.copy()
-        injected[start_idx : end_idx + 1] += resampled
+        injected.value[start_idx : end_idx + 1] += resampled
         return injected
 
-    # Aligned, add directly
+    # Aligned case: offset is integer
+    logger.debug("Injecting with aligned grids (offset: %s samples)", round(offset))
+    start_idx = round(offset)
+    end_idx = start_idx + len(other.value) - 1
+
+    # Bounds check
+    if start_idx < 0 or end_idx >= len(target_times) or start_idx >= len(target_times):
+        logger.warning(
+            "Injection range [%s:%s] out of bounds for timeseries of length %s; skipping injection",
+            start_idx,
+            end_idx,
+            len(target_times),
+        )
+        return timeseries
+
     injected = timeseries.copy()
-    injected.value[start_idx : end_idx + 1] += other.value
+    inject_len = min(len(other.value), end_idx - start_idx + 1)
+    injected.value[start_idx : start_idx + inject_len] += other.value[:inject_len]
     return injected
