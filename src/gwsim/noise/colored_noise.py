@@ -1,4 +1,4 @@
-"""Correlated noise simulator for multiple gravitational wave detectors."""
+"""Colored noise simulator for gravitational wave detectors."""
 
 from __future__ import annotations
 
@@ -7,31 +7,33 @@ from pathlib import Path
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.linalg import cholesky
-from scipy.sparse import block_diag, coo_matrix
+from scipy.signal.windows import tukey
 
 from gwsim.data.time_series.time_series import TimeSeries
 from gwsim.data.time_series.time_series_list import TimeSeriesList
 from gwsim.noise.base import NoiseSimulator
+from gwsim.simulator.state import StateAttribute
 
 logger = logging.getLogger("gwsim")
 
 
-class CorrelatedNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-instance-attributes
-    """Correlated noise simulator for multiple gravitational wave detectors.
+class ColoredNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-instance-attributes
+    """Colored noise simulator for gravitational wave detectors.
 
-    This class generates noise time series with specified power spectral density (PSD)
-    and cross-spectral density (CSD) for multiple detectors. The correlations between
-    detectors are modeled using Cholesky decomposition of the spectral matrix.
+    This class generates noise time series with a specified power spectral density (PSD).
+    It uses an overlap-add method with windowing to produce smooth, continuous time series
+    across segment boundaries.
 
-    The noise generation uses an overlap-add method with windowing to produce
-    smooth, continuous time series across segment boundaries.
+    The simulator maintains state between batches to ensure continuity of the noise
+    time series across multiple calls to simulate().
     """
+
+    # State attribute to track the previous strain buffer for continuity
+    previous_strain = StateAttribute(default=None)
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         psd_file: str | Path,
-        csd_file: str | Path,
         detectors: list[str],
         sampling_frequency: float = 4096,
         duration: float = 4,
@@ -42,14 +44,12 @@ class CorrelatedNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-inst
         high_frequency_cutoff: float | None = None,
         **kwargs,
     ):
-        """Initialize the correlated noise simulator.
+        """Initialize the colored noise simulator.
 
         Args:
             psd_file: Path to file containing Power Spectral Density array with shape (N, 2),
                 where the first column is frequency (Hz) and the second is PSD values.
-            csd_file: Path to file containing Cross Spectral Density array with shape (N, 2),
-                where the first column is frequency (Hz) and the second is complex CSD values.
-            detectors: List of detector names (e.g., ['E1', 'E2', 'E3']).
+            detectors: List of detector names (e.g., ['H1', 'L1']).
             sampling_frequency: Sampling frequency in Hz. Default is 4096.
             duration: Duration of each noise segment in seconds. Default is 4.
             start_time: GPS start time for the time series. Default is 0.
@@ -61,6 +61,7 @@ class CorrelatedNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-inst
 
         Raises:
             ValueError: If detectors list is empty.
+            ValueError: If duration is too short for proper noise generation.
         """
         if not detectors or len(detectors) == 0:
             raise ValueError("detectors must contain at least one detector.")
@@ -76,25 +77,31 @@ class CorrelatedNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-inst
         )
 
         self.psd_file = psd_file
-        self.csd_file = csd_file
         self.low_frequency_cutoff = low_frequency_cutoff
         self.high_frequency_cutoff = (
             high_frequency_cutoff
             if (high_frequency_cutoff is not None and high_frequency_cutoff <= sampling_frequency / 2)
-            else sampling_frequency / 2
+            else sampling_frequency // 2
         )
 
         # Initialize noise generation properties
         self._n_det = len(detectors)
         self._initialize_window_properties()
         self._initialize_frequency_properties()
-        self._initialize_psd_csd()
-        self._spectral_matrix = self._compute_spectral_matrix_cholesky()
+        self._initialize_psd()
+
+        # Initialize the previous strain buffer (will be populated on first simulate call)
+        self.previous_strain = np.zeros((self._n_det, self._n_chunk))
+        self._temp_strain_buffer: np.ndarray | None = None
 
     def _initialize_window_properties(self) -> None:
-        """Initialize window properties for overlap-add noise generation."""
-        self._f_window = self.low_frequency_cutoff / 100
-        self._t_window = 1 / self._f_window
+        """Initialize window properties for connecting noise realizations.
+
+        Raises:
+            ValueError: If the duration is too short for proper noise generation.
+        """
+        self._t_window = 2048
+        self._f_window = 1.0 / self._t_window
         self._t_overlap = self._t_window / 2.0
         self._n_overlap = int(self._t_overlap * self.sampling_frequency.value)
 
@@ -103,16 +110,23 @@ class CorrelatedNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-inst
         self._w0 = 0.5 + np.cos(2 * np.pi * self._f_window * t_overlap_array) / 2
         self._w1 = 0.5 + np.sin(2 * np.pi * self._f_window * t_overlap_array - np.pi / 2) / 2
 
+        # Safety check to ensure proper noise generation
+        if self.duration.value < self._t_window / 2:
+            raise ValueError(
+                f"Duration ({self.duration.value:.1f} seconds) must be at least "
+                f"{self._t_window / 2:.1f} seconds to ensure noise continuity."
+            )
+
     def _initialize_frequency_properties(self) -> None:
         """Initialize frequency and time properties for noise generation."""
-        self._t_segment = self._t_window * 3
-        self._df = 1.0 / self._t_segment
+        self._t_chunk = self._t_window
+        self._df_chunk = 1.0 / self._t_chunk
+        self._n_chunk = int(self._t_chunk * self.sampling_frequency.value)
+        self._k_min_chunk = int(self.low_frequency_cutoff / self._df_chunk)
+        self._k_max_chunk = int(self.high_frequency_cutoff / self._df_chunk) + 1
+        self._frequency_chunk = np.arange(0.0, self._n_chunk / 2.0 + 1) * self._df_chunk
+        self._n_freq_chunk = len(self._frequency_chunk[self._k_min_chunk : self._k_max_chunk])
         self._dt = 1.0 / self.sampling_frequency.value
-        self._n_samples = int(self._t_segment * self.sampling_frequency.value)
-        self._k_min = int(self.low_frequency_cutoff / self._df)
-        self._k_max = int(self.high_frequency_cutoff / self._df) + 1
-        self._frequency = np.arange(0.0, self._n_samples / 2.0 + 1) * self._df
-        self._n_freq = len(self._frequency[self._k_min : self._k_max])
 
     def _load_spectral_data(self, file_path: str | Path) -> np.ndarray:
         """Load spectral data from file.
@@ -138,50 +152,24 @@ class CorrelatedNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-inst
             raise ValueError(f"Unsupported file format: {path.suffix}. Use .npy, .txt, or .csv.")
         raise TypeError("file_path must be a string or Path.")
 
-    def _initialize_psd_csd(self) -> None:
-        """Initialize PSD and CSD interpolations for the frequency range.
+    def _initialize_psd(self) -> None:
+        """Initialize PSD interpolation for the frequency range.
 
         Raises:
-            ValueError: If PSD or CSD arrays don't have shape (N, 2).
+            ValueError: If PSD array doesn't have shape (N, 2).
         """
         psd_data = self._load_spectral_data(self.psd_file)
-        csd_data = self._load_spectral_data(self.csd_file)
 
-        if psd_data.shape[1] != 2 or csd_data.shape[1] != 2:
-            raise ValueError("PSD and CSD files must have shape (N, 2).")
+        if psd_data.shape[1] != 2:
+            raise ValueError("PSD file must have shape (N, 2).")
 
-        # Interpolate to the relevant frequencies
-        freqs = self._frequency[self._k_min : self._k_max]
-        self._psd = interp1d(psd_data[:, 0], psd_data[:, 1], bounds_error=False, fill_value="extrapolate")(freqs)
+        # Interpolate the PSD to the relevant frequencies
+        freqs = self._frequency_chunk[self._k_min_chunk : self._k_max_chunk]
+        psd_interp = interp1d(psd_data[:, 0], psd_data[:, 1], bounds_error=False, fill_value="extrapolate")(freqs)
 
-        csd_real = interp1d(csd_data[:, 0], csd_data[:, 1].real, bounds_error=False, fill_value="extrapolate")(freqs)
-        csd_imag = interp1d(csd_data[:, 0], csd_data[:, 1].imag, bounds_error=False, fill_value="extrapolate")(freqs)
-        csd_complex = csd_real + 1j * csd_imag
-        self._csd_magnitude = np.abs(csd_complex)
-        self._csd_phase = np.angle(csd_complex)
-
-    def _compute_spectral_matrix_cholesky(self) -> coo_matrix:
-        """Compute the Cholesky decomposition of the spectral matrix.
-
-        Returns:
-            Sparse COO matrix containing the block-diagonal Cholesky decomposition.
-        """
-        # Compute diagonal elements
-        d0 = self._psd * 0.25 / self._df
-        d1 = self._csd_magnitude * 0.25 / self._df * np.exp(-1j * self._csd_phase)
-
-        # Build Cholesky decomposition of the spectral matrix in block-diagonal form
-        spectral_matrix = np.empty((self._n_freq, self._n_det, self._n_det), dtype=np.complex128)
-        for n in range(self._n_freq):
-            submatrix = np.array(
-                [
-                    [d0[n] if row == col else d1[n] if row < col else np.conj(d1[n]) for row in range(self._n_det)]
-                    for col in range(self._n_det)
-                ]
-            )
-            spectral_matrix[n, :, :] = cholesky(submatrix)
-
-        return block_diag(spectral_matrix, format="coo")
+        # Add a roll-off at the edges using a Tukey window
+        window = tukey(self._n_freq_chunk, alpha=1e-3)
+        self._psd = psd_interp * window
 
     def _generate_single_realization(self) -> np.ndarray:
         """Generate a single noise realization in the time domain.
@@ -192,63 +180,86 @@ class CorrelatedNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-inst
         if self.rng is None:
             raise RuntimeError("Random number generator not initialized. Set seed in constructor.")
 
-        freq_series = np.zeros((self._n_det, self._frequency.size), dtype=np.complex128)
+        freq_series = np.zeros((self._n_det, self._frequency_chunk.size), dtype=np.complex128)
 
-        # Generate white noise and color it with the spectral matrix
-        white_strain = self.rng.standard_normal(self._n_freq * self._n_det) + 1j * self.rng.standard_normal(
-            self._n_freq * self._n_det
-        )
-        colored_strain = self._spectral_matrix.dot(white_strain)
+        # Generate white noise and color it with the PSD
+        white_strain = (
+            self.rng.standard_normal((self._n_det, self._n_freq_chunk))
+            + 1j * self.rng.standard_normal((self._n_det, self._n_freq_chunk))
+        ) / np.sqrt(2)
+        colored_strain = white_strain * np.sqrt(self._psd * 0.5 / self._df_chunk)
+        freq_series[:, self._k_min_chunk : self._k_max_chunk] += colored_strain
 
-        # Split the frequency strain for each detector
-        freq_series[:, self._k_min : self._k_max] += np.transpose(
-            np.reshape(colored_strain, (self._n_freq, self._n_det))
-        )
-
-        # Transform each frequency strain into the time domain
-        time_series = np.fft.irfft(freq_series, n=self._n_samples, axis=1) * self._df * self._n_samples
+        # Transform to time domain
+        time_series = np.fft.irfft(freq_series, n=self._n_chunk, axis=1) * self._df_chunk * self._n_chunk
 
         return time_series
 
     def _simulate(self, *args, **kwargs) -> TimeSeriesList:
-        """Simulate correlated noise for all detectors.
+        """Simulate colored noise for all detectors.
 
         Returns:
             TimeSeriesList containing a single TimeSeries with shape (n_detectors, n_samples).
         """
         n_frame = int(self.duration.value * self.sampling_frequency.value)
 
-        # Generate the initial single noise realization and apply the final part of the window
-        strain_buffer = self._generate_single_realization()
+        # Load previous strain, or generate new if all zeros
+        if self.previous_strain.shape[-1] < self._n_overlap:
+            raise ValueError(
+                f"previous_strain has only {self.previous_strain.shape[-1]} samples per detector, "
+                f"but expected at least {self._n_overlap}."
+            )
+
+        strain_buffer = self.previous_strain[:, -self._n_chunk :]
+        if np.all(strain_buffer == 0):
+            strain_buffer = self._generate_single_realization()
+
+        # Apply the final part of the window
         strain_buffer[:, -self._n_overlap :] *= self._w0
 
         # Extend the strain buffer until it has more valid data than a single frame
-        while strain_buffer.shape[-1] - self._n_overlap < n_frame:
+        while strain_buffer.shape[-1] - self._n_chunk - self._n_overlap < n_frame:
             new_strain = self._generate_single_realization()
             new_strain[:, : self._n_overlap] *= self._w1
             new_strain[:, -self._n_overlap :] *= self._w0
             strain_buffer[:, -self._n_overlap :] += new_strain[:, : self._n_overlap]
+            strain_buffer[:, -self._n_overlap :] *= 1 / np.sqrt(self._w0**2 + self._w1**2)
             strain_buffer = np.concatenate((strain_buffer, new_strain[:, self._n_overlap :]), axis=1)
 
-        # Extract the frame and create TimeSeries
-        data = strain_buffer[:, :n_frame]
+        # Extract the frame data
+        output_strain = strain_buffer[:, self._n_chunk : (self._n_chunk + n_frame)]
+
+        # Store the output strain temporarily for state update
+        self._temp_strain_buffer = output_strain
 
         return TimeSeriesList(
-            [TimeSeries(data=data, start_time=self.start_time, sampling_frequency=self.sampling_frequency)]
+            [TimeSeries(data=output_strain, start_time=self.start_time, sampling_frequency=self.sampling_frequency)]
         )
+
+    def update_state(self) -> None:
+        """Update internal state after each sample generation.
+
+        Updates the previous_strain buffer to ensure continuity across batches.
+        """
+        # Call parent's update_state first (increments counter, advances start_time, saves rng_state)
+        super().update_state()
+
+        # Update the previous strain buffer for continuity
+        if self._temp_strain_buffer is not None:
+            self.previous_strain = self._temp_strain_buffer
+            self._temp_strain_buffer = None
 
     @property
     def metadata(self) -> dict:
-        """Get metadata including correlated noise configuration.
+        """Get metadata including colored noise configuration.
 
         Returns:
             Dictionary containing metadata.
         """
         meta = super().metadata
-        meta["correlated_noise"] = {
+        meta["colored_noise"] = {
             "arguments": {
                 "psd_file": str(self.psd_file),
-                "csd_file": str(self.csd_file),
                 "low_frequency_cutoff": self.low_frequency_cutoff,
                 "high_frequency_cutoff": self.high_frequency_cutoff,
             }
