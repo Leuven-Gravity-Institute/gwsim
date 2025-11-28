@@ -33,6 +33,11 @@ def inject(timeseries: TimeSeries, other: TimeSeries, interpolate_if_offset: boo
     if (timeseries.xunit == second) and (other.xspan[1] > timeseries.xspan[1]):
         other = cast(TimeSeries, other.crop(end=timeseries.xspan[1]))
 
+    # Check if other is empty after cropping
+    if len(other.times) == 0:
+        logger.debug("Other TimeSeries is empty after cropping to fit; returning original timeseries")
+        return timeseries
+
     target_times = timeseries.times.value
     other_times = other.times.value
     sample_spacing = float(timeseries.dt.value)
