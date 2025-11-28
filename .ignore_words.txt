@@ -23,6 +23,7 @@ retryable
 rtol
 SEOBN
 submatrix
+tukey
 Uncatched
 Uninjected
 xaltitude

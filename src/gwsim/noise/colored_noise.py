@@ -1,57 +1,70 @@
+"""Colored noise simulator for gravitational wave detectors."""
+
 from __future__ import annotations
 
+import logging
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
 
-from ..generator.state import StateAttribute
-from ..utils.random import get_state
-from .base import BaseNoise
+from gwsim.data.time_series.time_series import TimeSeries
+from gwsim.data.time_series.time_series_list import TimeSeriesList
+from gwsim.noise.base import NoiseSimulator
+from gwsim.simulator.state import StateAttribute
+
+logger = logging.getLogger("gwsim")
 
 
-class ColoredNoise(BaseNoise):
+class ColoredNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-instance-attributes
+    """Colored noise simulator for gravitational wave detectors.
+
+    This class generates noise time series with a specified power spectral density (PSD).
+    It uses an overlap-add method with windowing to produce smooth, continuous time series
+    across segment boundaries.
+
+    The simulator maintains state between batches to ensure continuity of the noise
+    time series across multiple calls to simulate().
     """
-    Generate colored noise time series for multiple gravitational wave detectors.
 
-    This class generates noise time series with specified power spectral density (PSD)
-    """
+    # State attribute to track the previous strain buffer for continuity
+    previous_strain = StateAttribute(default=None)
 
-    previous_strain = StateAttribute()
-
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        detector_names: list[str],
-        psd: str,
-        sampling_frequency: float,
-        duration: float,
-        flow: float | None = 2,
-        fhigh: float | None = None,
+        psd_file: str | Path,
+        detectors: list[str],
+        sampling_frequency: float = 4096,
+        duration: float = 4,
         start_time: float = 0,
-        previous_strain: np.ndarray | None = None,
         max_samples: int | None = None,
         seed: int | None = None,
-
+        low_frequency_cutoff: float = 2.0,
+        high_frequency_cutoff: float | None = None,
+        **kwargs,
     ):
-        """
-        Initialiser for the ColoredNoise class.
-
-        This class generates noise time series with specified power spectral density (PSD).
+        """Initialize the colored noise simulator.
 
         Args:
-            detector_names (List[str]): Names of the detectors.
-            psd (str): Path to the file containing the Power Spectral Density array, with shape (N, 2), where the first column is frequency (Hz) and the second is PSD values.
-            sampling_frequency (float): Sampling frequency in Hz.
-            duration (float): Length of the noise time series in seconds.
-            flow (float, optional): Lower frequency cut-off in Hz. Defaults to 2.0.
-            fhigh (float, optional): Upper frequency cut-off in Hz. Defaults to Nyquist frequency.
-            start_time (float, optional): GPS start time for the time series. Defaults to 0.
-            previous_strain (np.ndarray, optional): Initial strain buffer for the noise time series, with shape (N_det, N_samples). Initialized to zero. Defaults to None.
-            max_samples (int, optional): Maximum number of samples to generate. Defaults to None.
-            seed (int, optional): Seed for pseudo-random number generation. Defaults to None.
+            psd_file: Path to file containing Power Spectral Density array with shape (N, 2),
+                where the first column is frequency (Hz) and the second is PSD values.
+            detectors: List of detector names (e.g., ['H1', 'L1']).
+            sampling_frequency: Sampling frequency in Hz. Default is 4096.
+            duration: Duration of each noise segment in seconds. Default is 4.
+            start_time: GPS start time for the time series. Default is 0.
+            max_samples: Maximum number of samples to generate. None means infinite.
+            seed: Seed for random number generation. If None, RNG is not initialized.
+            low_frequency_cutoff: Lower frequency cutoff in Hz. Default is 2.0.
+            high_frequency_cutoff: Upper frequency cutoff in Hz. Default is Nyquist frequency.
+            **kwargs: Additional arguments passed to parent classes.
+
+        Raises:
+            ValueError: If detectors list is empty.
+            ValueError: If duration is too short for proper noise generation.
         """
+        if not detectors or len(detectors) == 0:
+            raise ValueError("detectors must contain at least one detector.")
 
         super().__init__(
             sampling_frequency=sampling_frequency,
@@ -59,236 +72,196 @@ class ColoredNoise(BaseNoise):
             start_time=start_time,
             max_samples=max_samples,
             seed=seed,
+            detectors=detectors,
+            **kwargs,
         )
-        self.detector_names = detector_names
-        self.N_det = len(detector_names)
-        if self.N_det == 0:
-            raise ValueError("detector_names must contain at least one detector.")
-        self.flow = flow
-        self.fhigh = fhigh if (fhigh is not None and fhigh <=
-                               sampling_frequency / 2) else sampling_frequency // 2
 
-        # Initialize
+        self.psd_file = psd_file
+        self.low_frequency_cutoff = low_frequency_cutoff
+        self.high_frequency_cutoff = (
+            high_frequency_cutoff
+            if (high_frequency_cutoff is not None and high_frequency_cutoff <= sampling_frequency / 2)
+            else sampling_frequency // 2
+        )
+
+        # Initialize noise generation properties
+        self._n_det = len(detectors)
         self._initialize_window_properties()
         self._initialize_frequency_properties()
-        self._initialize_psd(psd)
-        self.previous_strain = np.zeros((self.N_det, self._N_chunk))
-        self._temp_strain_buffer = None
+        self._initialize_psd()
+
+        # Initialize the previous strain buffer (will be populated on first simulate call)
+        self.previous_strain = np.zeros((self._n_det, self._n_chunk))
+        self._temp_strain_buffer: np.ndarray | None = None
 
     def _initialize_window_properties(self) -> None:
-        """
-        Initialize window properties for connecting noise realizations
+        """Initialize window properties for connecting noise realizations.
 
         Raises:
-            ValueError: If the duration is smaller than (2 * 100 / flow), raise ValueError
+            ValueError: If the duration is too short for proper noise generation.
         """
-        self._T_window = 2048
-        self._f_window = 1.0 / self._T_window
-        self._T_overlap = self._T_window / 2.0
-        self._N_overlap = int(self._T_overlap * self.sampling_frequency)
-        self._w0 = 0.5 + np.cos(2 * np.pi * self._f_window *
-                                np.linspace(0, self._T_overlap, self._N_overlap)) / 2
-        self._w1 = (
-            0.5 + np.sin(2 * np.pi * self._f_window * np.linspace(0,
-                         self._T_overlap, self._N_overlap) - np.pi / 2) / 2
-        )
+        self._t_window = 2048
+        self._f_window = 1.0 / self._t_window
+        self._t_overlap = self._t_window / 2.0
+        self._n_overlap = int(self._t_overlap * self.sampling_frequency.value)
+
+        # Create overlap windows for smooth transitions
+        t_overlap_array = np.linspace(0, self._t_overlap, self._n_overlap)
+        self._w0 = 0.5 + np.cos(2 * np.pi * self._f_window * t_overlap_array) / 2
+        self._w1 = 0.5 + np.sin(2 * np.pi * self._f_window * t_overlap_array - np.pi / 2) / 2
 
         # Safety check to ensure proper noise generation
-        if self.duration < self._T_window / 2:
+        if self.duration.value < self._t_window / 2:
             raise ValueError(
-                f"Duration ({self.duration:.1f} seconds) must be at least {self._T_window / 2:.1f} seconds to ensure noise continuity.")
+                f"Duration ({self.duration.value:.1f} seconds) must be at least "
+                f"{self._t_window / 2:.1f} seconds to ensure noise continuity."
+            )
 
     def _initialize_frequency_properties(self) -> None:
-        """
-        Initialize frequency and time properties for noise generation
-        """
-        self._T_chunk = self._T_window
-        self._df_chunk = 1.0 / self._T_chunk
-        self._N_chunk = int(self._T_chunk * self.sampling_frequency)
-        self._kmin_chunk = int(self.flow / self._df_chunk)
-        self._kmax_chunk = int(self.fhigh / self._df_chunk) + 1
-        self._frequency_chunk = np.arange(0.0, self._N_chunk / 2.0 + 1) * self._df_chunk
-        self._N_freq_chunk = len(self._frequency_chunk[self._kmin_chunk: self._kmax_chunk])
+        """Initialize frequency and time properties for noise generation."""
+        self._t_chunk = self._t_window
+        self._df_chunk = 1.0 / self._t_chunk
+        self._n_chunk = int(self._t_chunk * self.sampling_frequency.value)
+        self._k_min_chunk = int(self.low_frequency_cutoff / self._df_chunk)
+        self._k_max_chunk = int(self.high_frequency_cutoff / self._df_chunk) + 1
+        self._frequency_chunk = np.arange(0.0, self._n_chunk / 2.0 + 1) * self._df_chunk
+        self._n_freq_chunk = len(self._frequency_chunk[self._k_min_chunk : self._k_max_chunk])
+        self._dt = 1.0 / self.sampling_frequency.value
 
-        self.dt = 1.0 / self.sampling_frequency
-
-    def _load_array(self, arr_path: str) -> np.ndarray:
-        """
-        Load an array from a file path
+    def _load_spectral_data(self, file_path: str | Path) -> np.ndarray:
+        """Load spectral data from file.
 
         Args:
-            arr_path (str): Path to the file containing the input array
+            file_path: Path to file containing spectral data.
 
         Returns:
-            np.ndarray: The loaded array
-        """
-        if isinstance(arr_path, str):
-            path = Path(arr_path)
-            if path.suffix == ".npy":
-                return np.load(path)
-            elif path.suffix == ".txt":
-                return np.loadtxt(path)
-            elif path.suffix == ".csv":
-                return np.loadtxt(path, delimiter=",")
-            else:
-                raise ValueError(f"Unsupported file format for {path}")
-        else:
-            raise TypeError("psd and csd must be a string with path to a file")
-
-    def _initialize_psd(self, psd: str) -> None:
-        """
-        Initialize PSD interpolations for frequency range
-
-        Args:
-            psd (str): Path to the file containing the Power Spectral Density array, with shape (N, 2), where the first column is frequency (Hz) and the second is PSD values.
+            Loaded array.
 
         Raises:
-            ValueError: If the shape of the psd or csd is different form (N, 2), raise ValueError
+            ValueError: If file format is not supported.
+            TypeError: If file_path is not a string or Path.
         """
+        if isinstance(file_path, (str, Path)):
+            path = Path(file_path)
+            if path.suffix == ".npy":
+                return np.load(path)
+            if path.suffix == ".txt":
+                return np.loadtxt(path)
+            if path.suffix == ".csv":
+                return np.loadtxt(path, delimiter=",")
+            raise ValueError(f"Unsupported file format: {path.suffix}. Use .npy, .txt, or .csv.")
+        raise TypeError("file_path must be a string or Path.")
 
-        # Load psd/csd
-        psd = self._load_array(psd)
+    def _initialize_psd(self) -> None:
+        """Initialize PSD interpolation for the frequency range.
 
-        # Check that PSD has the correct size
-        if psd.shape[1] != 2:
-            raise ValueError("PSD must have shape (N, 2)")
-
-        # Interpolate the PSD and CSD to the relevant frequencies
-        freqs = self._frequency_chunk[self._kmin_chunk: self._kmax_chunk]
-        psd_interp = interp1d(psd[:, 0], psd[:, 1], bounds_error=False,
-                              fill_value="extrapolate")(freqs)
-
-        # Add a roll-off at the edges
-        window = tukey(self._N_freq_chunk, alpha=1e-3)
-        self.psd = psd_interp * window
-
-    def single_noise_realization(self, psd: np.ndarray) -> np.ndarray:
+        Raises:
+            ValueError: If PSD array doesn't have shape (N, 2).
         """
-        Generate a single noise realization in the frequency domain for each detector, and then transform it into the time domain.
+        psd_data = self._load_spectral_data(self.psd_file)
 
-        Args:
-            psd (np.ndarray): Power spectral density array
+        if psd_data.shape[1] != 2:
+            raise ValueError("PSD file must have shape (N, 2).")
+
+        # Interpolate the PSD to the relevant frequencies
+        freqs = self._frequency_chunk[self._k_min_chunk : self._k_max_chunk]
+        psd_interp = interp1d(psd_data[:, 0], psd_data[:, 1], bounds_error=False, fill_value="extrapolate")(freqs)
+
+        # Add a roll-off at the edges using a Tukey window
+        window = tukey(self._n_freq_chunk, alpha=1e-3)
+        self._psd = psd_interp * window
+
+    def _generate_single_realization(self) -> np.ndarray:
+        """Generate a single noise realization in the time domain.
 
         Returns:
-            np.ndarray: time_series
+            Time series array with shape (n_detectors, n_samples).
         """
-        freq_series = np.zeros((self.N_det, self._frequency_chunk.size), dtype=np.complex128)
+        if self.rng is None:
+            raise RuntimeError("Random number generator not initialized. Set seed in constructor.")
 
-        # generate white noise and color it with the PSD
-        white_strain = (self.rng.standard_normal((self.N_det, self._N_freq_chunk)) + 1j *
-                        self.rng.standard_normal((self.N_det, self._N_freq_chunk))) / np.sqrt(2)
-        colored_strain = white_strain[:, :] * np.sqrt(psd * 0.5 / self._df_chunk)
-        freq_series[:, self._kmin_chunk: self._kmax_chunk] += colored_strain
+        freq_series = np.zeros((self._n_det, self._frequency_chunk.size), dtype=np.complex128)
 
-        # Transform each frequency strain into the time domain
-        time_series = np.fft.irfft(freq_series, n=self._N_chunk, axis=1) * \
-            self._df_chunk * self._N_chunk
+        # Generate white noise and color it with the PSD
+        white_strain = (
+            self.rng.standard_normal((self._n_det, self._n_freq_chunk))
+            + 1j * self.rng.standard_normal((self._n_det, self._n_freq_chunk))
+        ) / np.sqrt(2)
+        colored_strain = white_strain * np.sqrt(self._psd * 0.5 / self._df_chunk)
+        freq_series[:, self._k_min_chunk : self._k_max_chunk] += colored_strain
+
+        # Transform to time domain
+        time_series = np.fft.irfft(freq_series, n=self._n_chunk, axis=1) * self._df_chunk * self._n_chunk
 
         return time_series
 
-    def next(self) -> np.ndarray:
-        """
-        Generate a noise realization in the time domain for each detector.
+    def _simulate(self, *args, **kwargs) -> TimeSeriesList:
+        """Simulate colored noise for all detectors.
 
         Returns:
-            np.ndarray: time series for each detector
+            TimeSeriesList containing a single TimeSeries with shape (n_detectors, n_samples).
         """
-        # TODO: self.previous_strain should be a list of strains of gwf files. Need to open and read them
-
-        N_frame = int(self.duration * self.sampling_frequency)
+        n_frame = int(self.duration.value * self.sampling_frequency.value)
 
         # Load previous strain, or generate new if all zeros
-        if self.previous_strain.shape[-1] < self._N_overlap:
+        if self.previous_strain.shape[-1] < self._n_overlap:
             raise ValueError(
-                f"Previous_strain has only {self.previous_strain.shape[-1]} points for each detector, but expected at least {self._N_overlap}.")
+                f"previous_strain has only {self.previous_strain.shape[-1]} samples per detector, "
+                f"but expected at least {self._n_overlap}."
+            )
 
-        strain_buffer = self.previous_strain[:, -self._N_chunk:]
+        strain_buffer = self.previous_strain[:, -self._n_chunk :]
         if np.all(strain_buffer == 0):
-            strain_buffer = self.single_noise_realization(self.psd)
+            strain_buffer = self._generate_single_realization()
 
         # Apply the final part of the window
-        strain_buffer[:, -self._N_overlap:] *= self._w0
+        strain_buffer[:, -self._n_overlap :] *= self._w0
 
         # Extend the strain buffer until it has more valid data than a single frame
-        while strain_buffer.shape[-1] - self._N_chunk - self._N_overlap < N_frame:
-            new_strain = self.single_noise_realization(self.psd)
-            new_strain[:, :self._N_overlap] *= self._w1
-            new_strain[:, -self._N_overlap:] *= self._w0
-            strain_buffer[:, -self._N_overlap:] += new_strain[:, :self._N_overlap]
-            strain_buffer[:, -self._N_overlap:] *= 1 / np.sqrt(self._w0**2 + self._w1**2)
-            strain_buffer = np.concatenate((strain_buffer, new_strain[:, self._N_overlap:]), axis=1)
+        while strain_buffer.shape[-1] - self._n_chunk - self._n_overlap < n_frame:
+            new_strain = self._generate_single_realization()
+            new_strain[:, : self._n_overlap] *= self._w1
+            new_strain[:, -self._n_overlap :] *= self._w0
+            strain_buffer[:, -self._n_overlap :] += new_strain[:, : self._n_overlap]
+            strain_buffer[:, -self._n_overlap :] *= 1 / np.sqrt(self._w0**2 + self._w1**2)
+            strain_buffer = np.concatenate((strain_buffer, new_strain[:, self._n_overlap :]), axis=1)
 
-        # Discard the first N points and the excess data
-        output_strain = strain_buffer[:, self._N_chunk:(self._N_chunk + N_frame)]
+        # Extract the frame data
+        output_strain = strain_buffer[:, self._n_chunk : (self._n_chunk + n_frame)]
 
-        # Store the strain buffer temporarily
+        # Store the output strain temporarily for state update
         self._temp_strain_buffer = output_strain
 
-        return output_strain
+        return TimeSeriesList(
+            [TimeSeries(data=output_strain, start_time=self.start_time, sampling_frequency=self.sampling_frequency)]
+        )
 
     def update_state(self) -> None:
-        """Update the internal state for the next batch."""
-        self.sample_counter += 1
-        self.start_time += self.duration
-        if self.rng is not None:
-            self.rng_state = get_state()
+        """Update internal state after each sample generation.
+
+        Updates the previous_strain buffer to ensure continuity across batches.
+        """
+        # Call parent's update_state first (increments counter, advances start_time, saves rng_state)
+        super().update_state()
+
+        # Update the previous strain buffer for continuity
         if self._temp_strain_buffer is not None:
             self.previous_strain = self._temp_strain_buffer
             self._temp_strain_buffer = None
 
-    def save_batch(self, batch: np.ndarray, file_name: str | Path, overwrite: bool = False, **kwargs) -> None:
+    @property
+    def metadata(self) -> dict:
+        """Get metadata including colored noise configuration.
+
+        Returns:
+            Dictionary containing metadata.
         """
-        Args:
-            batch (np.ndarray): One batch of data with shape (D, 2), where D is the number of detectors.
-            file_name (str | Path): File name.
-            overwrite (bool, optional): If True, overwrite existing file. Defaults to False.
-            **kwargs: Optional keyword arguments, e.g., 'dataset_name' for HDF5 or 'channel' for GWF.
-
-        Raises:
-            ValueError: If the file suffix is not supported (supported: '.h5', '.hdf5', '.gwf').
-        """
-        file_name = Path(file_name)
-
-        if batch.shape[0] != self.N_det:
-            raise ValueError(
-                f"Batch first dimension ({batch.shape[0]}) must match number of detectors ({self.N_det}).")
-
-        for i, det_name in enumerate(self.detector_names):
-            # Adjust filename per detector
-            det_file_name = self._adjust_filename(file_name=file_name, insert=det_name)
-
-            if file_name.suffix in [".h5", ".hdf5"]:
-                # Prepare dataset name
-                dataset_name = kwargs.get("dataset_name", "strain")
-                det_dataset_name = f"{det_name}:{dataset_name}"
-                self._save_batch_hdf5(
-                    batch=batch[i, :],
-                    file_name=det_file_name,
-                    overwrite=overwrite,
-                    dataset_name=det_dataset_name
-                )
-            elif file_name.suffix == ".gwf":
-                # Prepare channel
-                channel = kwargs.get("channel", "strain")
-                det_channel = f"{det_name}:{channel}"
-                self._save_batch_gwf(
-                    batch=batch[i, :],
-                    file_name=det_file_name,
-                    overwrite=overwrite,
-                    channel=det_channel
-                )
-            else:
-                raise ValueError(
-                    f"Suffix of file_name = {file_name} is not supported. Use ['.h5', '.hdf5'] for HDF5 files,"
-                    "and '.gwf' for frame files."
-                )
-
-    def _adjust_filename(self, file_name: Path, insert: str) -> Path:
-        """If the file name contains the keyword `DET`, insert `insert` at its place. Otherwise, insert `insert` at the beginning of the file name."""
-        stem = file_name.stem
-        suffix = file_name.suffix
-        if "DET" in stem:
-            new_stem = stem.replace("DET", insert, 1)
-        else:
-            new_stem = insert + "-" + stem
-        return file_name.with_name(new_stem + suffix)
+        meta = super().metadata
+        meta["colored_noise"] = {
+            "arguments": {
+                "psd_file": str(self.psd_file),
+                "low_frequency_cutoff": self.low_frequency_cutoff,
+                "high_frequency_cutoff": self.high_frequency_cutoff,
+            }
+        }
+        return meta
