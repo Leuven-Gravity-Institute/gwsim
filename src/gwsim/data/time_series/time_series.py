@@ -81,12 +81,24 @@ class TimeSeries(JSONSerializable):
         """
         # First check whether the start time and sampling frequency match
         if value.t0 != self.start_time:
-            raise ValueError("Start time of the provided TimeSeries does not match.")
+            raise ValueError(
+                "Start time of the provided TimeSeries does not match."
+                f"The start time of this instance is {self.start_time}, "
+                f"while that of the provided TimeSeries is {value.t0}."
+            )
         if value.sample_rate != self.sampling_frequency:
-            raise ValueError("Sampling frequency of the provided TimeSeries does not match.")
+            raise ValueError(
+                "Sampling frequency of the provided TimeSeries does not match."
+                f"The sampling frequency of this instance is {self.sampling_frequency}, "
+                f"while that of the provided TimeSeries is {value.sample_rate}."
+            )
         # Check the duration
         if value.duration != self.duration:
-            raise ValueError("Duration of the provided TimeSeries does not match.")
+            raise ValueError(
+                "Duration of the provided TimeSeries does not match."
+                f"The duration of this instance is {self.duration}, "
+                f"while that of the provided TimeSeries is {value.duration}."
+            )
 
         if not isinstance(value, GWpyTimeSeries):
             raise TypeError(f"Value must be a GWpy TimeSeries instance, got {type(value)}")
