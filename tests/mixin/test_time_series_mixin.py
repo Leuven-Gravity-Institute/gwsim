@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+from astropy.units import Quantity
 from gwpy.timeseries import TimeSeries as GWPyTimeSeries
 
 from gwsim.data.time_series import TimeSeries
@@ -48,9 +49,9 @@ class TestTimeSeriesMixin:
     def test_init_default(self):
         """Test initialization with default parameters."""
         simulator = MockTimeSeriesSimulator()
-        assert simulator.start_time == 0
-        assert simulator.duration == 4
-        assert simulator.sampling_frequency == 4096
+        assert simulator.start_time == Quantity(0, unit="s")
+        assert simulator.duration == Quantity(4, unit="s")
+        assert simulator.sampling_frequency == Quantity(4096, unit="Hz")
         assert simulator.num_of_channels == 1
         assert simulator.dtype == np.float64
 
@@ -59,9 +60,9 @@ class TestTimeSeriesMixin:
         simulator = MockTimeSeriesSimulator(
             start_time=100, duration=8, sampling_frequency=2048, num_of_channels=2, dtype=np.float32
         )
-        assert simulator.start_time == 100
-        assert simulator.duration == 8
-        assert simulator.sampling_frequency == 2048
+        assert simulator.start_time == Quantity(100, unit="s")
+        assert simulator.duration == Quantity(8, unit="s")
+        assert simulator.sampling_frequency == Quantity(2048, unit="Hz")
         assert simulator.num_of_channels == 2
         assert simulator.dtype == np.float32
 
@@ -136,8 +137,8 @@ class TestTimeSeriesMixin:
         simulator = MockTimeSeriesSimulator(duration=2, sampling_frequency=512, dtype=np.float32)
         metadata = simulator.metadata
 
-        assert metadata["time_series"]["arguments"]["duration"] == 2
-        assert metadata["time_series"]["arguments"]["sampling_frequency"] == 512
+        assert metadata["time_series"]["arguments"]["duration"] == Quantity(2, unit="s")
+        assert metadata["time_series"]["arguments"]["sampling_frequency"] == Quantity(512, unit="Hz")
         assert metadata["time_series"]["arguments"]["dtype"] == str(np.float32)
 
     def test_iteration_protocol(self):

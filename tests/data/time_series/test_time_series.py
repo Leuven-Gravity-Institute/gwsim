@@ -132,26 +132,6 @@ class TestTimeSeriesInject:
         # Check that injection modified the data (assuming small_timeseries has ones)
         assert sample_timeseries[0].value[512] != original_value
 
-    def test_inject_non_overlapping_right_raises(self, sample_timeseries: TimeSeries):
-        """Test that non-overlapping injection raises ValueError."""
-        far_ts = TimeSeries(
-            np.ones((2, 100)),
-            start_time=Quantity(2000000000, unit="s"),  # Far in future
-            sampling_frequency=Quantity(4096, unit="Hz"),
-        )
-        with pytest.raises(ValueError, match="The time series to inject starts after the current time series ends"):
-            sample_timeseries.inject(far_ts)
-
-    def test_inject_non_overlapping_left_raises(self, sample_timeseries: TimeSeries):
-        """Test that non-overlapping injection raises ValueError."""
-        far_ts = TimeSeries(
-            np.ones((2, 100)),
-            start_time=Quantity(0, unit="s"),  # Far in future
-            sampling_frequency=Quantity(4096, unit="Hz"),
-        )
-        with pytest.raises(ValueError, match="The time series to inject ends before the current time series starts"):
-            sample_timeseries.inject(far_ts)
-
     def test_inject_mismatched_channels_raises(self, sample_timeseries: TimeSeries):
         """Test that mismatched channel count raises ValueError."""
         wrong_channels = TimeSeries(

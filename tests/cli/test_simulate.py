@@ -1085,8 +1085,8 @@ class TestSimulateCommandIntegration:
             # Verify metadata has the required reproducibility info
             assert "pre_batch_state" in metadata, "Metadata must contain pre_batch_state for exact reproducibility"
             assert (
-                metadata.get("reproduction_mode") == "exact"
-            ), "Reproduction mode should be 'exact' when state snapshot is available"
+                metadata.get("source") == "config"
+            ), "Initial simulation should have source='config' (not a recovery from checkpoint)"
 
             # Store the counter value from batch 1's metadata
             # This represents the RNG/state position before batch 1 was generated

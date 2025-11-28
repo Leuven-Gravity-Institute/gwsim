@@ -272,7 +272,7 @@ class TestParseAndCreateMetadata:
         )
         assert metadata["simulator_name"] == "noise"
         assert metadata["batch_index"] == 0
-        assert metadata["reproduction_mode"] == "config"
+        assert metadata["source"] == "config"
         assert "pre_batch_state" not in metadata
         assert "simulator_config" in metadata
         assert "globals_config" in metadata
@@ -293,7 +293,7 @@ class TestParseAndCreateMetadata:
         )
         assert metadata["simulator_name"] == "signal"
         assert metadata["batch_index"] == 2
-        assert metadata["reproduction_mode"] == "exact"
+        assert metadata["source"] == "config"
         assert metadata["pre_batch_state"] == state
 
     def test_parse_batch_metadata_valid_file(self, tmp_path: Path):
