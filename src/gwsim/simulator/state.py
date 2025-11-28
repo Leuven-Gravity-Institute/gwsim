@@ -40,7 +40,9 @@ class StateAttribute(Generic[T]):
             name (str): Name.
         """
         self.name = name
-        if not hasattr(owner, "_state_attributes"):
+        # Ensure each class has its OWN _state_attributes list (not inherited from parent).
+        # We check __dict__ directly to avoid inheriting a parent's list.
+        if "_state_attributes" not in owner.__dict__:
             owner._state_attributes = []
         if name not in owner._state_attributes:
             owner._state_attributes.append(name)
