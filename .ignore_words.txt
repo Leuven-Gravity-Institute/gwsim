@@ -13,11 +13,13 @@ checkpointing
 colorbar
 coo
 copybutton
+cryo
 currentmodule
 dets
 docstrings
 ECEF
 endfor
+Euregion
 figsize
 freqs
 gengli
@@ -54,13 +56,19 @@ srange
 srate
 submatrix
 subpackages
+<<<<<<< HEAD
 timedelay
 timestep
 tobytes
 toctree
+=======
+Tidalv
+timedelay
+>>>>>>> 5e25d19 (Updating documentation (WIP))
 tukey
 Uncatched
 Uninjected
+WIP
 xaltitude
 xangle
 xarm
