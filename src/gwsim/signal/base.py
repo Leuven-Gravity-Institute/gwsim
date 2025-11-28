@@ -83,6 +83,7 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
             TimeSeriesList: List of simulated signals.
         """
         output = []
+
         while True:
             # Get the next injection parameters
             parameters = self.get_next_injection_parameters()
@@ -122,7 +123,8 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
         Returns:
             Metadata dictionary.
         """
-        return super().metadata
+        meta = super().metadata
+        return meta
 
     def update_state(self) -> None:
         """Update internal state after each sample generation.
