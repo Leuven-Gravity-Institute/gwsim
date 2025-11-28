@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from . import distribution, utils
+from . import utils
 from .utils.log import setup_logger
 from .version import __version__
 
 setup_logger()
 
-__all__ = ["__version__", "distribution", "utils"]
+__all__ = ["__version__", "utils"]
