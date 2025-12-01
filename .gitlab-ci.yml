@@ -1,6 +1,8 @@
 stages:
   - test
   - coverage
+  - release
+  - publish
 
 # Global variables and cache
 variables:
@@ -80,3 +82,78 @@ coverage-report:
   only:
     - merge_requests
     - main
+
+publish_to_pypi:
+  stage: publish
+  image: python:3.12
+  script:
+    - pip install --upgrade poetry
+    - poetry build
+    # Publish to real PyPI
+    - poetry config pypi-token.pypi $PYPI_PASSWORD
+    - poetry publish --build
+  rules:
+    # Only run on semantic version tags (v1.2.3 or 1.2.3)
+    - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+/'
+  only:
+    - tags
+
+publish_to_testpypi:
+  stage: publish
+  image: python:3.12
+  script:
+    - pip install --upgrade poetry
+    - poetry build
+    - poetry config repositories.testpypi https://test.pypi.org/legacy/
+    - poetry config pypi-token.testpypi $TESTPYPI_PASSWORD
+    - poetry publish --build -r testpypi
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /-rc|-a|-b|-alpha|-beta/'   # pre-releases
+  only:
+    - tags
+
+create_gitlab_release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/cli:latest
+  needs: []                                     # Run even if publish fails (optional)
+  script:
+    - echo "Creating GitLab release for $CI_COMMIT_TAG"
+  release:
+    name: "Release $CI_COMMIT_TAG"
+    tag_name: '$CI_COMMIT_TAG'
+    description: |
+      ## What's Changed
+
+      $(git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --oneline --no-merges | sed 's/^/• /')
+
+      ## Full Changelog
+      https://gitlab.et-gw.eu/${CI_PROJECT_PATH}/-/compare/$(git describe --tags --abbrev=0 HEAD^)...${CI_COMMIT_TAG}
+
+      **Full Changelog**: https://gitlab.et-gw.eu/${CI_PROJECT_PATH}/-/compare/$(git describe --tags --abbrev=0 HEAD^)...${CI_COMMIT_TAG}
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+/'
+  only:
+    - tags
+
+docs_build_and_trigger_rtd:
+  stage: publish
+  image: python:3.12
+  before_script:
+    - pip install --upgrade pip
+    - pip install poetry
+    - poetry install --with docs          # make sure your pyproject.toml has [tool.poetry.group.docs]
+  script:
+    # 1. Build the HTML documentation locally
+    - poetry run sphinx-build -b html docs/ site/
+    # 2. Trigger Read the Docs webhook so it rebuilds instantly
+    - curl -X POST -d "branches=main" -d "token=$RTD_WEBHOOK_TOKEN" \
+           https://readthedocs.org/api/v2/webhook/${RTD_PROJECT_SLUG}/
+  rules:
+    # Run on every official release tag
+    - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+/'
+  only:
+    - tags
+  artifacts:
+    paths:
+      - site/                 # mkdocs output folder (or docs/_build/html for Sphinx)
+    expire_in: 1 day
