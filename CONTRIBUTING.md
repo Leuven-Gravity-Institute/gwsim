@@ -65,7 +65,7 @@ Clearly describe the motivation and scope of your change, especially how it impa
 - Be kind and constructive in your communication.
 - Keep MRs focused and atomic—smaller changes are easier to review.
 - Document new features and update existing docs, especially for new GW simulation parameters or methods.
-- Tag your MR with relevant labels if you can (e.g., `Kind::Bug`, `Kind::Enhancement`, `Kind::Documentation`).
+- Tag your MR with relevant labels if you can (e.g., `type::bug`, `type::enhancement`, `type::documentation`).
 
 ## 📜 Licensing
 
