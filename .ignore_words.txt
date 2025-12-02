@@ -29,6 +29,7 @@ interp
 intersphinx
 levelname
 LIGO
+mathjax
 modindex
 mollweide
 MSRC
