@@ -214,4 +214,4 @@ gwsim simulate --dry-run config.yaml
 
 - [Configuration Guide](configuration.md) - Complete configuration reference
 - [Examples](examples.md) - Real-world usage examples
-- [API Reference](../api/simulator.md) - Programmatic usage
+- [API Reference](../reference/index.md) - Programmatic usage
