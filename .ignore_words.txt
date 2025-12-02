@@ -49,6 +49,7 @@ SEOBN
 srange
 srate
 submatrix
+subpackages
 timedelay
 timestep
 tobytes
