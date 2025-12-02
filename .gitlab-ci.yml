@@ -109,75 +109,59 @@ publish_to_testpypi:
   rules:
     - if: '$CI_COMMIT_TAG =~ /-rc|-a|-b|-alpha|-beta/'   # pre-releases
 
-create_gitlab_release:
-  stage: release
-  image: registry.gitlab.com/gitlab-org/cli:latest
-  variables:
-    GIT_DEPTH: 0  # Ensure full git history
-  before_script:
-    - apk add --no-cache jq curl  # Install dependencies
-  script:
-    - |
-      # Get previous tag safely
-      PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
 
-      if [ -n "$PREV_TAG" ]; then
-        echo "Generating changelog from $PREV_TAG to $CI_COMMIT_TAG"
-
-        # Get timestamp of previous tag for API query
-        PREV_TAG_DATE=$(git show -s --format=%aI $PREV_TAG)
-
-        # Query GitLab API for merged MRs since previous tag
-        MR_LIST=$(curl --silent --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests?state=merged&target_branch=main&updated_after=$PREV_TAG_DATE&per_page=100" \
-          | jq -r '.[] | "• !\(.iid): \(.title)"' 2>/dev/null || echo "")
-
-        # Parse conventional commits for additional context
-        COMMIT_SUMMARY=$(git log $PREV_TAG..HEAD --oneline --no-merges | \
-          grep -E '^[a-f0-9]+ (feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?: ' | \
-          sed 's/^[a-f0-9]* \([^:]*\): \(.*\)/• \1: \2/' || echo "")
-
-        # Combine MRs and notable commits
-        if [ -n "$MR_LIST" ]; then
-          CHANGELOG="### Merged Pull Requests\n$MR_LIST"
-          if [ -n "$COMMIT_SUMMARY" ]; then
-            CHANGELOG="$CHANGELOG\n\n### Notable Changes\n$COMMIT_SUMMARY"
-          fi
-        elif [ -n "$COMMIT_SUMMARY" ]; then
-          CHANGELOG="### Changes\n$COMMIT_SUMMARY"
-        else
-          CHANGELOG="### Changes\n• Various improvements and bug fixes"
-        fi
-      else
-        # First release - show project overview instead of all commits
-        CHANGELOG="### Initial Release\n• First stable release of gwsim\n• Mock Data Challenge (MDC) generation for gravitational wave detectors\n• Support for noise, signal, and glitch simulation\n• Extensible simulator framework with PyCBC/LALSuite integration"
-      fi
-
-      # Save for use in release description
-      echo -e "$CHANGELOG" > changelog.txt
-  artifacts:
-    paths:
-      - changelog.txt
-    expire_in: 1 hour
-  release:
-    name: "Release $CI_COMMIT_TAG"
-    tag_name: '$CI_COMMIT_TAG'
-    description: |
-      ## What's Changed
-
-      $(cat changelog.txt)
-
-      ## Installation
-
-      ```bash
-      pip install gwsim==$CI_COMMIT_TAG
-      ```
-
-      ## Full Changelog
-
-      **Compare:** [$PREV_TAG...$CI_COMMIT_TAG](https://gitlab.et-gw.eu/${CI_PROJECT_PATH}/-/compare/$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "HEAD~10")...$CI_COMMIT_TAG)
+# Base for release jobs (optional DRY)
+.base_release: &base_release
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+/'
+
+create-changelog:
+  <<: *base_release
+  stage: release
+  image: registry.gitlab.com/gitlab-ci-utils/curl-jq:latest
+  before_script:
+    - apk add --no-cache git  # For git describe
+  variables:
+    CHANGELOG_BASE_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/repository/changelog"
+  script:
+    # Fetch previous tag for incremental notes
+    - PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+    # GET: Generate notes (incremental if PREV_TAG exists)
+    - |
+      if [[ -n "$PREV_TAG" ]]; then
+        curl -H "PRIVATE-TOKEN: ${CI_API_TOKEN}" \
+             "${CHANGELOG_BASE_URL}?version=${CI_COMMIT_TAG}&from=${PREV_TAG}" | \
+        jq -r '.notes' > release_notes.md
+      else
+        curl -H "PRIVATE-TOKEN: ${CI_API_TOKEN}" \
+             "${CHANGELOG_BASE_URL}?version=${CI_COMMIT_TAG}" | \
+        jq -r '.notes' > release_notes.md
+      fi
+    # Optional POST: Append to CHANGELOG.md (proper JSON)
+    - |
+      curl -X POST -H "PRIVATE-TOKEN: ${CI_API_TOKEN}" \
+           -H "Content-Type: application/json" \
+           -d "{\"version\": \"${CI_COMMIT_TAG}\", \"message\": \"${CHANGELOG_COMMIT_MESSAGE}; [skip ci]\"}" \
+           "${CHANGELOG_BASE_URL}"
+  artifacts:
+    paths:
+      - release_notes.md
+    expire_in: 1 hour
+
+create-release-page:
+  <<: *base_release
+  stage: release
+  needs:
+    - job: create-changelog
+      artifacts: true  # Pulls release_notes.md
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Creating GitLab release page for version ${CI_COMMIT_TAG}"
+  release:
+    name: "Release ${CI_COMMIT_TAG}"
+    description: release_notes.md  # Inserts the generated notes
+    tag_name: ${CI_COMMIT_TAG}
+    ref: ${CI_COMMIT_TAG}  # Simpler: points to the tag
 
 docs_build_and_trigger_rtd:
   stage: publish
