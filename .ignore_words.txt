@@ -14,7 +14,11 @@ colorbar
 coo
 copybutton
 cryo
+<<<<<<< HEAD
 currentmodule
+=======
+deformability
+>>>>>>> b2665df (docs: Add user guide)
 dets
 docstrings
 ECEF
@@ -56,15 +60,11 @@ srange
 srate
 submatrix
 subpackages
-<<<<<<< HEAD
+Tidalv
 timedelay
 timestep
 tobytes
 toctree
-=======
-Tidalv
-timedelay
->>>>>>> 5e25d19 (Updating documentation (WIP))
 tukey
 Uncatched
 Uninjected
