@@ -73,6 +73,7 @@ nav:
   - Developer Guide:
     - Contributing: dev/contributing.md
     - Architecture: dev/architecture.md
+  - Troubleshooting: dev/troubleshooting.md
 
 markdown_extensions:
   - pymdownx.highlight:
