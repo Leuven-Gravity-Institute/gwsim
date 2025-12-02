@@ -1,4 +1,5 @@
 approximants
+astrophysically
 astropy
 autoclass
 automodule
@@ -7,6 +8,7 @@ butterworth
 capsys
 Cascina
 checkpointed
+Checkpointing
 checkpointing
 colorbar
 coo
@@ -43,6 +45,7 @@ pycbc
 pymap
 pytestmark
 realisation
+reimplementation
 representer
 retryable
 rtol
