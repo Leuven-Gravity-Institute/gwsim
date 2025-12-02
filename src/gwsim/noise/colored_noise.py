@@ -31,7 +31,7 @@ class ColoredNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-instanc
     # State attribute to track the previous strain buffer for continuity
     previous_strain = StateAttribute(default=None)
 
-    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments,duplicate-code
         self,
         psd_file: str | Path,
         detectors: list[str],
@@ -128,7 +128,7 @@ class ColoredNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-instanc
         self._n_freq_chunk = len(self._frequency_chunk[self._k_min_chunk : self._k_max_chunk])
         self._dt = 1.0 / self.sampling_frequency.value
 
-    def _load_spectral_data(self, file_path: str | Path) -> np.ndarray:
+    def _load_spectral_data(self, file_path: str | Path) -> np.ndarray:  # pylint: disable=duplicate-code
         """Load spectral data from file.
 
         Args:
