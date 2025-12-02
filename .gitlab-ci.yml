@@ -24,7 +24,15 @@ cache:
     - python -c "import gwsim; print('gwsim version:', gwsim.__version__)"
     - gwsim --help
     - export COVERAGE_FILE=.coverage.$CI_JOB_NAME
-    - pytest
+    - |
+      if [[ "$CI_COMMIT_BRANCH" == "main" || -n "$CI_COMMIT_TAG" ]]; then
+        echo "Running all tests including slow tests (main branch or tag)"
+        pytest
+        pytest -m slow
+      else
+        echo "Running fast tests only (merge request)"
+        pytest
+      fi
   artifacts:
     when: always
     paths:
