@@ -37,6 +37,7 @@ infft
 Inspiral
 interp
 intersphinx
+isot
 levelname
 LIGO
 mathjax
@@ -61,6 +62,7 @@ representer
 retryable
 rtol
 SEOBN
+snrs
 srange
 srate
 submatrix
@@ -89,3 +91,4 @@ yarm
 ylabel
 ylength
 Zenodo
+ZENODO
