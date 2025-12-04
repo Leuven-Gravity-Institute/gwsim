@@ -18,6 +18,7 @@ from tqdm import tqdm
 
 from gwsim.cli.utils.checkpoint import CheckpointManager
 from gwsim.cli.utils.config import SimulatorConfig, load_config, resolve_class_path
+from gwsim.cli.utils.hash import compute_file_hash
 from gwsim.cli.utils.simulation_plan import (
     SimulationBatch,
     SimulationPlan,
@@ -269,6 +270,19 @@ def save_batch_metadata(
     # Add output files to metadata for easy discovery
     # Store just the file names, not full paths
     metadata["output_files"] = [f.name for f in output_files]
+
+    # Compute and add file hashes for integrity checking
+    file_hashes = {}
+    for output_file in output_files:
+        try:
+            file_hash = compute_file_hash(output_file)
+            file_hashes[output_file.name] = file_hash
+            logger.debug("Compute hash for %s: %s", output_file.name, file_hash)
+        except OSError as e:
+            logger.warning("Failed to compute hash for %s: %s", output_file.name, e)
+            # Continue without failing - metadata is still useful
+
+    metadata["file_hashes"] = file_hashes
 
     metadata_file_name = f"{batch.simulator_name}-{batch.batch_index}.metadata.yaml"
     metadata_file = metadata_directory / metadata_file_name
