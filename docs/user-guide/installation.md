@@ -67,8 +67,8 @@ python -c "import gwsim; print(gwsim.__version__)"
 
 - **typer**: CLI framework
 - **numpy**: Numerical computing
-- **pycbc**: Gravitational wave data analysis
-- **bilby**: Gravitational wave data utilities
+- **pycbc**: Gravitational-wave data analysis
+- **bilby**: Gravitational-wave data utilities
 - **h5py**: HDF5 file format support
 - **pydantic**: Data validation
 - **tqdm**: Progress bars

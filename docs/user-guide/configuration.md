@@ -1,4 +1,6 @@
-# Configuration Guide
+# Configuration Files
+
+This guide explains how to use and write configuration files to generate datasets tailored to your needs.
 
 ## Command-Line Options
 
@@ -10,7 +12,7 @@ gwsim simulate config.yaml
 
 ### Common Flags
 
-#### `--overwrite`
+#### Flag: `--overwrite`
 
 By default, gwsim does not overwrite existing output files. If a file already exists, the tool will raise an error and halt execution.
 
@@ -20,7 +22,7 @@ To force overwriting of existing files, use the `--overwrite` flag:
 gwsim simulate config.yaml --overwrite
 ```
 
-#### `--dry-run`
+#### Flag: `--dry-run`
 
 Test your configuration without generating data:
 
@@ -30,7 +32,7 @@ gwsim simulate config.yaml --dry-run
 
 This validates the configuration and shows what would be generated without actually creating files.
 
-#### `--metadata`
+#### Flag: `--metadata`
 
 Generate metadata files along with the data (automatically enabled by default):
 
@@ -39,14 +41,23 @@ gwsim simulate config.yaml --metadata
 ```
 
 Metadata files contain complete provenance information including:
+
 - Simulator configuration
 - Random number generator state
 - Output file names
 - Version information
 
+#### Flags: `--author` and `--email`
+
+Include author information in the metadata files:
+
+```bash
+gwsim simulate config.yaml --author <your-name> --email <your-email>
+```
+
 ## Configuration File Structure
 
-The configuration file uses YAML format with the following main sections:
+The configuration file uses YAML format. They consist of two main sections: globals and simulators.
 
 ### Globals
 
@@ -54,19 +65,22 @@ Top-level shared parameters used across all simulators:
 
 ```yaml
 globals:
-  working-directory: .
-  sampling-frequency: 4096
-  duration: 4096
-  start-time: 1577491218
-  output-directory: ./output
-  metadata-directory: ./metadata
-  seed-base: 42
+  working-directory:
+  sampling-frequency:
+  duration:
+  total-duration:
+  start-time:
+  output-directory:
+  metadata-directory:
+  seed-base:
 ```
 
 **Key parameters:**
+
 - `working-directory`: Base directory for operations
 - `sampling-frequency`: Sample rate in Hz
 - `duration`: Duration of each segment in seconds
+- `total-duration`: Total duration of the dataset
 - `start-time`: GPS start time
 - `output-directory`: Where to save generated data files
 - `metadata-directory`: Where to save metadata files
@@ -79,47 +93,66 @@ List of simulators to run, each with configuration:
 ```yaml
 simulators:
   noise:
-    class: PyCBCStationaryGaussianNoiseSimulator
+    class:
     arguments:
-      psd: aLIGOZeroDetHighPower
-      detectors:
-        - H1
-      seed: 0
-      max_samples: 22
     output:
-      file_name: "{{ detector }}-NOISE-{{ start_time }}-{{ duration }}.gwf"
+      file_name:
       arguments:
-        channel: "{{ detector }}:STRAIN"
 ```
 
 **Simulator properties:**
+
 - `class`: Fully qualified class name of the simulator
 - `arguments`: Parameters passed to the simulator
 - `output.file_name`: Template for output file naming (supports Jinja2 syntax)
 - `output.arguments`: Channel naming and other output metadata
 
+For details on simulator-specific `arguments`, refer to the [API Reference](../reference/index.md) page.
+
+Available `noise` simulators includes:
+
+- `WhiteNoiseSimulator`
+- `ColoredNoiseSimulator`
+- `CorrelatedNoiseSimulator`
+
+Available `signal` simulators includes:
+
+- `CBCSignalSimulator`
+
+Available `glitch` simulators includes:
+
+- `COMPLETE`
+
 ## Template Variables
 
-Use Jinja2-style templates in configuration values:
+You can use Jinja2-style templates in configuration values such as file names and channel names:
 
 ```yaml
-globals:
-  detector: "H1"
-  network: ["H1", "L1", "V1"]
-
 simulators:
   noise:
     arguments:
-      detectors: "{{ network }}"
+        detectors:
+          - E1_Triangle_EMR
+          - E2_Triangle_EMR
+          - E3_Triangle_EMR
     output:
-      file_name: "{{ detector }}-NOISE-{{ start_time }}-{{ duration }}.gwf"
+      file_name: "E-{{ detectors }}_NOISE_STRAIN-1000000000-1024.gwf"
+      arguments:
+        channel: "{{ detectors }}:STRAIN"
 ```
 
+In this example, `file_name` and `channel` are automatically updated for each detector being processed.
+
 **Common variables:**
+
 - `{{ start_time }}`: GPS start time from globals
 - `{{ duration }}`: Segment duration from globals
-- `{{ detector }}`: Current detector being processed
+- `{{ detectors }}`: Current detector being processed
 - `{{ seed_base }}`: Random seed base from globals
+
+!!! note
+    For the pre-configured ET detector geometries, the variable `{{ detectors }}` expands to the detector name only.
+    For example, when using `detectors: ["E1_Triangle_EMR"]`, the filename becomes `E-E1_NOISE_STRAIN-....gwf` and **not** `E-E1_Triangle_EMR_NOISE_STRAIN-....gwf`
 
 ## Checkpointing
 
@@ -138,38 +171,10 @@ gwsim simulate config.yaml
 ```
 
 The checkpoint contains:
+
 - Simulator state
 - Progress information
 - Already-generated file tracking
-
-## Configuration Inheritance
-
-Extend base configurations to reduce duplication:
-
-```yaml
-# base_config.yaml
-globals:
-  sampling-frequency: 4096
-  duration: 4096
-  output-directory: ./output
-
-simulators:
-  noise:
-    class: PyCBCStationaryGaussianNoiseSimulator
-```
-
-```yaml
-# specific_config.yaml
-inherits: base_config.yaml
-
-globals:
-  start-time: 1200000000  # Override base value
-
-simulators:
-  noise:
-    arguments:
-      detectors: ["L1"]  # Extend base configuration
-```
 
 ## Best Practices
 
