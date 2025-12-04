@@ -125,50 +125,73 @@ def validate_command(  # pylint: disable=too-many-branches,too-many-statements,t
     if metadata_pattern:
         metadata_files = [f for f in metadata_files if fnmatch.fnmatch(f.name, metadata_pattern)]
 
-    # For output files, try to find corresponding metadata
+    # Build validation plan: output_file -> metadata_file
     output_to_metadata = {}
-    for output_file in output_files:
-        potential_metadata = None
 
-        # First, check if any already-identified metadata files contain this output file
-        for metadata_file in metadata_files:
-            try:
-                with metadata_file.open("r") as f:
-                    meta_data = yaml.safe_load(f)
-                    if output_file.name in meta_data.get("output_files", []):
-                        potential_metadata = metadata_file
-                        break
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error("Error reading metadata file %s: %s", metadata_file, e)
+    # First, extract output files from provided metadata files
+    for metadata_file in metadata_files:
+        try:
+            with metadata_file.open("r") as f:
+                metadata = yaml.safe_load(f)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error loading metadata %s: %s", metadata_file, e)
+            continue
+
+        output_files_in_meta = metadata.get("output_files", [])
+        globals_config = metadata.get("globals_config", {})
+        output_dir = Path(globals_config.get("output_directory", "."))
+
+        for filename in output_files_in_meta:
+            # Apply pattern filtering
+            if pattern and not fnmatch.fnmatch(filename, pattern):
                 continue
 
-        # If not found in existing metadata, search in directories
-        if not potential_metadata:
-            # Look in the same directory or parent directories
-            search_dir = output_file.parent
-            metadata_dir = search_dir / "metadata"
-            if metadata_dir.exists():
-                # Look for metadata files that might match
-                for meta_file in metadata_dir.glob("*.metadata.yaml"):
-                    with meta_file.open("r") as f:
-                        try:
-                            meta_data = yaml.safe_load(f)
-                            if output_file.name in meta_data.get("output_files", []):
-                                potential_metadata = meta_file
-                                break
-                        except Exception as e:  # pylint: disable=broad-exception-caught
-                            logger.error("Error reading metadata file %s: %s", meta_file, e)
-                            continue
+            output_file = output_dir / filename
+            if output_file not in output_to_metadata:
+                output_to_metadata[output_file] = metadata_file
 
-        if not potential_metadata:
-            logger.warning("No metadata found for output file %s", output_file)
+    # Then, for explicitly provided output files, find their metadata
+    for output_file in output_files:
+        if output_file not in output_to_metadata:
+            potential_metadata = None
 
-        output_to_metadata[output_file] = potential_metadata
+            # First, check if any already-identified metadata files contain this output file
+            for metadata_file in metadata_files:
+                try:
+                    with metadata_file.open("r") as f:
+                        meta_data = yaml.safe_load(f)
+                        if output_file.name in meta_data.get("output_files", []):
+                            potential_metadata = metadata_file
+                            break
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.error("Error reading metadata file %s: %s", metadata_file, e)
+                    continue
 
-    # Combine all metadata files
-    all_metadata_files = list(output_to_metadata.values())
+            # If not found in existing metadata, search in directories
+            if not potential_metadata:
+                # Look in the same directory or parent directories
+                search_dir = output_file.parent
+                metadata_dir = search_dir / "metadata"
+                if metadata_dir.exists():
+                    # Look for metadata files that might match
+                    for meta_file in metadata_dir.glob("*.metadata.yaml"):
+                        with meta_file.open("r") as f:
+                            try:
+                                meta_data = yaml.safe_load(f)
+                                if output_file.name in meta_data.get("output_files", []):
+                                    potential_metadata = meta_file
+                                    break
+                            except Exception as e:  # pylint: disable=broad-exception-caught
+                                logger.error("Error reading metadata file %s: %s", meta_file, e)
+                                continue
 
-    if not all_metadata_files:
+            if potential_metadata:
+                output_to_metadata[output_file] = potential_metadata
+            else:
+                logger.warning("No metadata found for output file %s", output_file)  # Combine all metadata files
+    all_metadata_files = list({v for v in output_to_metadata.values() if v is not None})
+
+    if not all_metadata_files and not metadata_files:
         logger.error("Error: No metadata files found")
         raise typer.Exit(1)
 
