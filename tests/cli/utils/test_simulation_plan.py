@@ -276,6 +276,12 @@ class TestParseAndCreateMetadata:
         assert "pre_batch_state" not in metadata
         assert "simulator_config" in metadata
         assert "globals_config" in metadata
+        # Check new fields
+        assert "author" in metadata
+        assert "email" in metadata
+        assert "timestamp" in metadata
+        assert isinstance(metadata["author"], str)
+        assert "+" in metadata["timestamp"] or "Z" in metadata["timestamp"]  # ISO format with timezone
 
     def test_create_batch_metadata_with_state(
         self,
@@ -295,6 +301,10 @@ class TestParseAndCreateMetadata:
         assert metadata["batch_index"] == 2
         assert metadata["source"] == "config"
         assert metadata["pre_batch_state"] == state
+        # Check new fields
+        assert "author" in metadata
+        assert "email" in metadata
+        assert "timestamp" in metadata
 
     def test_parse_batch_metadata_valid_file(self, tmp_path: Path):
         """Test parsing a valid metadata YAML file."""
@@ -336,6 +346,131 @@ class TestParseAndCreateMetadata:
 
         with pytest.raises(ValueError, match="Metadata must be a dictionary"):
             parse_batch_metadata(metadata_file)
+
+
+class TestMetadataAuthorEmailTimestamp:
+    """Tests for author, email, and timestamp functionality in metadata."""
+
+    def test_create_batch_metadata_with_explicit_author_email(
+        self,
+        globals_config: GlobalsConfig,
+        simulator_config: SimulatorConfig,
+    ):
+        """Test creating metadata with explicit author and email."""
+        metadata = create_batch_metadata(
+            simulator_name="noise",
+            batch_index=0,
+            simulator_config=simulator_config,
+            globals_config=globals_config,
+            author="john.doe",
+            email="john.doe@example.com",
+        )
+        assert metadata["author"] == "john.doe"
+        assert metadata["email"] == "john.doe@example.com"
+        assert "timestamp" in metadata
+
+    def test_create_batch_metadata_default_author(
+        self,
+        globals_config: GlobalsConfig,
+        simulator_config: SimulatorConfig,
+        monkeypatch,
+    ):
+        """Test that author defaults to getpass.getuser() when not provided."""
+        # Mock getpass.getuser to return a predictable value
+        monkeypatch.setattr("gwsim.cli.utils.simulation_plan.getpass.getuser", lambda: "testuser")
+
+        metadata = create_batch_metadata(
+            simulator_name="noise",
+            batch_index=0,
+            simulator_config=simulator_config,
+            globals_config=globals_config,
+        )
+        assert metadata["author"] == "testuser"
+        assert metadata["email"] is None  # email defaults to None
+
+    def test_create_batch_metadata_explicit_timestamp(
+        self,
+        globals_config: GlobalsConfig,
+        simulator_config: SimulatorConfig,
+    ):
+        """Test creating metadata with explicit timestamp."""
+        import datetime
+
+        custom_timestamp = datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        metadata = create_batch_metadata(
+            simulator_name="noise",
+            batch_index=0,
+            simulator_config=simulator_config,
+            globals_config=globals_config,
+            timestamp=custom_timestamp,
+        )
+        assert metadata["timestamp"] == "2024-01-01T12:00:00+00:00"
+
+    def test_create_batch_metadata_default_timestamp(
+        self,
+        globals_config: GlobalsConfig,
+        simulator_config: SimulatorConfig,
+    ):
+        """Test that timestamp defaults to current UTC time."""
+        import datetime
+
+        # Capture time before creating metadata
+        before = datetime.datetime.now(datetime.timezone.utc)
+
+        metadata = create_batch_metadata(
+            simulator_name="noise",
+            batch_index=0,
+            simulator_config=simulator_config,
+            globals_config=globals_config,
+        )
+
+        # Capture time after
+        after = datetime.datetime.now(datetime.timezone.utc)
+
+        # Parse the timestamp from metadata
+        timestamp = datetime.datetime.fromisoformat(metadata["timestamp"])
+
+        # Should be between before and after (within a reasonable tolerance)
+        assert before <= timestamp <= after
+
+    def test_create_batch_metadata_timestamp_format(
+        self,
+        globals_config: GlobalsConfig,
+        simulator_config: SimulatorConfig,
+    ):
+        """Test that timestamp is in ISO format with timezone."""
+        metadata = create_batch_metadata(
+            simulator_name="noise",
+            batch_index=0,
+            simulator_config=simulator_config,
+            globals_config=globals_config,
+        )
+
+        timestamp_str = metadata["timestamp"]
+        # Should be ISO format like "2024-01-01T12:00:00+00:00"
+        assert "T" in timestamp_str
+        assert "+" in timestamp_str or "Z" in timestamp_str
+
+        # Should be parseable back to datetime
+        import datetime
+
+        parsed = datetime.datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        assert isinstance(parsed, datetime.datetime)
+
+    def test_create_batch_metadata_none_email(
+        self,
+        globals_config: GlobalsConfig,
+        simulator_config: SimulatorConfig,
+    ):
+        """Test that email can be None."""
+        metadata = create_batch_metadata(
+            simulator_name="noise",
+            batch_index=0,
+            simulator_config=simulator_config,
+            globals_config=globals_config,
+            email=None,
+        )
+        assert metadata["email"] is None
 
 
 # ============================================================================
@@ -515,6 +650,8 @@ class TestCreatePlanFromMetadata:
             batch_index=0,
             simulator_config=simulator_config,
             globals_config=globals_config,
+            author="metadata_author",
+            email="metadata@example.com",
         )
         metadata_file = metadata_directory / "noise-0.metadata.yaml"
         with metadata_file.open("w") as f:
@@ -526,6 +663,9 @@ class TestCreatePlanFromMetadata:
         assert plan.batches[0].simulator_name == "noise"
         assert plan.batches[0].batch_index == 0
         assert plan.batches[0].source == "metadata_config"
+        # Check metadata fields
+        assert plan.batches[0].batch_metadata["author"] == "metadata_author"
+        assert plan.batches[0].batch_metadata["email"] == "metadata@example.com"
 
     def test_create_plan_from_metadata_multiple_batches(
         self,
@@ -568,6 +708,8 @@ class TestCreatePlanFromMetadata:
             simulator_config=simulator_config,
             globals_config=globals_config,
             pre_batch_state=state,
+            author="test_user",
+            email="test@example.com",
         )
         metadata_file = metadata_directory / "noise-0.metadata.yaml"
         with metadata_file.open("w") as f:
@@ -578,6 +720,9 @@ class TestCreatePlanFromMetadata:
         assert plan.batches[0].has_state_snapshot()
         assert plan.batches[0].pre_batch_state == state
         assert plan.batches[0].source == "metadata_state"
+        # Check metadata fields
+        assert plan.batches[0].batch_metadata["author"] == "test_user"
+        assert plan.batches[0].batch_metadata["email"] == "test@example.com"
 
     def test_create_plan_from_metadata_directory_not_found(self):
         """Test that non-existent metadata directory raises error."""
@@ -661,6 +806,8 @@ class TestSimulationPlanIntegration:
             simulator_config=batch.simulator_config,
             globals_config=batch.globals_config,
             pre_batch_state={"counter": 10},
+            author="test_author",
+            email="test@example.com",
         )
         metadata_file = metadata_dir / "noise-0.metadata.yaml"
         with metadata_file.open("w") as f:
@@ -672,6 +819,9 @@ class TestSimulationPlanIntegration:
         assert plan2.batches[0].simulator_name == "noise"
         assert plan2.batches[0].has_state_snapshot()
         assert plan2.batches[0].pre_batch_state["counter"] == 10
+        # Check that metadata fields are preserved
+        assert plan2.batches[0].batch_metadata["author"] == "test_author"
+        assert plan2.batches[0].batch_metadata["email"] == "test@example.com"
 
     def test_batch_ordering_preserved(
         self,
@@ -925,36 +1075,42 @@ class TestMergePlans:
         globals_config: GlobalsConfig,
         simulator_config: SimulatorConfig,
     ):
-        """Test merging plans from different sources (config and metadata)."""
-        # Create plan from config
-        config = MagicMock(spec=type("Config", (), {}))
-        config.globals = globals_config
-        config.simulators = {"noise": simulator_config}
-        plan1 = create_plan_from_config(config, Path("checkpoints"))
-
-        # Create plan from metadata
+        """Test merging plans that include metadata with state and author/email info."""
         metadata_dir = tmp_path / "metadata"
         metadata_dir.mkdir()
-        state = {"rng_state": [1, 2, 3]}
+
+        # Create metadata with state and author info
+        state = {"rng_state": [1, 2, 3], "counter": 5}
         metadata = create_batch_metadata(
-            simulator_name="signal",
+            simulator_name="noise",
             batch_index=0,
             simulator_config=simulator_config,
             globals_config=globals_config,
             pre_batch_state=state,
+            author="merge_author",
+            email="merge@example.com",
         )
-        metadata_file = metadata_dir / "signal-0.metadata.yaml"
+        metadata_file = metadata_dir / "noise-0.metadata.yaml"
         with metadata_file.open("w") as f:
             yaml.safe_dump(metadata, f)
 
-        plan2 = create_plan_from_metadata(metadata_dir, Path("checkpoints"))
+        # Create plan from metadata
+        plan_metadata = create_plan_from_metadata(metadata_dir, Path("checkpoints"))
 
-        # Merge both
-        merged = merge_plans(plan1, plan2)
+        # Create another plan from config
+        from gwsim.cli.utils.config import Config
 
-        assert merged.total_batches == 2
-        assert merged.batches[0].simulator_name == "noise"
-        assert merged.batches[0].source == "config"
-        assert merged.batches[1].simulator_name == "signal"
-        assert merged.batches[1].source == "metadata_state"
-        assert merged.batches[1].has_state_snapshot()
+        config = MagicMock(spec=Config)
+        config.globals = globals_config
+        config.simulators = {"signal": simulator_config}
+        plan_config = create_plan_from_config(config, Path("checkpoints"))
+
+        # Merge the plans
+        merged_plan = merge_plans(plan_metadata, plan_config)
+
+        assert merged_plan.total_batches == 2
+        # Check that metadata fields are preserved in merged plan
+        noise_batch = merged_plan.get_batches_for_simulator("noise")[0]
+        assert noise_batch.has_state_snapshot()
+        assert noise_batch.batch_metadata["author"] == "merge_author"
+        assert noise_batch.batch_metadata["email"] == "merge@example.com"

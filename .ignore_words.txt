@@ -36,6 +36,7 @@ NSBH
 Nyquist
 objname
 onboardsupport
+parseable
 pycbc
 pymap
 pytestmark
