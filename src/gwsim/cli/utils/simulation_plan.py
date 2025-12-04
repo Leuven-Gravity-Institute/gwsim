@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import datetime
+import getpass
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -66,6 +68,12 @@ class SimulationBatch:
     source: str = "config"
     """Source of this batch: 'config' (fresh), 'metadata_config' (from saved config),
     or 'metadata_state' (from saved state snapshot)"""
+
+    author: str | None = None
+    """Author of this batch (from metadata)"""
+
+    email: str | None = None
+    """Email of the author (from metadata)"""
 
     def __post_init__(self):
         """Post-initialization checks.
@@ -173,6 +181,9 @@ def create_batch_metadata(
     globals_config: GlobalsConfig,
     pre_batch_state: dict[str, Any] | None = None,
     source: str = "config",
+    author: str | None = None,
+    email: str | None = None,
+    timestamp: datetime.datetime | None = None,
 ) -> dict[str, Any]:
     """Create metadata for a simulation batch.
 
@@ -188,15 +199,27 @@ def create_batch_metadata(
         globals_config: Global configuration
         pre_batch_state: Optional state snapshot taken before batch generation
         source: Source of this batch: 'config', 'metadata_config', or 'metadata_state'
+        author: Optional author name
+        email: Optional author email
+        timestamp: Optional timestamp for when the batch was created
 
     Returns:
         Metadata dictionary suitable for YAML serialization
     """
+    if author is None:
+        author = getpass.getuser()
+
+    if timestamp is None:
+        timestamp = datetime.datetime.now(datetime.timezone.utc)
+
     metadata: dict[str, Any] = {
         "simulator_name": simulator_name,
         "batch_index": batch_index,
         "simulator_config": simulator_config.model_dump(mode="python"),
         "globals_config": globals_config.model_dump(mode="python"),
+        "author": author,
+        "email": email,
+        "timestamp": timestamp.isoformat(),
         "versions": get_dependency_versions(),
     }
 
@@ -208,7 +231,9 @@ def create_batch_metadata(
     return metadata
 
 
-def create_plan_from_config(config: Config, checkpoint_dir: Path) -> SimulationPlan:
+def create_plan_from_config(
+    config: Config, checkpoint_dir: Path, author: str | None = None, email: str | None = None
+) -> SimulationPlan:
     """Create a simulation plan from a configuration file.
 
     This is the standard workflow: start fresh with a config.
@@ -220,6 +245,8 @@ def create_plan_from_config(config: Config, checkpoint_dir: Path) -> SimulationP
     Args:
         config: Parsed Config object
         checkpoint_dir: Directory for checkpoints
+        author: Optional author name for metadata
+        email: Optional author email for metadata
 
     Returns:
         SimulationPlan with all batches defined across all simulators
@@ -256,6 +283,8 @@ def create_plan_from_config(config: Config, checkpoint_dir: Path) -> SimulationP
                 globals_config=config.globals,
                 batch_index=global_batch_index,
                 source="config",
+                author=author,
+                email=email,
             )
             plan.add_batch(batch)
             global_batch_index += 1
@@ -267,6 +296,8 @@ def create_plan_from_config(config: Config, checkpoint_dir: Path) -> SimulationP
 def create_plan_from_metadata_files(
     metadata_files: list[Path],
     checkpoint_dir: Path,
+    author: str | None = None,
+    email: str | None = None,
 ) -> SimulationPlan:
     """Create a simulation plan from individual metadata files.
 
@@ -276,6 +307,8 @@ def create_plan_from_metadata_files(
     Args:
         metadata_files: List of paths to individual metadata YAML files
         checkpoint_dir: Directory for checkpoints
+        author: Optional author name for metadata
+        email: Optional author email for metadata
 
     Returns:
         SimulationPlan with batches reconstructed from metadata
@@ -320,6 +353,8 @@ def create_plan_from_metadata_files(
             batch_metadata=metadata,
             pre_batch_state=pre_batch_state,
             source="metadata_state" if pre_batch_state else "metadata_config",
+            author=author,
+            email=email,
         )
         plan.add_batch(batch)
 
@@ -333,6 +368,8 @@ def create_plan_from_metadata_files(
 def create_plan_from_metadata(
     metadata_dir: Path,
     checkpoint_dir: Path,
+    author: str | None = None,
+    email: str | None = None,
 ) -> SimulationPlan:
     """Create a simulation plan from a directory of metadata files.
 
@@ -342,6 +379,8 @@ def create_plan_from_metadata(
     Args:
         metadata_dir: Directory containing metadata YAML files
         checkpoint_dir: Directory for checkpoints
+        author: Optional author name for metadata
+        email: Optional author email for metadata
 
     Returns:
         SimulationPlan with batches reconstructed from metadata
@@ -360,7 +399,7 @@ def create_plan_from_metadata(
     # Find all metadata files in directory
     metadata_files = list(metadata_dir.glob("*.metadata.yaml"))
 
-    plan = create_plan_from_metadata_files(metadata_files, checkpoint_dir)
+    plan = create_plan_from_metadata_files(metadata_files, checkpoint_dir, author=author, email=email)
     logger.info(
         "Created simulation plan from metadata directory: %d batches from %s",
         plan.total_batches,

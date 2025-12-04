@@ -262,6 +262,8 @@ def save_batch_metadata(
         globals_config=batch.globals_config,
         pre_batch_state=state_to_save,
         source=batch.source,
+        author=batch.author,
+        email=batch.email,
     )
 
     # Add output files to metadata for easy discovery
@@ -589,6 +591,8 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
     metadata_dir: str | None = None,
     overwrite: bool = False,
     metadata: bool = True,
+    author: str | None = None,
+    email: str | None = None,
 ) -> None:
     """Internal implementation of simulate command that accepts both str and list[str].
 
@@ -606,6 +610,8 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
         metadata_dir: Metadata directory override (config mode only)
         overwrite: Whether to overwrite existing files
         metadata: Whether to save metadata files (config mode only)
+        author: Author name for metadata
+        email: Author email for metadata
 
     Returns:
         None
@@ -646,10 +652,10 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
                 if not metadata_files:
                     raise ValueError(f"No metadata files found in directory: {metadata_dir_path}")
                 logger.info("Found %d metadata files in directory: %s", len(metadata_files), metadata_dir_path)
-                plan = create_plan_from_metadata_files(metadata_files, checkpoint_dir)
+                plan = create_plan_from_metadata_files(metadata_files, checkpoint_dir, author=author, email=email)
             else:
                 # Individual metadata files
-                plan = create_plan_from_metadata_files(metadata_paths, checkpoint_dir)
+                plan = create_plan_from_metadata_files(metadata_paths, checkpoint_dir, author=author, email=email)
 
             logger.info(
                 "Created reproduction plan from %d metadata file(s) with %d batches",
@@ -662,7 +668,7 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
             config = load_config(file_name=config_path)
             logger.debug("Configuration loaded successfully from %s", config_file_names_list[0])
 
-            plan = create_plan_from_config(config, checkpoint_dir)
+            plan = create_plan_from_config(config, checkpoint_dir, author=author, email=email)
             logger.info("Created simulation plan with %d batches", plan.total_batches)
 
         # ===== Determine output directories (same logic for both modes) =====
@@ -731,6 +737,8 @@ def simulate_command(
     ] = None,
     overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite existing files")] = False,
     metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files (only in config mode)")] = True,
+    author: Annotated[str | None, typer.Option("--author", help="Author name for the simulation")] = None,
+    email: Annotated[str | None, typer.Option("--email", help="Author email for the simulation")] = None,
 ) -> None:
     """Generate gravitational wave simulation data using specified simulators.
 
@@ -767,4 +775,6 @@ def simulate_command(
         metadata_dir=metadata_dir,
         overwrite=overwrite,
         metadata=metadata,
+        author=author,
+        email=email,
     )
