@@ -20,6 +20,7 @@ currentmodule
 deformability
 dets
 docstrings
+DOI
 ECEF
 endfor
 Euregion

@@ -11,6 +11,27 @@ import requests
 from gwsim.utils.retry import retry_on_failure
 
 
+def get_deposition_id_from_doi(doi: str) -> tuple[str, bool]:
+    """Extract deposition ID from a Zenodo DOI.
+
+    Args:
+        doi: The DOI string.
+
+    returns:
+        A tuple containing the deposition ID and a boolean indicating if it's from sandbox.
+    """
+    parts = doi.split(".")
+    deposition_id = parts[1]
+    if parts[0] == "10.5072/zenodo":
+        sandbox = True
+    elif parts[0] == "10.5281/zenodo":
+        sandbox = False
+    else:
+        raise ValueError(f"Invalid Zenodo DOI: {doi}")
+
+    return deposition_id, sandbox
+
+
 class ZenodoClient:
     """Client for interacting with Zenodo API (production and sandbox)."""
 
