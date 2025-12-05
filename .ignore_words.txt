@@ -10,6 +10,7 @@ Cascina
 checkpointed
 Checkpointing
 checkpointing
+cireddu
 coalescences
 colorbar
 coo
@@ -19,10 +20,12 @@ currentmodule
 deformability
 dets
 docstrings
+DOI
 ECEF
 endfor
 Euregion
 figsize
+francesco
 freqs
 gengli
 genindex
@@ -68,6 +71,7 @@ tukey
 Uncatched
 Uninjected
 WIP
+unsubmitted
 xaltitude
 xangle
 xarm
@@ -81,3 +85,4 @@ yangle
 yarm
 ylabel
 ylength
+Zenodo
