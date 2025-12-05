@@ -66,7 +66,7 @@ class ZenodoClient:
             timeout=timeout,
             json=data,
         )
-        return response.json()
+        return response
 
     def upload_file(
         self, deposition_id: str, file_path: Path, timeout=300, auto_timeout: bool = True
@@ -102,7 +102,7 @@ class ZenodoClient:
                 data=f,
             )
 
-        return response.json()
+        return response
 
     def update_metadata(self, deposition_id: str, metadata: dict[str, Any], timeout: int = 60) -> dict[str, Any]:
         """Update metadata for a deposition.
@@ -124,7 +124,7 @@ class ZenodoClient:
             data=json.dumps(data),
         )
 
-        return response.json()
+        return response
 
     def publish_deposition(self, deposition_id: str, timeout: int = 300) -> dict[str, Any]:
         """Publish a deposition.
@@ -142,7 +142,7 @@ class ZenodoClient:
             headers=self.headers,
             timeout=timeout,
         )
-        return response.json()
+        return response
 
     def get_deposition(self, deposition_id: str, timeout: int = 60) -> dict[str, Any]:
         """Retrieve a deposition's details.
@@ -160,7 +160,7 @@ class ZenodoClient:
             headers={"Content-Type": "application/json", **self.headers},
             timeout=timeout,
         )
-        return response.json()
+        return response
 
     def download_file(
         self,
@@ -192,8 +192,12 @@ class ZenodoClient:
         if file_size_in_mb is not None:
             timeout = max(timeout, int(file_size_in_mb * 10))  # 10 seconds per MB
 
-        response = requests.get(
-            file_url, headers={"Content-Type": "application/json", **self.headers}, timeout=timeout, stream=True
+        response = self._request(
+            "GET",
+            file_url,
+            headers={"Content-Type": "application/json", **self.headers},
+            timeout=timeout,
+            stream=True,
         )
 
         # Atomic write to avoid incomplete files
@@ -202,7 +206,7 @@ class ZenodoClient:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
         output_path_tmp.rename(output_path)
-        return response.json()
+        return response
 
     def list_depositions(self, status: str = "published", timeout: int = 60) -> list[dict[str, Any]]:
         """List all depositions for the authenticated user.
@@ -222,7 +226,7 @@ class ZenodoClient:
             timeout=timeout,
             params=params,
         )
-        return response.json()
+        return response
 
     def delete_deposition(self, deposition_id: str, timeout: int = 60) -> dict[str, Any]:
         """Delete a deposition.
@@ -240,4 +244,4 @@ class ZenodoClient:
             headers={"Content-Type": "application/json", **self.headers},
             timeout=timeout,
         )
-        return response.json()
+        return response
