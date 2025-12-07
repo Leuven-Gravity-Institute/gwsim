@@ -1,4 +1,5 @@
 stages:
+  - .pre
   - test
   - coverage
   - release
@@ -23,7 +24,6 @@ commitlint:
   rules:
     # Run on every merge request
     - if: $CI_MERGE_REQUEST_IID
-    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH =~ /^(main|master|develop)$/
   script:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     # Lint all commits introduced by this MR
@@ -48,7 +48,6 @@ commitlint:
     paths:
       - .coverage.*
       - test-results.xml
-      - coverage.xml
     reports:
       junit: test-results.xml
   rules:
@@ -97,7 +96,12 @@ coverage-report:
     - coverage report --show-missing
     - coverage html
     - coverage xml
+    - |
+      # Extract and log coverage percentage for GitLab badge parsing
+      COVERAGE=$(coverage report | grep TOTAL | awk '{print $NF}' || echo "0%")
+      echo "Coverage: $COVERAGE"
     - echo "Coverage report generated successfully"
+  coverage: '/TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     when: always
     paths:
@@ -114,6 +118,8 @@ coverage-report:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_TAG'
+  allow_failure: true
 
 publish_to_pypi:
   stage: publish
