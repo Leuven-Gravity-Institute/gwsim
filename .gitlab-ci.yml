@@ -101,6 +101,7 @@ coverage-report:
       COVERAGE=$(coverage report | grep TOTAL | awk '{print $NF}' || echo "0%")
       echo "Coverage: $COVERAGE"
     - echo "Coverage report generated successfully"
+  coverage: '/TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     when: always
     paths:

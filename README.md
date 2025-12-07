@@ -1,7 +1,7 @@
 # gwsim
 
 [![Pipeline](https://gitlab.et-gw.eu/et-projects/software/gwsim/badges/main/pipeline.svg)](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/pipelines)
-[![Coverage](https://gitlab.et-gw.eu/et-projects/software/gwsim/badges/main/coverage.svg)](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/graphs/main/charts)
+[![Coverage Report](https://gitlab.et-gw.eu/et-projects/software/gwsim/badges/main/coverage.svg)](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/commits/main)
 [![PyPI Version](https://img.shields.io/pypi/v/gwsim)](https://pypi.org/project/gwsim/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/gwsim)](https://pypi.org/project/gwsim/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/blob/main/LICENSE)
