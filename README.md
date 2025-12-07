@@ -21,13 +21,34 @@ A Python package for generating Mock Data Challenge (MDC) datasets for the gravi
 
 ## Installation
 
+We recommend using `uv` to manage virtual environments for installing gwsim.
+
+If you don't have `uv` installed, you can install it with pip. See the project pages for more details:
+
+- Install via pip: `pip install --upgrade pip && pip install uv`
+- Project pages: [uv on PyPI](https://pypi.org/project/uv/) | [uv on GitHub](https://github.com/astral-sh/uv)
+- Full documentation and usage guide: [uv docs](https://docs.astral.sh/uv/)
+
+### From PyPI
+
+```bash
+# Create a virtual environment (recommended with uv)
+uv venv gwsim-env
+source gwsim-env/bin/activate  # On Windows: gwsim-env\Scripts\activate
+uv pip install gwsim
+```
+
 ### From Source
 
 ```bash
 git clone https://gitlab.et-gw.eu/et-projects/software/gwsim.git
-cd gwsim
-pip install -e .
+ce gwsim
+# Create a virtual environment (recommended with uv)
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install .
 ```
+
 ## Quick Start
 
 ### Command Line
