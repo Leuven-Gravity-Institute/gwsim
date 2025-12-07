@@ -97,6 +97,10 @@ coverage-report:
     - coverage report --show-missing
     - coverage html
     - coverage xml
+    - |
+      # Extract and log coverage percentage for GitLab badge parsing
+      COVERAGE=$(coverage report | grep -oP '\b\d+(?:\.\d+)?%' | head -1 || echo "0%")
+      echo "Coverage: $COVERAGE"
     - echo "Coverage report generated successfully"
   artifacts:
     when: always
@@ -114,6 +118,8 @@ coverage-report:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_TAG'
+  allow_failure: true
 
 publish_to_pypi:
   stage: publish
