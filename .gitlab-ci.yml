@@ -131,6 +131,10 @@ create-changelog:
   <<: *base_release
   stage: release
   image: ghcr.io/orhun/git-cliff/git-cliff:latest  # Use git-cliff Docker image for changelog generation
+  entrypoint: [""]
+  variables:
+    GIT_STRATEGY: clone # clone entire repo instead of reusing workspace
+    GIT_DEPTH: 0 # avoid shallow clone to give cliff all the info it needs
   script:
     - git-cliff --latest > release_notes.md
   artifacts:
