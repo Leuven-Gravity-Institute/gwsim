@@ -1,5 +1,7 @@
 """Glitch simulator based on `gengli`."""
 
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import logging
@@ -125,7 +127,7 @@ class GengliGlitchSimulator(GlitchSimulator):
             return np.loadtxt(path, delimiter=",")
         raise ValueError(f"Unsupported file format: {path.suffix}. Use .npy, .txt, or .csv.")
 
-    def _initialize_psd(self, psd_data: np.ndarray, duration: float) -> np.ndarray:
+    def _initialize_psd(self, psd_data: np.ndarray, duration: float) -> np.ndarray:  # pylint: disable=duplicate-code
         """Initialize PSD interpolation for the frequency range.
 
         Args:

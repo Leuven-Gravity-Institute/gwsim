@@ -108,7 +108,9 @@ def handle_signal(cleanup_fn: Callable) -> Callable:
     return handler
 
 
-def save_file_safely(file_name: str | Path, backup_file_name: str | Path, save_function: Callable, **kwargs) -> None:
+def save_file_safely(
+    file_name: str | Path, backup_file_name: str | Path, save_function: Callable, **kwargs
+) -> None:  # pylint: disable=duplicate-code
     """A helper function to save file safely by first creating a backup.
 
     This function is designed for saving a checkpoint file that has a fixed file name.
