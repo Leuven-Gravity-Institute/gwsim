@@ -36,7 +36,8 @@ def save_metadata_with_external_state(
     if "pre_batch_state" in metadata_copy:
         external_state = {}
         for key, value in metadata_copy["pre_batch_state"].items():
-            if isinstance(value, np.ndarray):
+            # Use type() to avoid issues with subclasses of np.ndarray
+            if type(value) is np.ndarray:  # pylint: disable=unidiomatic-typecheck
                 # Save all arrays to external files
                 state_file = f"{metadata_file.stem}_state_{key}.npy"
                 np.save(metadata_dir / state_file, value)
