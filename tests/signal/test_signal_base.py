@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -49,6 +50,11 @@ def signal_simulator_with_mocks(tmp_path):
         simulator.waveform_factory = MagicMock()
         simulator.population_file = str(dummy_file)  # Required for metadata property
         simulator.population_file_type = "pycbc"  # Required for metadata property
+        simulator.population_parameter_name_mapper = {}  # Required for metadata
+        simulator.population_sort_by = None  # Required for metadata
+        simulator.population_cache_dir = Path.home() / ".gwsim" / "population"  # Required for metadata
+        simulator.population_download_timeout = 300  # Required for metadata
+        simulator._population_metadata = {}  # Required for metadata
 
         return simulator
 
