@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import yaml
 
 from gwsim.cli.utils.config import Config, GlobalsConfig, SimulatorConfig
@@ -146,11 +147,12 @@ class SimulationPlan:
         return [b for b in self.batches if b.simulator_name == simulator_name]
 
 
-def parse_batch_metadata(metadata_file: Path) -> dict[str, Any]:
+def parse_batch_metadata(metadata_file: Path, metadata_dir: Path | None = None) -> dict[str, Any]:
     """Parse a batch metadata file.
 
     Args:
         metadata_file: Path to BATCH-*.metadata.yaml file
+        metadata_dir: Directory containing external state files. If None, uses parent of metadata_file
 
     Returns:
         Parsed metadata dictionary
@@ -162,6 +164,11 @@ def parse_batch_metadata(metadata_file: Path) -> dict[str, Any]:
     if not metadata_file.exists():
         raise FileNotFoundError(f"Metadata file not found: {metadata_file}")
 
+    if metadata_dir is None:
+        metadata_dir = metadata_file.parent
+    else:
+        metadata_dir = Path(metadata_dir)
+
     try:
         with metadata_file.open(encoding="utf-8") as f:
             metadata = yaml.safe_load(f)
@@ -171,6 +178,20 @@ def parse_batch_metadata(metadata_file: Path) -> dict[str, Any]:
     if not isinstance(metadata, dict):
         raise ValueError(f"Metadata must be a dictionary, got {type(metadata)}")
 
+    # Reconstruct pre_batch_state from external files
+    if "pre_batch_state" in metadata:
+        reconstructed_state = {}
+        for key, value in metadata["pre_batch_state"].items():
+            if isinstance(value, dict) and value.get("_external_file"):
+                # Load external file
+                state_file = metadata_dir / value["file"]
+                if not state_file.exists():
+                    raise FileNotFoundError(f"External state file not found: {state_file}")
+                reconstructed_state[key] = np.load(state_file)
+                logger.info("Loaded external state %s from %s", key, state_file)
+            else:
+                reconstructed_state[key] = value
+        metadata["pre_batch_state"] = reconstructed_state
     return metadata
 
 
