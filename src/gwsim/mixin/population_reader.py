@@ -115,6 +115,8 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
             **(population_parameter_name_mapper or {}),
         }
 
+        self.population_sort_by = population_sort_by
+
         # Apply the parameter name mapper after reading the population data
         self.population_data = self._population_apply_parameter_name_mapper(
             self.population_data, self.population_parameter_name_mapper
@@ -124,8 +126,8 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
         self.population_data = self._population_post_process_population_data(self.population_data)
 
         # Sort the population data if requested
-        if population_sort_by is not None and population_sort_by in self.population_data.columns:
-            self.population_data = self.population_data.sort_values(by=population_sort_by).reset_index(drop=True)
+        if self.population_sort_by is not None and self.population_sort_by in self.population_data.columns:
+            self.population_data = self.population_data.sort_values(by=self.population_sort_by).reset_index(drop=True)
 
     @property
     def population_file(self) -> Path:
@@ -359,8 +361,14 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
             "population_reader": {
                 "arguments": {
                     "population_file": str(self.population_file),
+                    "population_parameter_name_mapper": self.population_parameter_name_mapper,
+                    "population_sort_by": self.population_sort_by,
+                    "population_cache_dir": self.population_cache_dir,
+                    "population_download_timeout": self.population_download_timeout,
                 },
-                **getattr(self, "_population_metadata", {}),
+                "population_metadata": {
+                    **getattr(self, "_population_metadata", {}),
+                },
             }
         }
         return metadata
