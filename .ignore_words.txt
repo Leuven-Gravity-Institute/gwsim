@@ -12,7 +12,6 @@ checkpointing
 Checkpointing
 cireddu
 coalescences
-commitlint
 coba
 colorbar
 commitlint
@@ -56,6 +55,7 @@ objtype
 onboardsupport
 orcid
 parseable
+Phicoal
 pycbc
 pymap
 pytestmark
