@@ -28,6 +28,7 @@ Euregion
 figsize
 francesco
 freqs
+frequencyseries
 gengli
 genindex
 geocent
@@ -37,6 +38,7 @@ infft
 Inspiral
 interp
 intersphinx
+isot
 levelname
 LIGO
 mathjax
@@ -61,6 +63,7 @@ representer
 retryable
 rtol
 SEOBN
+snrs
 srange
 srate
 submatrix
@@ -89,3 +92,4 @@ yarm
 ylabel
 ylength
 Zenodo
+ZENODO

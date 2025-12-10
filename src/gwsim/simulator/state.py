@@ -10,7 +10,7 @@ from typing import Any, Generic, TypeVar, overload
 T = TypeVar("T")
 
 
-class StateAttribute(Generic[T]):
+class StateAttribute(Generic[T]):  # pylint: disable=duplicate-code
     """A state attribute."""
 
     def __init__(

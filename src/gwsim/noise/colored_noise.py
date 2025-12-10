@@ -1,5 +1,7 @@
 """Colored noise simulator for gravitational wave detectors."""
 
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import logging
@@ -160,7 +162,7 @@ class ColoredNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-instanc
             return np.loadtxt(path, delimiter=",")
         raise ValueError(f"Unsupported file format: {path.suffix}. Use .npy, .txt, or .csv.")
 
-    def _initialize_psd(self) -> None:
+    def _initialize_psd(self) -> None:  # pylint: disable=duplicate-code
         """Initialize PSD interpolation for the frequency range.
 
         Raises:

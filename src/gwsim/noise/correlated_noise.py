@@ -19,7 +19,7 @@ logger = logging.getLogger("gwsim")
 
 
 class CorrelatedNoiseSimulator(NoiseSimulator):  # pylint: disable=too-many-instance-attributes
-    """Correlated noise simulator for multiple gravitational wave detectors.
+    """Correlated noise simulator for multiple gravitational wave detectors
 
     This class generates noise time series with specified power spectral density (PSD)
     and cross-spectral density (CSD) for multiple detectors. The correlations between
