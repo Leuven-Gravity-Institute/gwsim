@@ -9,10 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import yaml
-
 from gwsim.cli.utils.config import Config, GlobalsConfig, SimulatorConfig
+from gwsim.cli.utils.metadata import load_metadata_with_external_state
 from gwsim.utils.log import get_dependency_versions
 
 logger = logging.getLogger("gwsim")
@@ -161,38 +159,7 @@ def parse_batch_metadata(metadata_file: Path, metadata_dir: Path | None = None) 
         FileNotFoundError: If file doesn't exist
         ValueError: If YAML is invalid
     """
-    if not metadata_file.exists():
-        raise FileNotFoundError(f"Metadata file not found: {metadata_file}")
-
-    if metadata_dir is None:
-        metadata_dir = metadata_file.parent
-    else:
-        metadata_dir = Path(metadata_dir)
-
-    try:
-        with metadata_file.open(encoding="utf-8") as f:
-            metadata = yaml.safe_load(f)
-    except yaml.YAMLError as e:
-        raise ValueError(f"Failed to parse metadata YAML: {e}") from e
-
-    if not isinstance(metadata, dict):
-        raise ValueError(f"Metadata must be a dictionary, got {type(metadata)}")
-
-    # Reconstruct pre_batch_state from external files
-    if "pre_batch_state" in metadata:
-        reconstructed_state = {}
-        for key, value in metadata["pre_batch_state"].items():
-            if isinstance(value, dict) and value.get("_external_file"):
-                # Load external file
-                state_file = metadata_dir / value["file"]
-                if not state_file.exists():
-                    raise FileNotFoundError(f"External state file not found: {state_file}")
-                reconstructed_state[key] = np.load(state_file)
-                logger.info("Loaded external state %s from %s", key, state_file)
-            else:
-                reconstructed_state[key] = value
-        metadata["pre_batch_state"] = reconstructed_state
-    return metadata
+    return load_metadata_with_external_state(metadata_file, metadata_dir)
 
 
 def create_batch_metadata(
