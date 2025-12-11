@@ -87,7 +87,7 @@ def _config_command_impl(  # pylint: disable=too-many-locals,too-many-branches,t
     if get is not None:
         src_path = examples_dir / get / "config.yaml"
         if not src_path.exists():
-            typer.echo(f"Error: Example configuration '{get}' does not exist in examples directory.", err=True)
+            logger.error("Example configuration '%s' does not exist in examples directory.", get)
             raise typer.Exit(1)
         if output.is_dir():
             dst_path = output / "config.yaml"
@@ -97,8 +97,11 @@ def _config_command_impl(  # pylint: disable=too-many-locals,too-many-branches,t
         logger.info("Copied example configuration file: %s to %s", get / "config.yaml", dst_path)
         return
 
-    typer.echo("Error: No action specified. Please provide one of --init, --list, or --get.", err=True)
-    typer.echo("Use --help for more information.", err=True)
+    logger.error(
+        "No action specified. Please provide one of [bold green]--init[/bold green], "
+        "[bold green]--list[/bold green], or [bold green]--get[/bold green]."
+    )
+    logger.error("Use [bold green]--help[/bold green] for more information.")
     raise typer.Exit(1)
 
 
