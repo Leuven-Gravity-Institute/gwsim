@@ -29,7 +29,7 @@ simulators:
         # Reference frequency in Hz for waveform generation
         reference_frequency: 50
       # Minimum frequency in Hz for the waveform generation
-      minimum_frequency: 20
+      minimum_frequency: 2
       # List of detector names to generate noise for (network support)
       detectors:
         - E1_triangle_sardinia
