@@ -4,6 +4,7 @@ astropy
 autoclass
 automodule
 autosummary
+autouse
 butterworth
 capsys
 Cascina
