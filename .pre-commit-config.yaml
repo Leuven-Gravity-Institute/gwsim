@@ -76,6 +76,7 @@ repos:
             pymap3d,
             pytest,
             filelock,
+            hatchling,
           ]
 
   - repo: https://github.com/asottile/pyupgrade
