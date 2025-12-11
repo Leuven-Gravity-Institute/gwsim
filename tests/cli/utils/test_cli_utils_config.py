@@ -16,6 +16,7 @@ from gwsim.cli.utils.config import (
     GlobalsConfig,
     SimulatorConfig,
     SimulatorOutputConfig,
+    get_examples_dir,
     get_output_directories,
     load_config,
     merge_parameters,
@@ -728,3 +729,28 @@ simulators:
             assert "noise" in loaded.simulators
             assert "signal" in loaded.simulators
             assert loaded.globals.simulator_arguments["sampling_frequency"] == 2048
+
+
+def test_get_examples_dir_discovers_examples():
+    """Test that get_examples_dir() finds the examples directory with YAML files."""
+    examples_dir = get_examples_dir()
+
+    # Assert it's a Path object
+    assert isinstance(examples_dir, Path)
+
+    # Assert the directory exists
+    assert examples_dir.exists(), f"Examples directory not found: {examples_dir}"
+
+    # Assert it's a directory
+    assert examples_dir.is_dir(), f"Examples path is not a directory: {examples_dir}"
+
+    # Assert it contains at least one YAML file (to verify discovery works)
+    yaml_files = list(examples_dir.rglob("*.yaml"))
+    assert len(yaml_files) > 0, f"No YAML files found in examples directory: {examples_dir}"
+
+    # Optional: Check for a known example file (adjust based on your examples/)
+    # This ensures the structure is as expected
+    expected_files = ["noise/colored_noise_simulator/config.yaml"]  # Example; update as needed
+    for rel_path in expected_files:
+        full_path = examples_dir / rel_path
+        assert full_path.exists(), f"Expected example file not found: {full_path}"
