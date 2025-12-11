@@ -35,6 +35,7 @@ frequencyseries
 gengli
 genindex
 geocent
+GWF
 gwpy
 gwsim
 infft
