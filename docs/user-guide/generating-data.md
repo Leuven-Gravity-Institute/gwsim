@@ -71,10 +71,11 @@ gwsim config --get signal/bbh/et_triangle_emr --output config.yaml
 gwsim simulate config.yaml
 ```
 
+<!-- prettier-ignore -->
 !!! note
-The configuration file automatically downloads the BBH population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
-The file is saved in a cache directory (by default, `~/.gwsim/population/`).
-When the same population file is needed again, gwsim uses the cached copy to avoid re-downloading.
+    The configuration file automatically downloads the BBH population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
+    The file is saved in a cache directory (by default, `~/.gwsim/population/`).
+    When the same population file is needed again, gwsim uses the cached copy to avoid re-downloading.
 
 ### Binary Neutron Star (BNS) Signals
 
@@ -103,10 +104,11 @@ gwsim config --get signal/bns/et_triangle_emr --output config.yaml
 gwsim simulate config.yaml
 ```
 
+<!-- prettier-ignore -->
 !!! note
-The configuration file automatically downloads the BNS population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
-The file is saved in a cache directory (by default, `~/.gwsim/population/`).
-When the same population file is needed again, `gwsim` uses the cached copy to avoid re-downloading.
+    The configuration file automatically downloads the BNS population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
+    The file is saved in a cache directory (by default, `~/.gwsim/population/`).
+    When the same population file is needed again, `gwsim` uses the cached copy to avoid re-downloading.
 
 ## Generating Transient Noise Artifacts (Glitches)
 
@@ -138,15 +140,17 @@ gwsim config --get glitch/gengli/et_triangle_emr --output config.yaml
 gwsim simulate config.yaml
 ```
 
+<!-- prettier-ignore -->
 !!! note
-The configuration file automatically downloads the glitch population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
-The file is saved in a cache directory (by default, `~/.gwsim/population/`).
-When the same population file is needed again, gwsim uses the cached copy to avoid re-downloading.
+    The configuration file automatically downloads the glitch population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
+    The file is saved in a cache directory (by default, `~/.gwsim/population/`).
+    When the same population file is needed again, gwsim uses the cached copy to avoid re-downloading.
 
+<!-- prettier-ignore -->
 !!! note
-The [`GengliGlitchSimulator`](/reference/gwsim/glitch/gengli_glitch) currently supports only a single detector at a time.
-To generate glitch-containing data for detectors E2 and E3, rerun the command above using the [`glitch/gengli/et_triangle_emr/config.yaml`](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/blob/main/examples/glitch/gengli/et_triangle_emr/config.yaml) configuration file with a different glitch population file, seed, and detector name.
-Note that a different glitch population is used for each detector.
+    The [`GengliGlitchSimulator`](/reference/gwsim/glitch/gengli_glitch) currently supports only a single detector at a time.
+    To generate glitch-containing data for detectors E2 and E3, rerun the command above using the [`glitch/gengli/et_triangle_emr/config.yaml`](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/blob/main/examples/glitch/gengli/et_triangle_emr/config.yaml) configuration file with a different glitch population file, seed, and detector name.
+    Note that a different glitch population is used for each detector.
 
 ## Using Different Detector Configurations
 
@@ -203,8 +207,9 @@ simulators:
       psd: ET_15_HF_psd.txt
 ```
 
+<!-- prettier-ignore -->
 !!! note
-The detector geometries assume 10 km arms for triangular configurations and 15 km arms for 2L configurations. Choose sensitivity curves accordingly.
+    The detector geometries assume 10 km arms for triangular configurations and 15 km arms for 2L configurations. Choose sensitivity curves accordingly.
 
 ## Adjusting Dataset Duration
 
@@ -228,9 +233,11 @@ The total number of frame files depends on the duration of each frame file and t
 max_samples = ceil(total-duration / duration)
 ```
 
+<!-- prettier-ignore-start -->
+
 !!! note
-The `total-duration` argument can be passed as a `float` in seconds, or as a `str` specifying the time unit (`"1 day"`, `"5 days"`, `"2 weeks"`, `"2 months"`, etc.).
-The supported time units are:
+    The `total-duration` argument can be passed as a `float` in seconds, or as a `str` specifying the time unit (`"1 day"`, `"5 days"`, `"2 weeks"`, `"2 months"`, etc.).
+    The supported time units are:
 
     - `second`
     - `minute`
@@ -242,24 +249,32 @@ The supported time units are:
 
     Singular and plural forms are both accepted (e.g., `"1 day"` and `"2 days"`).
 
+<!-- prettier-ignore-end -->
+
+<!-- prettier-ignore -->
 !!! tip
-A [UTC/GPS time converter](https://gwosc.org/gps/) is available at the Gravitational Wave Open Science Center.
+    A [UTC/GPS time converter](https://gwosc.org/gps/) is available at the Gravitational Wave Open Science Center.
+
+<!-- prettier-ignore-start -->
 
 !!! tip
-Sampling frequencies are often powers of 2 for efficiency. Common choices:
+    Sampling frequencies are often powers of 2 for efficiency. Common choices:
 
-      - 4096 Hz (standard for GW data analysis)
-      - 2048 Hz
-      - 16384 Hz (high-frequency instruments)
+    - 4096 Hz (standard for GW data analysis)
+    - 2048 Hz
+    - 16384 Hz (high-frequency instruments)
 
     Lowering sampling frequency reduces computation time but also reduces the highest resolvable frequency (Nyquist limit = sampling_frequency / 2).
+
+<!-- prettier-ignore-end -->
 
 ## Generate Multi-Detector Correlated Noise
 
 You can generate multi-detector correlated noise by specifying a cross-power spectral density (CSD) file:
 
+<!-- prettier-ignore -->
 !!! warning
-The example configuration file is not fully tested yet. Use at your own risk.
+    The example configuration file is not fully tested yet. Use at your own risk.
 
 ```yaml
 globals:
