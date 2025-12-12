@@ -750,7 +750,7 @@ def test_get_examples_dir_discovers_examples():
 
     # Optional: Check for a known example file (adjust based on your examples/)
     # This ensures the structure is as expected
-    expected_files = ["noise/colored_noise_simulator/config.yaml"]  # Example; update as needed
+    expected_files = ["noise/uncorrelated_gaussian/et_triangle_emr/config.yaml"]  # Example; update as needed
     for rel_path in expected_files:
         full_path = examples_dir / rel_path
         assert full_path.exists(), f"Expected example file not found: {full_path}"
