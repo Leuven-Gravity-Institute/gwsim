@@ -1,2 +1,6 @@
 output/
 metadata/
+.gwsim_checkpoint/
+*.gwf
+*metadata.yaml
+*.npy

@@ -59,6 +59,7 @@ gwsim merge filename_noise.gwf filename_signal.gwf \
     --channel E1:STRAIN \
     --output-channel E1:STRAIN
 ```
+
 This produces a merged frame file and a merged metadata file documenting all input files and merge details.
 
 ### Merging Multiple Files
@@ -83,6 +84,8 @@ for data in data_list[1:]:
     combined = combined.append(data)
 ```
 
+<!-- prettier-ignore-start -->
+
 !!! warning
     Two time series can only be combined if:
 
@@ -97,6 +100,8 @@ for data in data_list[1:]:
     noise_data.override_unit(Unit(""))
     signal_data.override_unit(Unit(""))
     ```
+
+<!-- prettier-ignore-end -->
 
 ## Accessing Metadata
 

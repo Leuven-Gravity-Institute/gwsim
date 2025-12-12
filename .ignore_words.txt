@@ -4,6 +4,7 @@ astropy
 autoclass
 automodule
 autosummary
+autouse
 butterworth
 capsys
 Cascina
@@ -34,6 +35,7 @@ frequencyseries
 gengli
 genindex
 geocent
+GWF
 gwpy
 gwsim
 infft
@@ -49,6 +51,7 @@ mollweide
 MSRC
 nbytes
 ndarray
+npy
 NSBH
 Nyquist
 objname

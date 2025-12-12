@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
-import numpy as np
-
-from gwsim.cli.utils.utils import get_file_name_from_template_with_dict
 from gwsim.mixin.detector import DetectorMixin
-from gwsim.mixin.gwf import GWFOutputMixin
 from gwsim.mixin.randomness import RandomnessMixin
 from gwsim.mixin.time_series import TimeSeriesMixin
 from gwsim.simulator.base import Simulator
@@ -17,9 +12,7 @@ from gwsim.simulator.state import StateAttribute
 from gwsim.utils.random import get_state
 
 
-class NoiseSimulator(
-    RandomnessMixin, DetectorMixin, TimeSeriesMixin, GWFOutputMixin, Simulator
-):  # pylint: disable=duplicate-code
+class NoiseSimulator(RandomnessMixin, TimeSeriesMixin, DetectorMixin, Simulator):  # pylint: disable=duplicate-code
     """Base class for noise simulators."""
 
     start_time = StateAttribute(0)
@@ -54,61 +47,6 @@ class NoiseSimulator(
             detectors=detectors,
             **kwargs,
         )
-
-    def save_batch(self, batch: np.ndarray, file_name: str | Path, overwrite: bool = False, **kwargs) -> None:
-        """Save a batch of noise data to a file.
-
-        Args:
-            batch: Batch of noise data to save.
-            file_name: Name of the output file.
-            overwrite: Whether to overwrite existing files. Default is False.
-            **kwargs: Additional arguments for the output mixin.
-
-        Raises:
-            NotImplementedError: If the output mixin does not implement this method.
-        """
-        suffix = Path(file_name).suffix.lower()
-        if suffix == ".gwf":
-            save_function = self.save_batch_to_gwf
-        else:
-            raise NotImplementedError(f"Output format {suffix} not supported by the output mixin.")
-
-        # Check whether the file_name contains the {detector} placeholder
-        if "{detector}" in str(file_name).replace(" ", ""):
-            # Check whether self.detectors is set
-            if self.detectors is None:
-                raise ValueError(
-                    "The file_name contains the {detector} placeholder, but the simulator does not have detectors set."
-                )
-            # Check whether the dimension of batch matches number of detectors
-            if len(batch.shape) == 1:
-                batch = batch[None, :]
-            # Check whether the length of batch matches number of detectors
-            if batch.shape[0] != len(self.detectors):
-                raise ValueError(
-                    f"The batch has {batch.shape[0]} channels, but the simulator has {len(self.detectors)} detectors."
-                )
-            # Save each detector's data separately
-            for i, detector in enumerate(self.detectors):
-                detector_file_name = get_file_name_from_template_with_dict(
-                    template=str(file_name),
-                    values={
-                        "detector": detector,
-                    },
-                )
-                self.save_batch_to_gwf(
-                    batch=batch[i, :],
-                    file_path=detector_file_name,
-                    overwrite=overwrite,
-                    **kwargs,
-                )
-        else:
-            save_function(
-                batch=batch,
-                file_path=file_name,
-                overwrite=overwrite,
-                **kwargs,
-            )
 
     @property
     def metadata(self) -> dict:
