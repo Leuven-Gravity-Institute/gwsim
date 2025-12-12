@@ -24,9 +24,9 @@ simulators:
       population_file: https://sandbox.zenodo.org/records/413548/files/blip_glitch_population_E1.hdf5
       # PSD to recolor the glitches
       psd_file: ET_15_full_cryo_psd.txt
-      # List of detector names to generate noise for (network support)
+      # List of detector names to generate glitch for (NO network support)
       detectors:
-        - E1_2L_aligned_sardinia
+        - E1_2L_misaligned_sardinia
       # Random seed for glitch generation
       seed: 42
     output:
