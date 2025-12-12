@@ -24,8 +24,9 @@ gwsim simulate config.yaml --overwrite
 
 #### Flag `--dry-run` (optional)
 
+<!-- prettier-ignore -->
 !!! warning
-This feature will be added in a near future release. It does not exist yet.
+    This feature will be added in a near future release. It does not exist yet.
 
 Test your configuration without generating data:
 
