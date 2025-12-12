@@ -29,11 +29,13 @@ If you don't have `uv` installed, you can install it with pip. See the project p
 - Project pages: [uv on PyPI](https://pypi.org/project/uv/) | [uv on GitHub](https://github.com/astral-sh/uv)
 - Full documentation and usage guide: [uv docs](https://docs.astral.sh/uv/)
 
+**Note:** The package is built and tested against Python 3.10-3.12. When creating a virtual environment with `uv`, specify the Python version to ensure compatibility: `uv venv --python 3.10` (replace `3.10` with your preferred version in the 3.10-3.12 range). This avoids potential issues with unsupported Python versions.
+
 ### From PyPI
 
 ```bash
 # Create a virtual environment (recommended with uv)
-uv venv gwsim-env
+uv venv gwsim-env --python 3.10
 source gwsim-env/bin/activate  # On Windows: gwsim-env\Scripts\activate
 uv pip install gwsim
 ```
@@ -44,7 +46,7 @@ uv pip install gwsim
 git clone https://gitlab.et-gw.eu/et-projects/software/gwsim.git
 ce gwsim
 # Create a virtual environment (recommended with uv)
-uv venv
+uv venv --python 3.10
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install .
 ```
