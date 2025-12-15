@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from contextlib import contextmanager
 from datetime import timedelta
+from pathlib import Path
 
 import psutil
+
+from gwsim.utils.io import atomic_writer
 
 
 class ResourceMonitor:  # pylint: disable=too-few-public-methods
@@ -142,3 +146,18 @@ class ResourceMonitor:  # pylint: disable=too-few-public-methods
                     logger.info("    %s: %d", io_key, io_value)
             else:
                 logger.info("  %s: %s", key, value)
+
+    def save_metrics(self, file_name: Path | str, encoding: str = "utf-8", overwrite: bool = False) -> None:
+        """Save the resource usage metrics to a JSON file.
+
+        Args:
+            file_name: Path to the output JSON file.
+            encoding: File encoding (default is 'utf-8').
+            overwrite: Whether to overwrite existing file (default is False).
+        """
+        file_name = Path(file_name)
+        if not overwrite and file_name.exists():
+            raise FileExistsError(f"File '{file_name}' already exists and overwrite is set to False.")
+
+        with atomic_writer(file_name, mode="w", encoding=encoding) as f:
+            json.dump(self.metrics, f, indent=4)
