@@ -180,22 +180,22 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
 def simulate_command(
     config_file_names: Annotated[
         list[str],
-        typer.Argument(help="Configuration file (YAML) or metadata files (can specify multiple metadata files)"),
+        typer.Argument(help="Configuration file (YAML) or metadata files (can specify multiple metadata files)."),
     ],
     output_dir: Annotated[
-        str | None, typer.Option("--output-dir", help="Output directory (overrides config/metadata defaults)")
+        str | None, typer.Option("--output-dir", help="Output directory (overrides config/metadata defaults).")
     ] = None,
     metadata_dir: Annotated[
         str | None,
         typer.Option(
-            "--metadata-dir", help="Metadata directory (overrides config/metadata defaults, only for config mode)"
+            "--metadata-dir", help="Metadata directory (overrides config/metadata defaults, only for config mode)."
         ),
     ] = None,
-    overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite existing files")] = False,
-    metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files (only in config mode)")] = True,
-    author: Annotated[str | None, typer.Option("--author", help="Author name for the simulation")] = None,
-    email: Annotated[str | None, typer.Option("--email", help="Author email for the simulation")] = None,
-    dry_run: Annotated[bool, typer.Option("--dry-run", help="Validate the plan without executing")] = False,
+    overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite existing files.")] = False,
+    metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files (only in config mode).")] = True,
+    author: Annotated[str | None, typer.Option("--author", help="Author name for the simulation.")] = None,
+    email: Annotated[str | None, typer.Option("--email", help="Author email for the simulation.")] = None,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Validate the plan without executing.")] = False,
 ) -> None:
     """Generate gravitational wave simulation data using specified simulators.
 
