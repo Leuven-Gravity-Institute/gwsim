@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -164,3 +164,45 @@ class TestResourceMonitor:
 
             metrics = monitor.metrics
             assert metrics["io_operations"] == {}  # Should be empty dict
+
+    def test_log_summary(self):
+        """Test logging of resource usage summary."""
+        monitor = ResourceMonitor()
+        monitor.metrics = {
+            "cpu_core_hours": 1.5,
+            "peak_memory_gb": 2.0,
+            "io_operations": {"read_count": 100, "write_count": 50},
+            "wall_time": "00:00:10",
+        }
+
+        mock_logger = MagicMock()
+        monitor.log_summary(mock_logger)
+
+        expected_calls = [
+            call("Resource Usage Summary:"),
+            call("  %s: %s", "cpu_core_hours", 1.5),
+            call("  %s: %s", "peak_memory_gb", 2.0),
+            call("  IO Operations:"),
+            call("    %s: %d", "read_count", 100),
+            call("    %s: %d", "write_count", 50),
+            call("  %s: %s", "wall_time", "00:00:10"),
+        ]
+        mock_logger.info.assert_has_calls(expected_calls)
+
+    def test_log_summary_empty_io_operations(self):
+        """Test logging when io_operations is empty."""
+        monitor = ResourceMonitor()
+        monitor.metrics = {
+            "cpu_core_hours": 0.5,
+            "io_operations": {},
+        }
+
+        mock_logger = MagicMock()
+        monitor.log_summary(mock_logger)
+
+        expected_calls = [
+            call("Resource Usage Summary:"),
+            call("  %s: %s", "cpu_core_hours", 0.5),
+            call("  %s: %s", "io_operations", {}),
+        ]
+        mock_logger.info.assert_has_calls(expected_calls)
