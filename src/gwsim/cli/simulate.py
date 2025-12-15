@@ -52,6 +52,7 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
         create_plan_from_config,
         create_plan_from_metadata_files,
     )
+    from gwsim.monitor.resource import ResourceMonitor  # pylint: disable=import-outside-toplevel
 
     logger = logging.getLogger("gwsim")
     logger.setLevel(logging.DEBUG)
@@ -146,13 +147,22 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
         validate_plan(plan)
         logger.info("Simulation plan validation passed")
 
-        execute_plan(
-            plan=plan,
-            output_directory=final_output_dir,
-            metadata_directory=final_metadata_dir or Path("metadata"),
-            overwrite=overwrite,
-            max_retries=3,
-        )
+        resource_monitor = ResourceMonitor()
+
+        with resource_monitor.measure():
+            execute_plan(
+                plan=plan,
+                output_directory=final_output_dir,
+                metadata_directory=final_metadata_dir or Path("metadata"),
+                overwrite=overwrite,
+                max_retries=3,
+            )
+
+        resource_monitor.log_summary(logger)
+
+        # Write the resource usage summary to a json file.
+        resource_file = working_dir / "resource_usage_summary.json"
+        resource_monitor.save_metrics(resource_file, overwrite=True)
 
         logger.info("Simulation completed successfully. Output written to %s", final_output_dir)
 
