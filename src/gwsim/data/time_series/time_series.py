@@ -356,3 +356,12 @@ class TimeSeries(JSONSerializable):
         start_time = Quantity(json_dict["start_time"], unit=json_dict["start_time_unit"])
         sampling_frequency = Quantity(json_dict["sampling_frequency"], unit=json_dict["sampling_frequency_unit"])
         return cls(data=data, start_time=start_time, sampling_frequency=sampling_frequency)
+
+    @property
+    def num_of_samples(self) -> int:
+        """Get the number of samples in each channel.
+
+        Returns:
+            Number of samples in each channel.
+        """
+        return self[0].size
