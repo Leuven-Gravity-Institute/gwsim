@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
@@ -140,7 +141,7 @@ class TestInstantiateSimulator:
     def test_instantiate_mock_simulator(self):
         """Test instantiating MockSimulator from config."""
         config = SimulatorConfig(
-            class_="tests.cli.test_simulate.MockSimulator",
+            class_="tests.cli.test_cli_simulate.MockSimulator",
             arguments={"seed": 42},
         )
         sim = instantiate_simulator(config)
@@ -162,7 +163,7 @@ class TestInstantiateSimulator:
         simulator_args = {"seed": 42}  # Override seed, use global max_samples
 
         config = SimulatorConfig(
-            class_="tests.cli.test_simulate.MockSimulator",
+            class_="tests.cli.test_cli_simulate.MockSimulator",
             arguments=simulator_args,
         )
 
@@ -177,7 +178,7 @@ class TestInstantiateSimulator:
         """Test simulator instantiation with only global arguments."""
         global_args = {"seed": 77, "max_samples": 50}
         config = SimulatorConfig(
-            class_="tests.cli.test_simulate.MockSimulator",
+            class_="tests.cli.test_cli_simulate.MockSimulator",
             arguments={},  # No simulator-specific arguments
         )
 
@@ -655,7 +656,7 @@ class TestExecutePlan:
             batch = SimulationBatch(
                 simulator_name="mock",
                 simulator_config=SimulatorConfig(
-                    class_="tests.cli.test_simulate.MockSimulator",
+                    class_="tests.cli.test_cli_simulate.MockSimulator",
                     arguments={"seed": 42},
                     output=SimulatorOutputConfig(file_name="data.json"),
                 ),
@@ -684,7 +685,7 @@ class TestExecutePlan:
                 batch = SimulationBatch(
                     simulator_name="mock",
                     simulator_config=SimulatorConfig(
-                        class_="tests.cli.test_simulate.MockSimulator",
+                        class_="tests.cli.test_cli_simulate.MockSimulator",
                         arguments={"seed": 42},
                         output=SimulatorOutputConfig(file_name=f"batch_{i}.json"),
                     ),
@@ -718,7 +719,7 @@ class TestExecutePlan:
                 batch = SimulationBatch(
                     simulator_name="mock",
                     simulator_config=SimulatorConfig(
-                        class_="tests.cli.test_simulate.MockSimulator",
+                        class_="tests.cli.test_cli_simulate.MockSimulator",
                         arguments={"seed": 42},
                         output=SimulatorOutputConfig(file_name=f"batch_{i}.json"),
                     ),
@@ -751,7 +752,7 @@ class TestCreateSimulationPlanFromConfig:
             ),
             simulators={
                 "mock": SimulatorConfig(
-                    class_="tests.cli.test_simulate.MockSimulator",
+                    class_="tests.cli.test_cli_simulate.MockSimulator",
                     arguments={"seed": 42},
                     output=SimulatorOutputConfig(file_name="output.json"),
                 )
@@ -770,12 +771,12 @@ class TestCreateSimulationPlanFromConfig:
             globals=GlobalsConfig(),
             simulators={
                 "mock1": SimulatorConfig(
-                    class_="tests.cli.test_simulate.MockSimulator",
+                    class_="tests.cli.test_cli_simulate.MockSimulator",
                     arguments={"seed": 1},
                     output=SimulatorOutputConfig(file_name="out1.json"),
                 ),
                 "mock2": SimulatorConfig(
-                    class_="tests.cli.test_simulate.MockSimulator",
+                    class_="tests.cli.test_cli_simulate.MockSimulator",
                     arguments={"seed": 2},
                     output=SimulatorOutputConfig(file_name="out2.json"),
                 ),
@@ -806,7 +807,7 @@ class TestSimulateCommandIntegration:
                 ),
                 simulators={
                     "mock": SimulatorConfig(
-                        class_="tests.cli.test_simulate.MockSimulator",
+                        class_="tests.cli.test_cli_simulate.MockSimulator",
                         arguments={"seed": 42},
                         output=SimulatorOutputConfig(file_name="data.json"),
                     )
@@ -845,7 +846,7 @@ class TestSimulateCommandIntegration:
                 ),
                 simulators={
                     "mock": SimulatorConfig(
-                        class_="tests.cli.test_simulate.MockSimulator",
+                        class_="tests.cli.test_cli_simulate.MockSimulator",
                         arguments={"seed": 42, "max_samples": 1},
                         output=SimulatorOutputConfig(file_name="data.json"),
                     )
@@ -885,7 +886,7 @@ class TestSimulateCommandIntegration:
                 },
                 "simulators": {
                     "mock": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 42,
                         },
@@ -948,7 +949,7 @@ class TestSimulateCommandIntegration:
                 },
                 "simulators": {
                     "mock": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 42,
                         },
@@ -1056,7 +1057,7 @@ class TestSimulateCommandIntegration:
                 },
                 "simulators": {
                     "mock": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 42,
                         },
@@ -1156,6 +1157,53 @@ class TestSimulateCommandIntegration:
                 "Batch 1 and batch 2 should have different initial counters, " "indicating correct state progression"
             )
 
+    def test_simulate_command_dry_run_mode(self):
+        """Test that dry-run mode validates the plan without executing or creating files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create config file
+            config = Config(
+                globals=GlobalsConfig(
+                    working_directory=str(tmpdir_path),
+                    output_directory="output",
+                    metadata_directory="metadata",
+                ),
+                simulators={
+                    "mock": SimulatorConfig(
+                        class_="tests.cli.test_cli_simulate.MockSimulator",
+                        arguments={"seed": 42},
+                        output=SimulatorOutputConfig(file_name="data.json"),
+                    )
+                },
+            )
+
+            config_file = tmpdir_path / "config.yaml"
+            with config_file.open("w") as f:
+                config_dict = config.model_dump(by_alias=True, exclude_none=True)
+                yaml.safe_dump(config_dict, f)
+
+            # Run simulate command in dry-run mode
+            with patch("logging.getLogger") as mock_get_logger:
+                mock_logger = MagicMock()
+                mock_get_logger.return_value = mock_logger
+                _simulate_impl(str(config_file), dry_run=True, overwrite=True, metadata=False)
+
+            # Verify dry-run log message
+            mock_logger.info.assert_called_with("Dry run mode: Simulation plan validated but not executed")
+
+            # Verify no output files were created
+            output_dir = tmpdir_path / "output"
+            assert not output_dir.exists() or not list(
+                output_dir.glob("*")
+            ), "No output files should be created in dry-run mode"
+
+            # Verify no metadata files were created
+            metadata_dir = tmpdir_path / "metadata"
+            assert not metadata_dir.exists() or not list(
+                metadata_dir.glob("*")
+            ), "No metadata files should be created in dry-run mode"
+
 
 class TestSimulateCommandCheckpoint:
     """Test checkpoint functionality for simulation resumption."""
@@ -1177,7 +1225,7 @@ class TestSimulateCommandCheckpoint:
                 },
                 "simulators": {
                     "mock": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 42,
                         },
@@ -1216,7 +1264,7 @@ class TestSimulateCommandCheckpoint:
                 },
                 "simulators": {
                     "mock": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 42,
                         },
@@ -1267,7 +1315,7 @@ class TestSimulateCommandCheckpoint:
                 },
                 "simulators": {
                     "mock": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 42,
                         },
@@ -1313,7 +1361,7 @@ class TestSimulateCommandCheckpoint:
                 },
                 "simulators": {
                     "mock": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 42,
                         },
@@ -1358,7 +1406,7 @@ class TestSimulateCommandCheckpoint:
                 },
                 "simulators": {
                     "mock1": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 1,
                             "max-samples": 2,
@@ -1368,7 +1416,7 @@ class TestSimulateCommandCheckpoint:
                         },
                     },
                     "mock2": {
-                        "class": "tests.cli.test_simulate.MockSimulator",
+                        "class": "tests.cli.test_cli_simulate.MockSimulator",
                         "arguments": {
                             "seed": 2,
                             "max-samples": 2,
