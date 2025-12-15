@@ -17,6 +17,7 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
     metadata: bool = True,
     author: str | None = None,
     email: str | None = None,
+    dry_run: bool = False,
 ) -> None:
     """Internal implementation of simulate command that accepts both str and list[str].
 
@@ -36,6 +37,7 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
         metadata: Whether to save metadata files (config mode only)
         author: Author name for metadata
         email: Author email for metadata
+        dry_run: If True, only validate the plan without executing.
 
     Returns:
         None
@@ -147,6 +149,10 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
         validate_plan(plan)
         logger.info("Simulation plan validation passed")
 
+        if dry_run:
+            logger.info("Dry run mode: Simulation plan validated but not executed")
+            return
+
         resource_monitor = ResourceMonitor()
 
         with resource_monitor.measure():
@@ -174,21 +180,22 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
 def simulate_command(
     config_file_names: Annotated[
         list[str],
-        typer.Argument(help="Configuration file (YAML) or metadata files (can specify multiple metadata files)"),
+        typer.Argument(help="Configuration file (YAML) or metadata files (can specify multiple metadata files)."),
     ],
     output_dir: Annotated[
-        str | None, typer.Option("--output-dir", help="Output directory (overrides config/metadata defaults)")
+        str | None, typer.Option("--output-dir", help="Output directory (overrides config/metadata defaults).")
     ] = None,
     metadata_dir: Annotated[
         str | None,
         typer.Option(
-            "--metadata-dir", help="Metadata directory (overrides config/metadata defaults, only for config mode)"
+            "--metadata-dir", help="Metadata directory (overrides config/metadata defaults, only for config mode)."
         ),
     ] = None,
-    overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite existing files")] = False,
-    metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files (only in config mode)")] = True,
-    author: Annotated[str | None, typer.Option("--author", help="Author name for the simulation")] = None,
-    email: Annotated[str | None, typer.Option("--email", help="Author email for the simulation")] = None,
+    overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite existing files.")] = False,
+    metadata: Annotated[bool, typer.Option("--metadata", help="Generate metadata files (only in config mode).")] = True,
+    author: Annotated[str | None, typer.Option("--author", help="Author name for the simulation.")] = None,
+    email: Annotated[str | None, typer.Option("--email", help="Author email for the simulation.")] = None,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Validate the plan without executing.")] = False,
 ) -> None:
     """Generate gravitational wave simulation data using specified simulators.
 
@@ -232,4 +239,5 @@ def simulate_command(
         metadata=metadata,
         author=author,
         email=email,
+        dry_run=dry_run,
     )

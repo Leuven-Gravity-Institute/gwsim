@@ -24,10 +24,6 @@ gwsim simulate config.yaml --overwrite
 
 #### Flag `--dry-run` (optional)
 
-<!-- prettier-ignore -->
-!!! warning
-    This feature will be added in a near future release. It does not exist yet.
-
 Test your configuration without generating data:
 
 ```bash
@@ -233,5 +229,5 @@ The checkpoint contains:
 1. **Use templates**: Leverage Jinja2 templates for dynamic configuration
 2. **Set seeds**: Always set `seed` for reproducibility
 3. **Check space**: Ensure sufficient disk space before long runs
-4. **Use dry-run**: Test configurations with `--dry-run` before full simulation (**upcoming feature**)
+4. **Use dry-run**: Test configurations with `--dry-run` before full simulation
 5. **Organize outputs**: Use descriptive `output-directory` and `metadata-directory` names
