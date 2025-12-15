@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -206,3 +207,71 @@ class TestResourceMonitor:
             call("  %s: %s", "io_operations", {}),
         ]
         mock_logger.info.assert_has_calls(expected_calls)
+
+    def test_save_metrics_success(self):
+        """Test successful saving of metrics to a new file."""
+        monitor = ResourceMonitor()
+        monitor.metrics = {"cpu_core_hours": 1.0, "peak_memory_gb": 2.0}
+
+        with (
+            patch.object(Path, "exists", return_value=False),
+            patch("gwsim.monitor.resource.atomic_writer") as mock_atomic_writer,
+            patch("json.dump") as mock_json_dump,
+        ):
+            mock_file = MagicMock()
+            mock_atomic_writer.return_value.__enter__.return_value = mock_file
+
+            monitor.save_metrics("test.json")
+
+            file_name = Path("test.json")
+            mock_atomic_writer.assert_called_once_with(file_name, mode="w", encoding="utf-8")
+            mock_json_dump.assert_called_once_with(monitor.metrics, mock_file, indent=4)
+
+    def test_save_metrics_overwrite(self):
+        """Test saving metrics with overwrite=True when file exists."""
+        monitor = ResourceMonitor()
+        monitor.metrics = {"cpu_core_hours": 1.0}
+
+        with (
+            patch.object(Path, "exists", return_value=True),
+            patch("gwsim.monitor.resource.atomic_writer") as mock_atomic_writer,
+            patch("json.dump") as mock_json_dump,
+        ):
+            mock_file = MagicMock()
+            mock_atomic_writer.return_value.__enter__.return_value = mock_file
+
+            monitor.save_metrics("test.json", overwrite=True)
+
+            file_name = Path("test.json")
+            mock_atomic_writer.assert_called_once_with(file_name, mode="w", encoding="utf-8")
+            mock_json_dump.assert_called_once_with(monitor.metrics, mock_file, indent=4)
+
+    def test_save_metrics_file_exists_no_overwrite(self):
+        """Test that FileExistsError is raised when file exists and overwrite=False."""
+        monitor = ResourceMonitor()
+        monitor.metrics = {"cpu_core_hours": 1.0}
+
+        with patch.object(Path, "exists", return_value=True):
+            with pytest.raises(
+                FileExistsError, match=r"File 'test.json' already exists and overwrite is set to False."
+            ):
+                monitor.save_metrics("test.json", overwrite=False)
+
+    def test_save_metrics_custom_encoding(self):
+        """Test saving metrics with custom encoding."""
+        monitor = ResourceMonitor()
+        monitor.metrics = {"cpu_core_hours": 1.0}
+
+        with (
+            patch.object(Path, "exists", return_value=False),
+            patch("gwsim.monitor.resource.atomic_writer") as mock_atomic_writer,
+            patch("json.dump") as mock_json_dump,
+        ):
+            mock_file = MagicMock()
+            mock_atomic_writer.return_value.__enter__.return_value = mock_file
+
+            monitor.save_metrics("test.json", encoding="latin-1")
+
+            file_name = Path("test.json")
+            mock_atomic_writer.assert_called_once_with(file_name, mode="w", encoding="latin-1")
+            mock_json_dump.assert_called_once_with(monitor.metrics, mock_file, indent=4)
