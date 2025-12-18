@@ -196,7 +196,8 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
     logger.info("\tjob-name: %s", job_name)
     for key, val in resources.items():
         logger.info("\t%s: %s", key, val)
-    logger.info("\tenv: %s", env)
+    if env is not None:
+        logger.info("\tenv: %s", env)
 
     # Submit file
     if submit:
