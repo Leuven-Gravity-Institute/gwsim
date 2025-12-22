@@ -14,13 +14,16 @@ SchedulerType = Literal["slurm"]
 # pylint: disable=no-member
 
 
-def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments, too-many-positional-arguments
     config: Path | None,
     get: Path | None,
     scheduler: SchedulerType,
     job_name: str,
+    account: str | None,
+    cluster: str | None,
+    time: str | None,
+    extra_lines: list[str] | None,
     submit: bool,
-    env: Path | None,
     output: Path,
     overwrite: bool,
 ) -> None:
@@ -39,6 +42,10 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
         dst_path: Path,
         scheduler: SchedulerType,
         job_name: str,
+        account: str | None,
+        cluster: str | None,
+        time: str | None,
+        extra_lines: list[str] | None,
         overwrite: bool,
     ) -> None:
         """Copy a configuration file from src_path to dst_path,
@@ -47,6 +54,12 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
         Args:
             src_path: Source file path.
             dst_path: Destination file path.
+            scheduler: Name of the scheduler (only `slurm` currently supported).
+            job_name: Name of the job.
+            account: Cluster account to charge.
+            cluster: Cluster or partition to run on.
+            time: Wall time limit for the job (e.g. "04:00:00" or "2-12:30:00").
+            extra_lines: One or more custom shell lines to insert into the submit script before the simulation command.
             overwrite: Whether to overwrite existing files.
         """
         from gwsim.cli.utils.config import Config  # pylint: disable=import-outside-toplevel
@@ -58,16 +71,32 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
         config_dict = config.model_dump(by_alias=True, exclude_none=True)
 
         # Add/override the batch section with default resources and chosen scheduler
-        config_dict["batch"] = {
+        batch_section = {
             "scheduler": scheduler,
             "job-name": job_name,
             "resources": {
                 "nodes": 1,
-                "ntasks_per_node": 1,
-                "cpus_per_task": 1,
+                "ntasks-per-node": 1,
+                "cpus-per-task": 1,
                 "mem": "16GB",
             },
         }
+
+        submit_options = {}
+        if account:
+            submit_options["account"] = account
+        if cluster:
+            submit_options["cluster"] = cluster
+        if time:
+            submit_options["time"] = time
+
+        if submit_options:
+            batch_section["submit"] = submit_options
+
+        if extra_lines:
+            batch_section["extra_lines"] = extra_lines
+
+        config_dict["batch"] = batch_section
         updated_config = Config(**config_dict)
 
         # Create parent directories if they don't exist
@@ -98,6 +127,10 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
             dst_path=dst_path,
             scheduler=scheduler,
             job_name=job_name,
+            account=account,
+            cluster=cluster,
+            time=time,
+            extra_lines=extra_lines,
             overwrite=overwrite,
         )
         logger.info("Copied and prepared batch-ready config from example '%s' to %s", get, dst_path)
@@ -138,29 +171,6 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
 
     submit_file = submit_dir / f"{job_name}.submit"
 
-    # Determine environment activation command
-    activation_line = None
-    if env is not None:
-        env_path_str = str(env.resolve())
-        if any(condapath in env_path_str for condapath in ["/envs/", "/miniconda", "/anaconda", "/conda"]):
-            activation_line = f"conda activate {env_path_str}"
-        else:
-            # Assume it's a venv
-            activate_script = env / "bin" / "activate"
-            if not activate_script.exists():
-                logger.error("Virtualenv activation script not found: %s", activate_script)
-                raise typer.Exit(1)
-            activation_line = f"source {activate_script}"
-    else:
-        # No --env provided → try to activate Conda base as default
-        import shutil  # pylint: disable=import-outside-toplevel
-
-        if shutil.which("conda"):
-            activation_line = "conda activate base"
-            logger.info("No --env specified: activating Conda base environment.")
-        else:
-            logger.info("No --env specified and Conda not detected: using current environment.")
-
     # Generate submit file content
     if scheduler == "slurm":
         lines = [
@@ -174,12 +184,17 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
         for key, val in resources.items():
             lines.append(f"#SBATCH --{key}={val}")
 
+        if batch_section.submit:
+            submit_options = batch_section.submit
+            for key, val in submit_options.items():
+                lines.append(f"#SBATCH --{key}={val}")
+
         lines.append("")
 
-        if activation_line:
-            lines.append(activation_line)
-
-        lines.append("")
+        # Add user-defined extra lines (e.g. conda setup)
+        if batch_section.extra_lines:
+            lines.extend(batch_section.extra_lines)
+            lines.append("")
 
         lines.append(f"gwsim simulate {config.resolve()}")
 
@@ -194,10 +209,14 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
     logger.info("Generated %s submit file: %s", scheduler.upper(), submit_file)
     logger.info("\tscheduler: %s", scheduler)
     logger.info("\tjob-name: %s", job_name)
+    if batch_section.submit:
+        for key, val in submit_options.items():
+            logger.info("\t%s: %s", key, val)
     for key, val in resources.items():
         logger.info("\t%s: %s", key, val)
-    if env is not None:
-        logger.info("\tenv: %s", env)
+    if batch_section.extra_lines:
+        for line in batch_section.extra_lines:
+            logger.info("\textra-line: %s", line)
 
     # Submit file
     if submit:
@@ -221,7 +240,7 @@ def _batch_command_impl(  # pylint: disable=too-many-locals, too-many-branches, 
         logger.info("Job prepared. Use --submit to send it to the cluster.")
 
 
-def batch_command(
+def batch_command(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     config: Annotated[
         Path | None,
         typer.Argument(
@@ -242,6 +261,26 @@ def batch_command(
         str,
         typer.Option("--job-name", "-j", help="Job name to set in batch section (only used with --get)"),
     ] = "gwsim_job",
+    account: Annotated[
+        str | None,
+        typer.Option("--account", help="Cluster account (only with --get)"),
+    ] = None,
+    cluster: Annotated[
+        str | None,
+        typer.Option("--cluster", help="Cluster partition (only with --get)"),
+    ] = None,
+    time: Annotated[
+        str | None,
+        typer.Option("--time", "-t", help="Wall time limit, e.g. 12:00:00 (only with --get)"),
+    ] = None,
+    extra_lines: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--extra-line",
+            help="Add custom lines to submit script before simulation command (e.g. environment setup)."
+            "Can be used multiple times. (only with --get)",
+        ),
+    ] = None,
     submit: Annotated[
         bool,
         typer.Option(
@@ -249,16 +288,6 @@ def batch_command(
             help="Submit the job immediately after creating the submit file.",
         ),
     ] = False,
-    env: Annotated[
-        Path | None,
-        typer.Option(
-            "--env",
-            help="Path to a conda or virtualenv environment to activate. ",
-            exists=True,
-            dir_okay=True,
-            readable=True,
-        ),
-    ] = None,
     output: Annotated[
         Path,
         typer.Option(
@@ -276,44 +305,53 @@ def batch_command(
 
     1. Create a batch-ready config from an example:
 
-       gwsim batch --get basic --scheduler slurm --job-name my_sim --output config.yaml
+        gwsim batch --get default_config \\
+         --job-name my_simulation \\
+         --account my_account_name \\
+         --time 08:00:00 \\
+         --extra-line "module load Python/3.11" \\
+         --extra-line "conda activate gwsim" \\
+         --output my_config.yaml
 
-       Copies examples/<label>/config.yaml and adds:
+       This copies examples/<label>/config.yaml and adds a complete `batch` section including:
 
          - batch.scheduler: slurm
          - batch.job-name: <your name>
-         - batch.resources: defaults (customizable later)
+         - batch.resources: default values
+         - batch.submit: account, cluster, time (if provided)
+         - batch.extra_lines: custom lines (if provided)
 
     2. Generate and optionally submit a Slurm job from an existing config:
 
        gwsim batch config.yaml
        gwsim batch config.yaml --submit
 
-       The config must contain:
+       The config must contain a valid `batch` section with at least:
 
-         - globals.working-directory
          - batch.scheduler: slurm
          - batch.job-name: <name>
-         - (optional) batch.resources: {nodes: ..., mem: ..., ...}
+         - globals.working-directory
 
-    Examples:
-        Create a new batch-ready config
+       Optional fields:
 
-            gwsim batch --get default_basic --scheduler slurm --job-name test_run --output my_config.yaml
-
-        Generate submit script only
-
-            gwsim batch my_config.yaml
-
-        Generate and submit
-
-            gwsim batch my_config.yaml --submit
+         - batch.resources: resource requests (nodes, mem, etc.)
+         - batch.submit: additional sbatch options (account, cluster, time,  etc.)
+         - batch.extra_lines: custom shell lines (environment setup, modules, etc.)
 
     Args:
         config: Path to the input config.yaml (ignored when --get is used).
         get: Label of example config to copy (triggers config creation mode).
         scheduler: Name of the scheduler (only `slurm` currently supported). Only allowed with --get.
         job_name: Name of the job. Only allowed with --get.
+        account: Cluster account to charge (passed via --account to sbatch and stored in batch.submit).
+            Only allowed with --get.
+        cluster: Cluster or partition to run on (passed via --cluster to sbatch and stored in batch.submit).
+            Only allowed with --get.
+        time: Wall time limit for the job (e.g. "04:00:00" or "2-12:30:00").
+            Passed via --time to sbatch and stored in batch.submit. Only allowed with --get.
+        extra_lines: One or more custom shell lines to insert into the submit script before the simulation command
+            (e.g. module loads, conda activate). Specified via --extra-line (can be repeated).
+            Stored in batch.extra_lines. Only allowed with --get.
         submit: If True, submit the job via sbatch after creating the submit file.
         output: Destination path for the new config file. Only allowed with --get.
         overwrite: Overwrite existing files if they exist.
@@ -323,16 +361,26 @@ def batch_command(
         if config is not None:
             typer.echo("Error: Cannot provide a config file when using --get.", err=True)
             raise typer.Exit(1)
-        if env is not None:
-            typer.echo("Error: --env cannot be used with --get.", err=True)
-            raise typer.Exit(1)
 
     if get is None:
         if config is None:
             typer.echo("Error: You must either provide a config file or use --get.", err=True)
             raise typer.Exit(1)
-        if scheduler != "slurm" or job_name != "gwsim_job" or output != Path("config.yaml"):
-            typer.echo("Error: --scheduler, --job-name, and --output can only be used with --get.", err=True)
+        if any(
+            [
+                scheduler != "slurm",
+                job_name != "gwsim_job",
+                output != Path("config.yaml"),
+                account is not None,
+                cluster is not None,
+                time is not None,
+                extra_lines is not None,
+            ]
+        ):
+            typer.echo(
+                "Error: --scheduler, --job-name, --output, --account, --cluster, --time, --extra-line can only be used with --get.",  # pylint: disable=line-too-long
+                err=True,
+            )
             raise typer.Exit(1)
 
     _batch_command_impl(
@@ -340,8 +388,11 @@ def batch_command(
         get=get,
         scheduler=scheduler,
         job_name=job_name,
+        account=account,
+        cluster=cluster,
+        time=time,
+        extra_lines=extra_lines,
         submit=submit,
-        env=env,
         output=output,
         overwrite=overwrite,
     )
