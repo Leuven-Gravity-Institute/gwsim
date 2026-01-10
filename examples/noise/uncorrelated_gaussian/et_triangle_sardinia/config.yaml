@@ -28,6 +28,7 @@ simulators:
         - E1_triangle_sardinia
         - E2_triangle_sardinia
         - E3_triangle_sardinia
+      # Low frequency cutoff (Hz) to apply to the generated time series
       low_frequency_cutoff: 2
       # RNG seed for reproducibility; change per-run for different realizations
       seed: 42
