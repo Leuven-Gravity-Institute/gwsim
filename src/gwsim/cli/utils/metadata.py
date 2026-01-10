@@ -25,7 +25,7 @@ def save_metadata_with_external_state(
     """
     metadata_file = Path(metadata_file)
     metadata_dir = metadata_file.parent if metadata_dir is None else Path(metadata_dir)
-
+    metadata_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
     # Process pre_batch_state to extract all numpy arrays
     metadata_copy = metadata.copy()
     if "pre_batch_state" in metadata_copy:
