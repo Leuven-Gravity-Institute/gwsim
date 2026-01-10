@@ -95,7 +95,7 @@ batch:
     cluster: cluster_name
     time: 02:00:00
   extra_lines:
-    - export export PATH="/my_account/miniconda3/bin:$PATH"
+    - export PATH="/my_account/miniconda3/bin:$PATH"
     - eval "$(conda shell.bash hook)"
     - conda activate /my_account/miniconda3/envs/my_env
 ```
