@@ -72,9 +72,9 @@ docs = [
 gwsim = "gwsim.cli.main:app"
 
 [project.urls]
-Documentation = "https://gwsim.readthedocs.io/en/latest/"
-Source = "https://gitlab.et-gw.eu/et-projects/software/gwsim"
-Tracker = "https://gitlab.et-gw.eu/et-projects/software/gwsim/-/issues"
+Documentation = "https://leuven-gravity-institute.github.io/gwsim"
+Source = "https://github.com/Leuven-Gravity-Institute/gwsim"
+Tracker = "https://github.com/Leuven-Gravity-Institute/gwsim/issues"
 
 [tool.hatch.version]
 source = "vcs"
