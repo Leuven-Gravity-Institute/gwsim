@@ -11,7 +11,7 @@ It focuses on **usability**, **robustness**, and **extensibility**, to become a 
 
 - **Avoid Reinventing the Wheel**: Builds on established packages (PyCBC, LALSuite, scipy, astropy) for waveform generation and signal processing.
 - **Orchestration Layer**: Provides configuration management, reproducible workflows, and unified interfaces.
-- **Stable CLI Interface**: Remains unchanged regardless of underlying implementation changes.
+- **Stable CLI**: Remains unchanged regardless of underlying implementation changes.
 - **Extensible**: New signal types can be added without CLI modifications.
 
 ## Features
