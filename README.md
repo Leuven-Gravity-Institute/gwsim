@@ -86,6 +86,14 @@ Contributions are welcome!
 4. Add tests
 5. Submit a merge request
 
+### Release Schedule
+
+Releases follow a fixed schedule: every Tuesday at 00:00 UTC,
+unless an emergent bugfix is required.
+This ensures predictable updates while allowing flexibility for critical issues.
+Users can view upcoming changes in the draft release on the
+[GitHub Releases page](https://github.com/Leuven-Gravity-Institute/gwsim/releases).
+
 ## Testing
 
 Run the test suite:
