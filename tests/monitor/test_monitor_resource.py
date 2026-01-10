@@ -70,7 +70,7 @@ class TestResourceMonitor:
             # Check specific values (approximate due to timing)
             assert metrics["peak_memory_gb"] == 1.0  # 1 GB
             assert metrics["average_memory_gb"] == 1.0  # Average of same value
-            assert metrics["cpu_percent"] == mock_start_cpu_times.system * 100
+            assert metrics["cpu_percent"] == mock_process.cpu_percent.return_value
             assert isinstance(metrics["io_operations"], dict)
             assert metrics["io_operations"]["read_count"] == mock_end_io_counters.read_count
             assert metrics["io_operations"]["write_count"] == mock_end_io_counters.write_count
