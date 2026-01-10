@@ -74,7 +74,7 @@ Key configuration sections:
 
 ## Documentation
 
-Full documentation to be available at readthedocs.io.
+Full documentation to be available at [https://leuven-gravity-institute.github.io/gwsim](https://leuven-gravity-institute.github.io/gwsim).
 
 ## Contributing
 
