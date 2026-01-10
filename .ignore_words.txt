@@ -13,10 +13,10 @@ checkpointing
 Checkpointing
 cireddu
 coalescences
-condapath
 coba
 colorbar
 commitlint
+condapath
 coo
 copybutton
 cryo
@@ -83,6 +83,7 @@ srate
 srcmass
 submatrix
 subpackages
+testpypi
 Tidalv
 timedelay
 timestep
