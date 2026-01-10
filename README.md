@@ -1,8 +1,9 @@
 # gwsim
 
-[![Pipeline](https://gitlab.et-gw.eu/et-projects/software/gwsim/badges/main/pipeline.svg)](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/pipelines)
-[![Documentation](https://app.readthedocs.org/projects/gwsim/badge/?version=latest)](https://gwsim.readthedocs.io/en/latest/)
-[![Coverage Report](https://gitlab.et-gw.eu/et-projects/software/gwsim/badges/main/coverage.svg)](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/commits/main)
+[![Python CI](https://github.com/Leuven-Gravity-Institute/gwsim/actions/workflows/CI.yml/badge.svg)](https://github.com/Leuven-Gravity-Institute/gwsim/actions/workflows/CI.yml)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Leuven-Gravity-Institute/gwsim/main.svg)](https://results.pre-commit.ci/latest/github/Leuven-Gravity-Institute/gwsim/main)
+[![Documentation Status](https://github.com/Leuven-Gravity-Institute/gwsim/actions/workflows/documentation.yml/badge.svg)](https://leuven-gravity-institute.github.io/gwsim)
+[![codecov](https://codecov.io/gh/Leuven-Gravity-Institute/gwsim/graph/badge.svg?token=GLW2LEFKW7)](https://codecov.io/gh/Leuven-Gravity-Institute/gwsim)
 [![PyPI Version](https://img.shields.io/pypi/v/gwsim)](https://pypi.org/project/gwsim/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/gwsim)](https://pypi.org/project/gwsim/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.et-gw.eu/et-projects/software/gwsim/-/blob/main/LICENSE)
