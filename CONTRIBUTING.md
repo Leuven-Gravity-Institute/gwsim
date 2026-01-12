@@ -92,17 +92,14 @@ Clearly describe the motivation and scope of your change, especially how it impa
 ### Rules
 
 1. **One type of change per commit**
-
    - Do not mix different types of changes (e.g., bug fixes, features, refactoring) in a single commit.
    - Example: if you refactor code AND add a feature, make two separate commits.
 
 2. **Descriptive and meaningful messages**
-
    - Describe _what_ changed and _why_, not just _what_ was edited.
    - Avoid vague messages like "fix bug" or "update code"; instead use "fix: prevent signal saturation in noise simulation" or "feat: add support for multi-detector frame merging".
 
 3. **Follow Conventional Commits format**
-
    - All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) standard.
    - Format: `<type>(<scope>): <subject>`
    - Allowed types:
