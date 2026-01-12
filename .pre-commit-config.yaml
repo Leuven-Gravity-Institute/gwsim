@@ -56,13 +56,13 @@ repos:
         stages: [pre-commit]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.9
+    rev: v0.14.11
     hooks:
       - id: ruff
         args: [--fix, --config=pyproject.toml]
         stages: [pre-commit]
 
-  - repo: https://github.com/psf/black
+  - repo: https://github.com/psf/black-pre-commit-mirror
     rev: 25.12.0 # Matches pyproject.toml
     hooks:
       - id: black
@@ -83,7 +83,7 @@ repos:
         stages: [pre-commit]
 
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v9.3.3 # Keep this version or update to the latest stable
+    rev: v9.4.0 # Keep this version or update to the latest stable
     hooks:
       - id: cspell
         name: Check spelling in Python, reSt, and Markdown files.
@@ -132,7 +132,7 @@ repos:
         additional_dependencies: ['.[toml]']
 
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.1.0
+    rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
         stages: [pre-commit]
