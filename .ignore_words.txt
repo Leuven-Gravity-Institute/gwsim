@@ -15,6 +15,7 @@ cireddu
 coalescences
 condapath
 coba
+coeffs
 colorbar
 commitlint
 coo
@@ -68,6 +69,7 @@ pycbc
 pymap
 pytestmark
 realisation
+recalib
 reimplementation
 relpaths
 representer
