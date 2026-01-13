@@ -39,47 +39,38 @@ Whether you’re fixing a typo, reporting a bug, suggesting a feature, or submit
 4. Set Up Pre-commit Hooks and Commitlint
 
     We use **pre-commit** to ensure code quality and consistency, and **commitlint** to enforce commit message conventions.
+    After installing Python dependencies, install the Git hooks:
 
-<!-- prettier-ignore-end -->
+    ```shell
+    pre-commit install
+    pre-commit install --hook-type commit-msg
+    ```
 
-<!-- prettier-ignore-start -->
+    This ensures automatic checks for code formatting, linting, and hygiene on every commit.
 
-#### Install pre-commit hooks
+    Commitlint enforces that commit messages follow the Conventional Commits standard. Install it globally or locally:
 
-After installing Python dependencies, install the Git hooks:
+    ```shell
+    # Install locally (in the project)
+    npm install
+    ```
 
-```shell
-pre-commit install
-pre-commit install --hook-type commit-msg
-```
+    The project includes a `commitlint.config.js` configuration file that defines the commit message rules. Once installed, commitlint will automatically validate your commit messages when pre-commit runs.
 
-This ensures automatic checks for code formatting, linting, and hygiene on every commit.
+    **Important:** Commit messages are validated in CI/CD pipelines, and the changelog is auto-generated from commits. See section "Commit Message Guidelines" below for details.
 
-#### Install commitlint (via npm)
-
-Commitlint enforces that commit messages follow the Conventional Commits standard. Install it globally or locally:
-
-```shell
-# Install locally (in the project)
-npm install
-```
-
-The project includes a `commitlint.config.js` configuration file that defines the commit message rules. Once installed, commitlint will automatically validate your commit messages when pre-commit runs.
-
-**Important:** Commit messages are validated in CI/CD pipelines, and the changelog is auto-generated from commits. See section "Commit Message Guidelines" below for details.
-
-1. Create a New Branch
+5. Create a New Branch
 
     Give it a meaningful name like fix-gw-signal-generation or feature-add-noise-model.
 
-2. Make Changes
+6. Make Changes
 
     - Write clear, concise, and well-documented code, ensuring it aligns with the goal of generating simulated GW data.
     - **Follow PEP 8 style conventions strictly**—linting rules are enforced via pre-commit and in CI/CD.
     - Add or update unit tests, especially for GW signal generation and noise simulation, when applicable.
     - **Keep changes atomic and focused**: one type of change per commit (e.g., do not mix refactoring with feature addition).
 
-3. Run Tests
+7. Run Tests
 
     Ensure that all tests pass before opening a merge request:
 
@@ -87,7 +78,7 @@ The project includes a `commitlint.config.js` configuration file that defines th
     pytest
     ```
 
-4. Open a Merge Request
+8. Open a Merge Request
 
     Clearly describe the motivation and scope of your change, especially how it impacts GW data simulation. Link it to the relevant issue if applicable. Ensure all commit messages follow the guidelines in "Commit Message Guidelines" below.
 
