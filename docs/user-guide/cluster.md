@@ -112,13 +112,11 @@ This command requires the path to a configuration file that contains a `batch` s
 When executed, the following actions are performed:
 
 1. Directories are created under `<working-directory>/slurm/`:
-
    - `output/` – stdout files
    - `error/` – stderr files
    - `submit/` – the generated `.submit` script
 
 2. A SLURM submit script is written containing:
-
    - All `#SBATCH` directives from `batch.resources`
    - Any additional `#SBATCH` directives from `batch.submit` (account, cluster, time, etc.)
    - All custom lines from `batch.extra_lines` (if present)
