@@ -81,7 +81,8 @@ class CalibrationModel:
 
     def transfer_function(self, frequency_array: np.ndarray) -> np.ndarray:
         """Bilby-equivalent get_calibration_factor()."""
-
+        if np.any(frequency_array <= 0):
+            raise ValueError("frequency_array must contain only positive values.")
         log10f = np.log10(frequency_array)
 
         x = (log10f - self.log_spline_points[0]) / self.delta_log_spline_points

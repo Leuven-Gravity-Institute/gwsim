@@ -123,6 +123,8 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
         to avoid redundant FFTs.
 
         Args:
+            detector:
+                Detector instance whose calibration will be applied.
             polarizations_fd:
                 Dictionary with 'plus' and 'cross' FrequencySeries.
 
@@ -136,8 +138,13 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
         hc = polarizations_fd["cross"]
 
         freqs = hp.frequencies.to_value()
-        cal = calibration.transfer_function(freqs)
-
+        # Filter out DC component (0 Hz) to avoid log10(0) = -inf
+        valid_mask = freqs > 0
+        freqs_valid = freqs[valid_mask]
+        cal_valid = calibration.transfer_function(freqs_valid)
+        # Reconstruct full calibration array with 1.0 for DC (no calibration applied)
+        cal = np.ones_like(freqs)
+        cal[valid_mask] = cal_valid
         hp_cal = hp * cal
         hc_cal = hc * cal
 
