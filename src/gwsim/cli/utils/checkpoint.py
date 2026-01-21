@@ -165,6 +165,28 @@ class CheckpointManager:
             return set()
         return set(checkpoint.get("completed_batch_indices", []))
 
+    def get_last_completed_batch_index(self) -> int:
+        """Get the last completed batch index from checkpoint.
+
+        Returns:
+            Index of the last batch that has already been completed
+        """
+        checkpoint = self.load_checkpoint()
+        if checkpoint is None:
+            return None
+        return checkpoint.get("last_completed_batch_index")
+
+    def get_last_simulator_state(self) -> dict[str, Any]:
+        """Get the last completed batch state from checkpoint.
+
+        Returns:
+            Index of the last batch that has already been completed
+        """
+        checkpoint = self.load_checkpoint()
+        if checkpoint is None:
+            return None
+        return checkpoint.get("last_simulator_state", [])
+
     def should_skip_batch(self, batch_index: int) -> bool:
         """Check if a batch has already been completed.
 

@@ -185,8 +185,8 @@ def instantiate_simulator(
     return simulator
 
 
-def restore_batch_state(simulator: Simulator, batch: SimulationBatch) -> None:
-    """Restore simulator state from batch metadata if available.
+def restore_batch_state(simulator: Simulator, batch: SimulationBatch, checkpoint_manager: CheckpointManager) -> None:
+    """Restore simulator state from batch metadata or checkpoint file if available.
 
     This is used when reproducing a specific batch. It restores the RNG state,
     filter memory, and other stateful components that existed before this batch
@@ -195,6 +195,7 @@ def restore_batch_state(simulator: Simulator, batch: SimulationBatch) -> None:
     Args:
         simulator: Simulator instance
         batch: SimulationBatch potentially containing state snapshot
+        checkpoint_manager: CheckpointManager potentially containing last state snapshot
 
     Raises:
         ValueError: If state restoration fails
@@ -212,6 +213,29 @@ def restore_batch_state(simulator: Simulator, batch: SimulationBatch) -> None:
                 batch.pre_batch_state.get("counter"),
             )
             simulator.state = batch.pre_batch_state
+            logger.debug(
+                "[RESTORE] Batch %d: State restored successfully - new_counter=%s",
+                batch.batch_index,
+                simulator.counter,
+            )
+        except Exception as e:
+            logger.error("Failed to restore batch state: %s", e)
+            raise ValueError(f"Failed to restore state for batch {batch.batch_index}") from e
+    elif checkpoint_manager.get_last_completed_batch_index() is not None and batch.batch_index == (
+        checkpoint_manager.get_last_completed_batch_index() + 1
+    ):
+        logger.debug(
+            "[RESTORE] Batch %d: Restoring state from checkpoint last state - state_keys=%s",
+            batch.batch_index,
+            list(checkpoint_manager.get_last_simulator_state().keys()),
+        )
+        try:
+            logger.debug(
+                "[RESTORE] Batch %d: Setting state dict - counter=%s",
+                batch.batch_index,
+                checkpoint_manager.get_last_simulator_state().get("counter"),
+            )
+            simulator.state = checkpoint_manager.get_last_simulator_state()
             logger.debug(
                 "[RESTORE] Batch %d: State restored successfully - new_counter=%s",
                 batch.batch_index,
@@ -508,7 +532,7 @@ def execute_plan(  # pylint: disable=too-many-locals
                         simulator.counter,
                         batch.has_state_snapshot(),
                     )
-                    restore_batch_state(simulator, batch)
+                    restore_batch_state(simulator, batch, checkpoint_manager)
                     logger.debug("[EXECUTE] Batch %s: After restore - counter=%s", batch.batch_index, simulator.counter)
                     pre_batch_state = copy.deepcopy(simulator.state)
                     logger.debug(
