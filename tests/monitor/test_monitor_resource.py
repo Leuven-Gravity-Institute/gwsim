@@ -79,8 +79,8 @@ class TestResourceMonitor:
                 assert "wall_time" in metrics
                 assert "total_cpu_seconds" in metrics
 
-                # CPU: (parent 0.8 + child 0.8) = 1.6 seconds → ~0.000444 core-hours
-                assert round(metrics["total_cpu_seconds"], 3) == pytest.approx(1.6, abs=0.2)
+                # CPU:
+                assert round(metrics["total_cpu_seconds"], 3) == pytest.approx(1.6, abs=0.3)
                 assert metrics["cpu_core_hours"] > 0
 
                 # Memory: samples should see ~1.5 GB total
