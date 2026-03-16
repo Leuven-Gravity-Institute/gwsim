@@ -33,7 +33,10 @@ A clear and concise description of what you expected to happen.
 
 ## 💥 Actual Behavior / Traceback
 
-If applicable, add the full Python error traceback here:
+If applicable, add the Python error traceback here **after redacting secrets**
+(API keys, tokens, credentials, private URLs/paths, personal data).
+If this is a potential security vulnerability, do **not** post it publicly;
+use the Security reporting channel instead.
 
 ```text
 Traceback (most recent call last):
