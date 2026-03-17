@@ -166,7 +166,7 @@ class DetectorMixin:  # pylint: disable=too-few-public-methods
             time_delay = time_delays[i]
 
             # Shift the waveform data according to time delays
-            shifted_times = time_array_wrt_reference + time_delay
+            shifted_times = time_array_wrt_reference - time_delay
 
             if earth_rotation:
                 # Evaluate antenna patterns exactly at the delayed times
