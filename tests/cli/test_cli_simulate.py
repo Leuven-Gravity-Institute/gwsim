@@ -11,10 +11,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
-from gwsim.cli.simulate import (
+from gwmock.cli.simulate import (
     _simulate_impl,
 )
-from gwsim.cli.simulate_utils import (
+from gwmock.cli.simulate_utils import (
     execute_plan,
     instantiate_simulator,
     process_batch,
@@ -24,20 +24,20 @@ from gwsim.cli.simulate_utils import (
     update_metadata_index,
     validate_plan,
 )
-from gwsim.cli.utils.config import (
+from gwmock.cli.utils.config import (
     Config,
     GlobalsConfig,
     SimulatorConfig,
     SimulatorOutputConfig,
 )
-from gwsim.cli.utils.simulation_plan import (
+from gwmock.cli.utils.simulation_plan import (
     SimulationBatch,
     SimulationPlan,
     create_plan_from_config,
     parse_batch_metadata,
 )
-from gwsim.mixin.randomness import RandomnessMixin
-from gwsim.simulator.base import Simulator
+from gwmock.mixin.randomness import RandomnessMixin
+from gwmock.simulator.base import Simulator
 
 # Constants for test assertions to avoid magic values
 SEED = 42
@@ -1054,7 +1054,7 @@ class TestSimulateCommandIntegration:
             assert batch_1_initial_counter is not None, "pre_batch_state should contain counter value"
 
             # ===== STEP 2: Use CLI to reproduce from metadata directory =====
-            # User runs: gwsim simulate metadata/
+            # User runs: gwmock simulate metadata/
             # The CLI automatically detects this is a metadata directory and reproduces
             _simulate_impl(
                 str(metadata_dir),  # Pass metadata directory instead of config file
@@ -1275,7 +1275,7 @@ class TestSimulateCommandCheckpoint:
         """Test that checkpoint is created after each batch completes successfully."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            checkpoint_dir = tmpdir_path / ".gwsim_checkpoints"
+            checkpoint_dir = tmpdir_path / ".gwmock_checkpoints"
 
             config_dict = {
                 "globals": {
@@ -1365,7 +1365,7 @@ class TestSimulateCommandCheckpoint:
         """Test that checkpoint saves and restores simulator state correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            checkpoint_dir = tmpdir_path / ".gwsim_checkpoints"
+            checkpoint_dir = tmpdir_path / ".gwmock_checkpoints"
 
             config_dict = {
                 "globals": {
@@ -1411,7 +1411,7 @@ class TestSimulateCommandCheckpoint:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            checkpoint_dir = tmpdir_path / ".gwsim_checkpoints"
+            checkpoint_dir = tmpdir_path / ".gwmock_checkpoints"
 
             config_dict = {
                 "globals": {
@@ -1459,7 +1459,7 @@ class TestSimulateCommandCheckpoint:
         """Test checkpoint behavior with multiple simulators."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            checkpoint_dir = tmpdir_path / ".gwsim_checkpoints"
+            checkpoint_dir = tmpdir_path / ".gwmock_checkpoints"
 
             config_dict = {
                 "globals": {

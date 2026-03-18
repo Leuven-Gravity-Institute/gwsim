@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 import yaml
 
-from gwsim.simulator.base import Simulator
+from gwmock.simulator.base import Simulator
 
 
 class MockSimulator(Simulator):

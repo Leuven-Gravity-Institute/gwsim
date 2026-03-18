@@ -1,6 +1,6 @@
 # Publishing Simulation Data to Zenodo
 
-The `gwsim repository` command suite allows you to create, manage, and publish your gravitational-wave simulation datasets to [Zenodo](https://zenodo.org), a community-driven open-access repository. This enables long-term preservation, DOI assignment, and easy sharing with the GW community.
+The `gwmock repository` command suite allows you to create, manage, and publish your gravitational-wave simulation datasets to [Zenodo](https://zenodo.org), a community-driven open-access repository. This enables long-term preservation, DOI assignment, and easy sharing with the GW community.
 
 ## Overview
 
@@ -46,10 +46,10 @@ Test that your token works before publishing:
 
 ```bash
 # Verify production token
-gwsim repository verify
+gwmock repository verify
 
 # Verify sandbox token
-gwsim repository verify --sandbox
+gwmock repository verify --sandbox
 ```
 
 If successful, you'll see:
@@ -67,7 +67,7 @@ Step 1: Create a Deposition
 Start by creating a new draft deposition:
 
 ```bash
-gwsim repository create \
+gwmock repository create \
   --title "GW Mock Data Challenge v1" \
   --description "Simulated binary black hole coalescences for ET"
 ```
@@ -75,7 +75,7 @@ gwsim repository create \
 **Interactive mode**: Omit options to be prompted:
 
 ```bash
-gwsim repository create
+gwmock repository create
 # Deposition Title: GW Mock Data Challenge v1
 # Deposition Description: Simulated binary black hole coalescences
 ```
@@ -86,7 +86,7 @@ gwsim repository create
 Creating deposition...
 ✓ Deposition created successfully!
   ID: 123456
-  Next: gwsim repository upload 123456 --file <path>
+  Next: gwmock repository upload 123456 --file <path>
 ```
 
 Save the deposition ID (e.g., `123456`) for subsequent commands.
@@ -97,10 +97,10 @@ Upload your simulation outputs and metadata:
 
 ```bash
 # Single file
-gwsim repository upload 123456 --file simulation_output.gwf
+gwmock repository upload 123456 --file simulation_output.gwf
 
 # Multiple files
-gwsim repository upload 123456 \
+gwmock repository upload 123456 \
   --file simulation_output.gwf \
   --file metadata.yaml \
   --file config.yaml
@@ -120,7 +120,7 @@ Uploading ━━━━━━━━━━━━━━━━━━━━━━━�
 ✓ simulation_output.gwf (245.50 MB)
 ✓ metadata.yaml (0.05 MB)
 ✓ config.yaml (0.02 MB)
-Next: gwsim repository update <id> --metadata-file <file>
+Next: gwmock repository update <id> --metadata-file <file>
 ```
 
 Step 3: Update Metadata
@@ -156,7 +156,7 @@ related_identifiers:
 **Upload metadata**:
 
 ```bash
-gwsim repository update 123456 --metadata-file deposition_metadata.yaml
+gwmock repository update 123456 --metadata-file deposition_metadata.yaml
 ```
 
 **Output**:
@@ -164,7 +164,7 @@ gwsim repository update 123456 --metadata-file deposition_metadata.yaml
 ```shell
 Updating metadata for deposition 123456...
 ✓ Metadata updated successfully
-Next: gwsim repository publish 123456
+Next: gwmock repository publish 123456
 ```
 
 Step 4: Publish
@@ -172,7 +172,7 @@ Step 4: Publish
 Once files and metadata are complete, publish your deposition:
 
 ```bash
-gwsim repository publish 123456
+gwmock repository publish 123456
 ```
 
 **Confirmation prompt**:
@@ -200,7 +200,7 @@ Share the DOI: `10.5281/zenodo.123456`
 Download files (anyone can do this without a token):
 
 ```bash
-gwsim repository download 123456 --file simulation_output.gwf --output ./data.gwf
+gwmock repository download 123456 --file simulation_output.gwf --output ./data.gwf
 ```
 
 ## Advanced Usage
@@ -211,15 +211,15 @@ Use the Zenodo Sandbox to test your workflow before publishing to production:
 
 ```bash
 # Create in sandbox
-gwsim repository create \
+gwmock repository create \
   --title "Test Dataset" \
   --sandbox
 
 # Upload files
-gwsim repository upload 123456 --file data.gwf --sandbox
+gwmock repository upload 123456 --file data.gwf --sandbox
 
 # Publish to sandbox
-gwsim repository publish 123456 --sandbox
+gwmock repository publish 123456 --sandbox
 ```
 
 **Sandbox DOI example**: `10.5072/zenodo.123456` (note the `10.5072/` prefix)
@@ -230,13 +230,13 @@ View all your depositions:
 
 ```bash
 # List published records
-gwsim repository list
+gwmock repository list
 
 # List draft (unpublished) records
-gwsim repository list --status draft
+gwmock repository list --status draft
 
 # List in sandbox
-gwsim repository list --status draft --sandbox
+gwmock repository list --status draft --sandbox
 ```
 
 Output:
@@ -257,10 +257,10 @@ Delete a Draft
 Remove an unpublished deposition:
 
 ```bash
-gwsim repository delete 123456
+gwmock repository delete 123456
 
 # Skip confirmation
-gwsim repository delete 123456 --force
+gwmock repository delete 123456 --force
 ```
 
 **Note**: Only unpublished (draft) depositions can be deleted. Published records are permanent.
@@ -271,12 +271,12 @@ Download files from any published record using the deposition ID:
 
 ```bash
 # Download a file
-gwsim repository download 123456 \
+gwmock repository download 123456 \
   --file simulation_output.gwf \
   --output ./downloaded_data.gwf
 
 # Specify file size for faster timeout tuning
-gwsim repository download 123456 \
+gwmock repository download 123456 \
   --file large_dataset.gwf \
   --output ./large_dataset.gwf \
   --file-size-mb 5000
@@ -333,7 +333,7 @@ license: 'cc-by-4.0'
 
 **Solutions**:
 
-1. Verify your token is valid: `gwsim repository verify`
+1. Verify your token is valid: `gwmock repository verify`
 2. Generate a new token from https://zenodo.org/account/settings/applications/tokens/new
 3. Ensure the token has `deposit:write` and `deposit:actions` scopes
 4. Check that you're using the correct environment (--sandbox for sandbox, omit for production)
@@ -356,7 +356,7 @@ export ZENODO_SANDBOX_API_TOKEN="your_sandbox_token"
 **Solution**: The CLI auto-adjusts timeouts based on file size (10 seconds per MB). For very large files (> 10 GB), you can manually specify:
 
 ```bash
-gwsim repository upload 123456 --file huge_file.gwf
+gwmock repository upload 123456 --file huge_file.gwf
 ```
 
 The retry logic with exponential backoff will automatically retry on transient failures.

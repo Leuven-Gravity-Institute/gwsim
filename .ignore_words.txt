@@ -40,7 +40,7 @@ geocent
 getrusage
 GWF
 gwpy
-gwsim
+gwmock
 infft
 Inspiral
 interp

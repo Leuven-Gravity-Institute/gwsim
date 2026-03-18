@@ -19,7 +19,7 @@ globals:
 simulators:
   # Uncorrelated Gaussian/Colored noise simulator config for ET 2L misaligned detectors
   noise:
-    # Class name resolved through the simulator registry (e.g. gwsim.noise.ColoredNoiseSimulator)
+    # Class name resolved through the simulator registry (e.g. gwmock.noise.ColoredNoiseSimulator)
     class: ColoredNoiseSimulator
     arguments:
       # PSD file describing the colored noise shape used by the generator

@@ -7,7 +7,7 @@ from typing import ClassVar
 import pytest
 from astropy.units import Quantity
 
-from gwsim.cli.utils.template import (
+from gwmock.cli.utils.template import (
     _expand_string_template,
     _value_to_string_list,
     expand_template_variables,

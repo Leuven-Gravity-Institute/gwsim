@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import yaml
 
-from gwsim.cli.utils.metadata import load_metadata_with_external_state, save_metadata_with_external_state
+from gwmock.cli.utils.metadata import load_metadata_with_external_state, save_metadata_with_external_state
 
 
 class TestSaveMetadataWithExternalState:

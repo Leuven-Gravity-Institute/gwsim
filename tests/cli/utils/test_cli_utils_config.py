@@ -11,7 +11,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from gwsim.cli.utils.config import (
+from gwmock.cli.utils.config import (
     Config,
     GlobalsConfig,
     SimulatorConfig,
@@ -376,12 +376,12 @@ class TestResolveClassPath:
     def test_resolve_class_path_simple_name(self):
         """Test resolving simple class name."""
         path = resolve_class_path("WhiteNoise", "noise")
-        assert path == "gwsim.noise.WhiteNoise"
+        assert path == "gwmock.noise.WhiteNoise"
 
     def test_resolve_class_path_simple_signal(self):
         """Test resolving simple class name in signal section."""
         path = resolve_class_path("SignalSimulator", "signal")
-        assert path == "gwsim.signal.SignalSimulator"
+        assert path == "gwmock.signal.SignalSimulator"
 
     def test_resolve_class_path_full_path(self):
         """Test resolving full import path."""

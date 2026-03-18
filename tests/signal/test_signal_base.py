@@ -8,9 +8,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from astropy.units import Quantity
 
-from gwsim.data.time_series.time_series import TimeSeries
-from gwsim.data.time_series.time_series_list import TimeSeriesList
-from gwsim.signal.base import SignalSimulator
+from gwmock.data.time_series.time_series import TimeSeries
+from gwmock.data.time_series.time_series_list import TimeSeriesList
+from gwmock.signal.base import SignalSimulator
 
 
 @pytest.fixture
@@ -20,11 +20,11 @@ def signal_simulator_with_mocks(tmp_path):
     dummy_file.write_text("")  # Create empty CSV file
 
     with (
-        patch("gwsim.mixin.population_reader.PopulationReaderMixin.__init__", return_value=None),
-        patch("gwsim.mixin.waveform.WaveformMixin.__init__", return_value=None),
-        patch("gwsim.mixin.time_series.TimeSeriesMixin.__init__", return_value=None),
-        patch("gwsim.mixin.detector.DetectorMixin.__init__", return_value=None),
-        patch("gwsim.simulator.base.Simulator.__init__", return_value=None),
+        patch("gwmock.mixin.population_reader.PopulationReaderMixin.__init__", return_value=None),
+        patch("gwmock.mixin.waveform.WaveformMixin.__init__", return_value=None),
+        patch("gwmock.mixin.time_series.TimeSeriesMixin.__init__", return_value=None),
+        patch("gwmock.mixin.detector.DetectorMixin.__init__", return_value=None),
+        patch("gwmock.simulator.base.Simulator.__init__", return_value=None),
     ):
 
         simulator = SignalSimulator(
@@ -52,7 +52,7 @@ def signal_simulator_with_mocks(tmp_path):
         simulator.population_file_type = "pycbc"  # Required for metadata property
         simulator.population_parameter_name_mapper = {}  # Required for metadata
         simulator.population_sort_by = None  # Required for metadata
-        simulator.population_cache_dir = Path.home() / ".gwsim" / "population"  # Required for metadata
+        simulator.population_cache_dir = Path.home() / ".gwmock" / "population"  # Required for metadata
         simulator.population_download_timeout = 300  # Required for metadata
         simulator._population_metadata = {}  # Required for metadata
 
@@ -67,7 +67,7 @@ class TestSignalSimulatorInitialization:
         dummy_file = tmp_path / "test.csv"
         dummy_file.write_text("")
 
-        with patch("gwsim.mixin.population_reader.PopulationReaderMixin.__init__", return_value=None):
+        with patch("gwmock.mixin.population_reader.PopulationReaderMixin.__init__", return_value=None):
             # Just verify the class can be instantiated with mocked init
             simulator = SignalSimulator(population_file=str(dummy_file))
             assert simulator is not None

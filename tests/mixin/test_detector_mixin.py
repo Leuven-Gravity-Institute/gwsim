@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 from gwpy.timeseries import TimeSeries as GWpyTimeSeries
 
-from gwsim.detector import Detector
-from gwsim.mixin.detector import DetectorMixin
-from gwsim.simulator.base import Simulator
+from gwmock.detector import Detector
+from gwmock.mixin.detector import DetectorMixin
+from gwmock.simulator.base import Simulator
 
 
 class MockSimulator(DetectorMixin, Simulator):
@@ -42,7 +42,7 @@ class TestDetectorMixin:
 
     def test_init_with_detectors_list_of_names(self):
         """Test initialization with a list of detector names."""
-        with patch("gwsim.mixin.detector.Detector") as mock_detector_class:
+        with patch("gwmock.mixin.detector.Detector") as mock_detector_class:
             mock_detector = mock_detector_class.return_value
             detectors = ["H1", "L1"]
             sim = MockSimulator(detectors=detectors)
@@ -56,7 +56,7 @@ class TestDetectorMixin:
     def test_init_with_detectors_list_of_config_files(self):
         """Test initialization with a list of config file paths."""
         with (
-            patch("gwsim.mixin.detector.Detector") as mock_detector_class,
+            patch("gwmock.mixin.detector.Detector") as mock_detector_class,
             patch("pathlib.Path.is_file", return_value=True),
         ):
             mock_detector = mock_detector_class.return_value
@@ -70,8 +70,8 @@ class TestDetectorMixin:
     def test_init_with_detectors_list_of_relative_config_files(self):
         """Test initialization with a list of relative config file paths in DEFAULT_DETECTOR_BASE_PATH."""
         with (
-            patch("gwsim.mixin.detector.Detector") as mock_detector_class,
-            patch("gwsim.mixin.detector.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
+            patch("gwmock.mixin.detector.Detector") as mock_detector_class,
+            patch("gwmock.mixin.detector.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
             patch.object(Path, "is_file", lambda self: str(self).startswith("/fake/base/")),
         ):
             mock_detector = mock_detector_class.return_value
@@ -88,7 +88,7 @@ class TestDetectorMixin:
         sim = MockSimulator(detectors=None)
         assert sim.detectors == []
 
-        with patch("gwsim.mixin.detector.Detector"):
+        with patch("gwmock.mixin.detector.Detector"):
             sim = MockSimulator(detectors=["H1"])
             assert sim.detectors is not None
             assert len(sim.detectors) == 1
@@ -99,7 +99,7 @@ class TestDetectorMixin:
         sim.detectors = None
         assert sim._detectors == []
 
-        with patch("gwsim.mixin.detector.Detector") as mock_detector_class:
+        with patch("gwmock.mixin.detector.Detector") as mock_detector_class:
             mock_detector = mock_detector_class.return_value
             sim.detectors = ["H1", "L1"]
             assert sim._detectors == [mock_detector, mock_detector]
@@ -110,7 +110,7 @@ class TestDetectorMixin:
         metadata = sim.metadata
         assert metadata == {"detector": {"arguments": {"detectors": None}}}
 
-        with patch("gwsim.mixin.detector.Detector"):
+        with patch("gwmock.mixin.detector.Detector"):
             sim = MockSimulator(detectors=["H1"])
             metadata = sim.metadata
             assert "detector" in metadata
@@ -159,7 +159,7 @@ class TestProjectPolarizationsEarthRotation:
         # Use the h1_detector fixture instead of creating a new one
         detector = h1_detector
 
-        with patch("gwsim.mixin.detector.Detector") as mock_detector_class:
+        with patch("gwmock.mixin.detector.Detector") as mock_detector_class:
             mock_detector = MagicMock()
             mock_detector.is_configured.return_value = True
 
@@ -213,7 +213,7 @@ class TestProjectPolarizationsEarthRotation:
         # Use the h1_detector fixture instead of creating a new one
         detector = h1_detector
 
-        with patch("gwsim.mixin.detector.Detector") as mock_detector_class:
+        with patch("gwmock.mixin.detector.Detector") as mock_detector_class:
             mock_detector = MagicMock()
             mock_detector.is_configured.return_value = True
 
@@ -281,7 +281,7 @@ class TestProjectPolarizationsEarthRotation:
         # Use the h1_detector fixture instead of creating a new one
         detector = h1_detector
 
-        with patch("gwsim.mixin.detector.Detector") as mock_detector_class:
+        with patch("gwmock.mixin.detector.Detector") as mock_detector_class:
             mock_detector = MagicMock()
             mock_detector.is_configured.return_value = True
 

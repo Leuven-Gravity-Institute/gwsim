@@ -3,85 +3,78 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name =  "gwsim"
-authors = [
-    {name = "Isaac C. F. Wong", email = "chunfung.wong@kuleuven.be"},
-]
+name = "gwmock"
+authors = [{ name = "Isaac C. F. Wong", email = "chunfung.wong@kuleuven.be" }]
 description = "A Python package for simulating gravitational wave detector data for mock data challenges."
 readme = "README.md"
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Science/Research",
-    "Topic :: Scientific/Engineering :: Physics",
-    "Topic :: Scientific/Engineering :: Astronomy",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12"
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Astronomy",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 requires-python = ">=3.10"
 dynamic = ["version"]
 dependencies = [
-    "typer",
-    "tqdm",
-    "numpy",
-    "h5py",
-    "pycbc",
-    "gengli",
-    "bilby",
-    "pydantic",
-    "pymap3d",
-    "psutil",
-    "scipy<=1.16.3",
+  "typer",
+  "tqdm",
+  "numpy",
+  "h5py",
+  "pycbc",
+  "gengli",
+  "bilby",
+  "pydantic",
+  "pymap3d",
+  "psutil",
+  "scipy<=1.16.3",
 ]
 
 [project.optional-dependencies]
 test = [
-    "bandit[toml]==1.8.2",
-    "black==25.12.0",
-    "check-manifest==0.50",
-    "flake8-bugbear==24.12.12",
-    "flake8-docstrings",
-    "flake8-formatter_junit_xml",
-    "flake8",
-    "flake8-pyproject",
-    "pre-commit==4.1.0",
-    "pytest-cov==6.0.0",
-    "pytest-mock<3.14.1",
-    "pytest-runner",
-    "pytest==8.3.4",
-    "pytest-github-actions-annotate-failures",
-    "shellcheck-py==0.10.0.1"
+  "bandit[toml]==1.8.2",
+  "black==25.12.0",
+  "check-manifest==0.50",
+  "flake8-bugbear==24.12.12",
+  "flake8-docstrings",
+  "flake8-formatter_junit_xml",
+  "flake8",
+  "flake8-pyproject",
+  "pre-commit==4.1.0",
+  "pytest-cov==6.0.0",
+  "pytest-mock<3.14.1",
+  "pytest-runner",
+  "pytest==8.3.4",
+  "pytest-github-actions-annotate-failures",
+  "shellcheck-py==0.10.0.1",
 ]
-dev = [
-    "pytest",
-    "pre-commit",
-    "black",
-    "flake8"
-]
+dev = ["pytest", "pre-commit", "black", "flake8"]
 docs = [
-    "mkdocs",
-    "mkdocs-material",
-    "mkdocstrings[python]",
-    "mkdocs-gen-files",
-    "mkdocs-literate-nav",
-    "mkdocs-section-index"
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocstrings[python]",
+  "mkdocs-gen-files",
+  "mkdocs-literate-nav",
+  "mkdocs-section-index",
 ]
 
 [project.scripts]
-gwsim = "gwsim.cli.main:app"
+gwmock = "gwmock.cli.main:app"
 
 [project.urls]
-Documentation = "https://leuven-gravity-institute.github.io/gwsim"
-Source = "https://github.com/Leuven-Gravity-Institute/gwsim"
-Tracker = "https://github.com/Leuven-Gravity-Institute/gwsim/issues"
+Documentation = "https://leuven-gravity-institute.github.io/gwmock"
+Source = "https://github.com/Leuven-Gravity-Institute/gwmock"
+Tracker = "https://github.com/Leuven-Gravity-Institute/gwmock/issues"
 
 [tool.hatch.version]
 source = "vcs"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/gwsim"]
+packages = ["src/gwmock"]
 
 # Register the custom build hook
 [tool.hatch.build.hooks.custom]
@@ -89,16 +82,16 @@ path = "hatch_build.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/src",           # Include the source code
-    "/examples/**/*.yaml",  # Include only YAML files from examples
-    "/tests",         # Include tests for source distributions
-    "/README.md",
-    "/pyproject.toml",
-    "/hatch_build.py",  # Include the build hook itself
+  "/src",                # Include the source code
+  "/examples/**/*.yaml", # Include only YAML files from examples
+  "/tests",              # Include tests for source distributions
+  "/README.md",
+  "/pyproject.toml",
+  "/hatch_build.py",     # Include the build hook itself
 ]
 
 [tool.bandit]
-exclude_dirs = ["build","dist","tests","scripts"]
+exclude_dirs = ["build", "dist", "tests", "scripts"]
 number = 4
 recursive = true
 targets = "src"
@@ -120,63 +113,52 @@ output = "coverage.xml"
 max-line-length = 120
 select = "F,E,W,B,B901,B902,B903"
 exclude = [
-    ".eggs",
-    ".git",
-    ".tox",
-    "nssm",
-    "obj",
-    "out",
-    "packages",
-    "pywin32",
-    "tests",
-    "swagger_client"
+  ".eggs",
+  ".git",
+  ".tox",
+  "nssm",
+  "obj",
+  "out",
+  "packages",
+  "pywin32",
+  "tests",
+  "swagger_client",
 ]
-ignore = [
-    "E722",
-    "B001",
-    "W503",
-    "E203"
-]
+ignore = ["E722", "B001", "W503", "E203"]
 
 [tool.pyright]
 include = ["src"]
-exclude = [
-    "**/node_modules",
-    "**/__pycache__",
-]
+exclude = ["**/node_modules", "**/__pycache__"]
 venv = "env"
 
 reportMissingImports = true
 reportMissingTypeStubs = false
 
-pythonVersion = "3.10"  # Match minimum supported version
+pythonVersion = "3.10"   # Match minimum supported version
 pythonPlatform = "Linux"
 
-executionEnvironments = [
-  { root = "src" }
-]
+executionEnvironments = [{ root = "src" }]
 
 [tool.pytest.ini_options]
 addopts = [
-    "--cov=gwsim",
-    "--cov-report=xml",
-    "--cov-report=term",
-    "--junitxml=test-results.xml",
-    "--cov-append",
-    "-m", "not integration"
+  "--cov=gwmock",
+  "--cov-report=xml",
+  "--cov-report=term",
+  "--junitxml=test-results.xml",
+  "--cov-append",
+  "-m",
+  "not integration",
 ]
-pythonpath = [
-    "src"
-]
+pythonpath = ["src"]
 testpaths = "tests"
 junit_family = "xunit2"
 markers = [
-    "integration: marks as integration test",
-    "notebooks: marks as notebook test",
-    "gpu: marks as gpu test",
-    "spark: marks tests which need Spark",
-    "slow: marks tests as slow",
-    "unit: fast offline tests",
+  "integration: marks as integration test",
+  "notebooks: marks as notebook test",
+  "gpu: marks as gpu test",
+  "spark: marks tests which need Spark",
+  "slow: marks tests as slow",
+  "unit: fast offline tests",
 ]
 
 [tool.tox]
@@ -210,38 +192,38 @@ commands =
 """
 
 [tool.ruff]
-line-length = 120  # Matches Black's default
+line-length = 120 # Matches Black's default
 target-version = "py310" # Align with CI (3.10–3.12) and requires-python (>=3.8.1)
 lint.extend-select = [
-  "E", "F", "W",  # pycodestyle errors and warnings
-  "I",  # isort rules
+  "E",
+  "F",
+  "W",   # pycodestyle errors and warnings
+  "I",   # isort rules
   "UP",  # pyupgrade rules
-  "C90",  # McCabe complexity
-  "N",  # PEP8 naming
-  "B",  # Bugbear (opinionated checks)
-  "A",  # Flake8-builtins
+  "C90", # McCabe complexity
+  "N",   # PEP8 naming
+  "B",   # Bugbear (opinionated checks)
+  "A",   # Flake8-builtins
   "C4",  # Flake8-comprehensions
   "PT",  # Flake8-pytest
-  "RUF",  # Ruff-specific rules
+  "RUF", # Ruff-specific rules
   "PL",  # Add pylint rules for fuller coverage
-  "SIM",  # Similarities
-  "T10",  # Debugger statements
+  "SIM", # Similarities
+  "T10", # Debugger statements
 ]
 lint.ignore = [
-  "E501",  # Line length (handled by formatter)
-  "C901",  # Disable overly strict complexity checks (optional, adjust as needed)
+  "E501", # Line length (handled by formatter)
+  "C901", # Disable overly strict complexity checks (optional, adjust as needed)
 ]
 lint.pylint.max-args = 10
-fix = true  # Enable autofix
-lint.unfixable = []  # List rules that should not be autofixed, if any
-exclude = [
-    "docs/conf.py"
-]
+fix = true # Enable autofix
+lint.unfixable = [] # List rules that should not be autofixed, if any
+exclude = ["docs/conf.py"]
 
 [tool.ruff.format]
-quote-style = "double"  # Use double quotes for strings
-indent-style = "space"  # Use spaces for indentation
-docstring-code-format = true  # Format code in docstrings
+quote-style = "double"       # Use double quotes for strings
+indent-style = "space"       # Use spaces for indentation
+docstring-code-format = true # Format code in docstrings
 
 [tool.isort]
 profile = "black"
@@ -260,8 +242,8 @@ all = true
 
 [tool.check-manifest]
 ignore = [
-    "examples/**/output/**",
-    "examples/**/metadata/**",
-    "examples/**/checkpoints/**",
-    "hatch_build.py"
+  "examples/**/output/**",
+  "examples/**/metadata/**",
+  "examples/**/checkpoints/**",
+  "hatch_build.py",
 ]

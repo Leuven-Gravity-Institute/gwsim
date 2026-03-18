@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from gwsim.cli.utils.config_resolution import resolve_max_samples
+from gwmock.cli.utils.config_resolution import resolve_max_samples
 
 
 def test_computed_from_total_duration_takes_priority():
