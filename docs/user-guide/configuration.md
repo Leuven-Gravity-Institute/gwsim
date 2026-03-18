@@ -4,10 +4,10 @@ This guide explains how to use and write configuration files to generate dataset
 
 ## Command-Line Options
 
-### Command [`simulate`](/reference/gwsim/cli/simulate/?h=)
+### Command [`simulate`](/reference/gwmock/cli/simulate/?h=)
 
 ```bash
-gwsim simulate config.yaml
+gwmock simulate config.yaml
 ```
 
 This is the primary command used to generate mock data.
@@ -15,11 +15,11 @@ It takes a `.yaml` configuration file as input, which defines the simulation par
 
 #### Flag `--overwrite` (optional)
 
-By default, gwsim does not overwrite existing output files. If a file already exists, the tool will raise an error and halt execution.
+By default, gwmock does not overwrite existing output files. If a file already exists, the tool will raise an error and halt execution.
 To force overwriting of existing files, use the `--overwrite` flag:
 
 ```bash
-gwsim simulate config.yaml --overwrite
+gwmock simulate config.yaml --overwrite
 ```
 
 #### Flag `--dry-run` (optional)
@@ -27,7 +27,7 @@ gwsim simulate config.yaml --overwrite
 Test your configuration without generating data:
 
 ```bash
-gwsim simulate config.yaml --dry-run
+gwmock simulate config.yaml --dry-run
 ```
 
 This validates the configuration and shows what would be generated without actually creating files.
@@ -37,7 +37,7 @@ This validates the configuration and shows what would be generated without actua
 Generate metadata files along with the data (automatically enabled by default):
 
 ```bash
-gwsim simulate config.yaml --metadata
+gwmock simulate config.yaml --metadata
 ```
 
 Metadata files contain complete provenance information including:
@@ -52,13 +52,13 @@ Metadata files contain complete provenance information including:
 Include author information in the metadata files:
 
 ```bash
-gwsim simulate config.yaml --author <your-name> --email <your-email>
+gwmock simulate config.yaml --author <your-name> --email <your-email>
 ```
 
-### Command [`config`](/reference/gwsim/cli/default_config/?h=)
+### Command [`config`](/reference/gwmock/cli/default_config/?h=)
 
 ```bash
-gwsim config <flag>
+gwmock config <flag>
 ```
 
 This command is used to manage default and example configuration files.
@@ -66,18 +66,18 @@ Exactly one of the flags `--list`, `--get`, or `--init` must be provided.
 
 #### Flag `--list`
 
-List all the available example configuration files stored in the [`examples`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples) directory (see the [Examples](examples.md) page).
+List all the available example configuration files stored in the [`examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples) directory (see the [Examples](examples.md) page).
 
 ```bash
-gwsim config --list
+gwmock config --list
 ```
 
 #### Flag `--get`
 
-Copy one of the available example configuration files from the [`examples`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples) directory into the working directory. The `<example_label>` must be one of the example names listed by the `gwsim config --list` command.
+Copy one of the available example configuration files from the [`examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples) directory into the working directory. The `<example_label>` must be one of the example names listed by the `gwmock config --list` command.
 
 ```bash
-gwsim config --get <example_label>
+gwmock config --get <example_label>
 ```
 
 #### Flag `--init`
@@ -85,16 +85,16 @@ gwsim config --get <example_label>
 Creates a default configuration file and saves it to the working directory.
 
 ```bash
-gwsim config --init config.yaml
+gwmock config --init config.yaml
 ```
 
 #### Flag `--overwrite` (optional)
 
-By default, gwsim does not overwrite existing configuration files. If a file already exists, the tool will raise an error and halt execution.
+By default, gwmock does not overwrite existing configuration files. If a file already exists, the tool will raise an error and halt execution.
 To force overwriting of existing files, use the `--overwrite` flag:
 
 ```bash
-gwsim config --overwrite
+gwmock config --overwrite
 ```
 
 #### Flag `--output` (optional)
@@ -104,7 +104,7 @@ This flag must be used together with `--get` or `--init`.
 If not provided, the working directory is used by default.
 
 ```bash
-gwsim config --get <label of the configuration file> --output <directory or file>
+gwmock config --get <label of the configuration file> --output <directory or file>
 ```
 
 ## Configuration File Structure
@@ -164,17 +164,17 @@ For details on simulator-specific `arguments`, refer to the [API Reference](../r
 
 Available `noise` simulators includes:
 
-- [`BaseNoise`](/reference/gwsim/noise/base/#gwsim.noise.base.NoiseSimulator)
-- [`ColoredNoiseSimulator`](/reference/gwsim/noise/colored_noise/?h=colorednoise#gwsim.noise.colored_noise.ColoredNoiseSimulator)
-- [`CorrelatedNoiseSimulator`](/reference/gwsim/noise/correlated_noise/?h=correlatednoise#gwsim.noise.correlated_noise.CorrelatedNoiseSimulator)
+- [`BaseNoise`](/reference/gwmock/noise/base/#gwmock.noise.base.NoiseSimulator)
+- [`ColoredNoiseSimulator`](/reference/gwmock/noise/colored_noise/?h=colorednoise#gwmock.noise.colored_noise.ColoredNoiseSimulator)
+- [`CorrelatedNoiseSimulator`](/reference/gwmock/noise/correlated_noise/?h=correlatednoise#gwmock.noise.correlated_noise.CorrelatedNoiseSimulator)
 
 Available `signal` simulators includes:
 
-- [`CBCSignalSimulator`](/reference/gwsim/signal/cbc/?h=gwsim.signal.cbc.cbcsignalsimulator#gwsim.signal.cbc.CBCSignalSimulator)
+- [`CBCSignalSimulator`](/reference/gwmock/signal/cbc/?h=gwmock.signal.cbc.cbcsignalsimulator#gwmock.signal.cbc.CBCSignalSimulator)
 
 Available `glitch` simulators includes:
 
-- [`GengliGlitchSimulator`](/reference/gwsim/glitch/gengli_glitch/?h=gwsim.glitch.gengli_glitch.gengliglitchsimulator#gwsim.glitch.gengli_glitch.GengliGlitchSimulator)
+- [`GengliGlitchSimulator`](/reference/gwmock/glitch/gengli_glitch/?h=gwmock.glitch.gengli_glitch.gengliglitchsimulator#gwmock.glitch.gengli_glitch.GengliGlitchSimulator)
 
 ## Template Variables
 
@@ -204,18 +204,18 @@ In this example, `file_name` and `channel` are automatically updated for each de
 
 ## Checkpointing
 
-gwsim automatically creates checkpoints during long simulations. If a process is interrupted:
+gwmock automatically creates checkpoints during long simulations. If a process is interrupted:
 
-1. A `.gwsim_checkpoint/simulation.checkpoint.json` file is saved in the working directory
+1. A `.gwmock_checkpoint/simulation.checkpoint.json` file is saved in the working directory
 2. Rerun the same command to resume from the last checkpoint
 3. The tool automatically detects and continues from where it left off
 
 ```bash
 # Start simulation
-gwsim simulate config.yaml
+gwmock simulate config.yaml
 
 # If interrupted (Ctrl+C, crash, etc.), resume with same command
-gwsim simulate config.yaml
+gwmock simulate config.yaml
 ```
 
 The checkpoint contains:

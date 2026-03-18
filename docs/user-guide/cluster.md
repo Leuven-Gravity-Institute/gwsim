@@ -1,10 +1,10 @@
 # Running Simulations on a Cluster
 
-The `gwsim batch` command allows you to build and submit gwsim simulations as batch jobs on a Slurm-based cluster.
+The `gwmock batch` command allows you to build and submit gwmock simulations as batch jobs on a Slurm-based cluster.
 
 ## Overview
 
-The `gwsim batch` command has two mutually exclusive modes:
+The `gwmock batch` command has two mutually exclusive modes:
 
 1. **Create a batch-ready configuration file** from one of the provided examples.
    This mode is triggered by the `--get` option.
@@ -13,13 +13,13 @@ The `gwsim batch` command has two mutually exclusive modes:
 
 ## 1. Create a Batch-ready Configuration File
 
-Use this mode when starting from an example configuration file in the in the [`examples/`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples) directory and you want to prepare a configuration file that includes all necessary information for batch submission.
+Use this mode when starting from an example configuration file in the in the [`examples/`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples) directory and you want to prepare a configuration file that includes all necessary information for batch submission.
 
 ```bash
-gwsim batch --get <example_label> [options]
+gwmock batch --get <example_label> [options]
 ```
 
-This command requires the label of the example configuration file to copy, which can be obtained using the `gwsim config --list` command.
+This command requires the label of the example configuration file to copy, which can be obtained using the `gwmock config --list` command.
 It copies `examples/<example_label>/config.yaml` and adds a complete `batch` section (see the [Examples](examples.md) page).
 
 The following default resources are always added:
@@ -33,13 +33,13 @@ mem: 16GB
 
 <!-- prettier-ignore -->
 !!! note
-    gwsim currently does not support multi-threaded execution.
+    gwmock currently does not support multi-threaded execution.
     To modify the memory request, edit the configuration file manually.
 
 ### Commonly used options (only allowed with `--get`)
 
 - `--job-name <name>`
-  Job name that will appear in SLURM (stored as `batch.job-name`). Default: `gwsim_job`.
+  Job name that will appear in SLURM (stored as `batch.job-name`). Default: `gwmock_job`.
 
 - `--scheduler <scheduler>`
   Name of the scheduler (only `slurm` currently supported). Default: `slurm`.
@@ -69,8 +69,8 @@ mem: 16GB
 The following command:
 
 ```bash
-gwsim batch --get default_config \
-  --job-name gwsim_test \
+gwmock batch --get default_config \
+  --job-name gwmock_test \
   --account my_account \
   --cluster cluster_name \
   --time 02:00:00 \
@@ -84,7 +84,7 @@ add the following `batch` section to the configuration file:
 ```yaml
 batch:
   scheduler: slurm # Default
-  job-name: gwsim_test
+  job-name: gwmock_test
   resources:
     nodes: 1 # Default
     ntasks-per-node: 1 # Default
@@ -105,7 +105,7 @@ batch:
 Use this mode when you already have a configuration file that contains a valid `batch` section.
 
 ```bash
-gwsim batch <config.yaml> [--submit]
+gwmock batch <config.yaml> [--submit]
 ```
 
 This command requires the path to a configuration file that contains a `batch` section with at least `scheduler` and `job-name` (default resources are assumed).
@@ -120,7 +120,7 @@ When executed, the following actions are performed:
    - All `#SBATCH` directives from `batch.resources`
    - Any additional `#SBATCH` directives from `batch.submit` (account, cluster, time, etc.)
    - All custom lines from `batch.extra_lines` (if present)
-   - The command `gwsim simulate <absolute_path_to_config.yaml>`
+   - The command `gwmock simulate <absolute_path_to_config.yaml>`
 
 3. If `--submit` is used, `sbatch` is called.
 
@@ -137,8 +137,8 @@ When executed, the following actions are performed:
 
 ```bash
 # Just generate the submit script and save in `<working-directory>/slurm/submit`
-gwsim batch config.yaml
+gwmock batch config.yaml
 
 # Generate and submit immediately
-gwsim batch config.yaml --submit
+gwmock batch config.yaml --submit
 ```

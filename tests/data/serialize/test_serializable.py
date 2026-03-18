@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from gwsim.data.serialize.serializable import JSONSerializable
+from gwmock.data.serialize.serializable import JSONSerializable
 
 
 class MockSerializable(JSONSerializable):

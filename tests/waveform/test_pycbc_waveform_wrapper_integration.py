@@ -7,7 +7,7 @@ import pytest
 from gwpy.timeseries import TimeSeries
 from pycbc.waveform import get_td_waveform
 
-from gwsim.waveform.pycbc_wrapper import pycbc_waveform_wrapper
+from gwmock.waveform.pycbc_wrapper import pycbc_waveform_wrapper
 
 # Mark as integration tests - slower, requires PyCBC
 pytestmark = pytest.mark.integration

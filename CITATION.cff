@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: 'gwsim: A Python package for generating Mock Data Challenge datasets for the gravitational-wave community.'
+title: 'gwmock: A Python package for generating Mock Data Challenge datasets for the gravitational-wave community.'
 license: 'MIT'
 type: software
 authors:

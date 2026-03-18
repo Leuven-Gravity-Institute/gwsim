@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from gwsim.cli.utils.checkpoint import CheckpointManager
+from gwmock.cli.utils.checkpoint import CheckpointManager
 
 # Constants for test assertions
 COMPLETED_BATCH_INDEX_2 = 2

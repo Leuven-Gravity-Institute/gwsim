@@ -24,10 +24,10 @@ If applicable, show how you would imagine the Python code looking with this new
 feature:
 
 ```python
-import gwsim_pop
+import gwmock
 
 # How you'd like to use the new feature
-result = gwsim_pop.new_function(param="example")
+result = gwmock.new_function(param="example")
 
 ```
 

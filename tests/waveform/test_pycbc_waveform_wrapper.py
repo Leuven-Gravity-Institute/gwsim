@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from gwpy.timeseries import TimeSeries
 
-from gwsim.waveform.pycbc_wrapper import pycbc_waveform_wrapper
+from gwmock.waveform.pycbc_wrapper import pycbc_waveform_wrapper
 
 
 class TestPyCBCWaveformWrapper:
@@ -49,7 +49,7 @@ class TestPyCBCWaveformWrapper:
 
     def test_wrapper_basic_call(self, default_params, mock_pycbc_waveform):
         """Test basic waveform generation with valid parameters."""
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.return_value = mock_pycbc_waveform
 
             _result = pycbc_waveform_wrapper(**default_params)
@@ -65,7 +65,7 @@ class TestPyCBCWaveformWrapper:
 
     def test_wrapper_returns_dict_with_plus_cross(self, default_params, mock_pycbc_waveform):
         """Test that wrapper returns dict with 'plus' and 'cross' keys."""
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.return_value = mock_pycbc_waveform
 
             expected_length_of_result = 2  # 'plus' and 'cross'
@@ -80,7 +80,7 @@ class TestPyCBCWaveformWrapper:
     def test_wrapper_returns_gwpy_timeseries(self, default_params, mock_pycbc_waveform):
         """Test that wrapper returns GWpy TimeSeries objects."""
         with (
-            patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td,
+            patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td,
             patch("gwpy.timeseries.TimeSeries.from_pycbc") as mock_from_pycbc,
         ):
             number_of_calls = 2
@@ -102,7 +102,7 @@ class TestPyCBCWaveformWrapper:
         tc = 1234567890.5
         params = {**default_params, "tc": tc}
 
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.return_value = mock_pycbc_waveform
 
             pycbc_waveform_wrapper(**params)
@@ -116,7 +116,7 @@ class TestPyCBCWaveformWrapper:
         sampling_freq = 16384
         params = {**default_params, "sampling_frequency": sampling_freq}
 
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.return_value = mock_pycbc_waveform
 
             pycbc_waveform_wrapper(**params)
@@ -134,7 +134,7 @@ class TestPyCBCWaveformWrapper:
             "f_ref": 100.0,
         }
 
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.return_value = mock_pycbc_waveform
 
             pycbc_waveform_wrapper(**params)
@@ -153,7 +153,7 @@ class TestPyCBCWaveformWrapper:
             "waveform_model": "IMRPhenomD",
         }
 
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.side_effect = TypeError("get_td_waveform() missing required keyword argument")
 
             with pytest.raises(TypeError):
@@ -163,7 +163,7 @@ class TestPyCBCWaveformWrapper:
         """Test wrapper with different waveform models."""
         models = ["IMRPhenomD", "IMRPhenomXPHM", "SEOBNRv4_opt"]
 
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.return_value = mock_pycbc_waveform
 
             for model in models:
@@ -183,7 +183,7 @@ class TestPyCBCWaveformWrapper:
             "spin2z": 0.0,
         }
 
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.return_value = mock_pycbc_waveform
 
             result = pycbc_waveform_wrapper(**params)
@@ -202,7 +202,7 @@ class TestPyCBCWaveformWrapper:
             "mass2": 1.0,
         }
 
-        with patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
+        with patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td:
             mock_get_td.return_value = mock_pycbc_waveform
 
             result = pycbc_waveform_wrapper(**params)
@@ -231,7 +231,7 @@ class TestPyCBCWaveformWrapper:
         hc.data = hc_data
 
         with (
-            patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td,
+            patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td,
             patch("gwpy.timeseries.TimeSeries.from_pycbc") as mock_from_pycbc,
         ):
             mock_get_td.return_value = (hp, hc)
@@ -251,7 +251,7 @@ class TestPyCBCWaveformWrapper:
     def test_wrapper_from_pycbc_copy_flag(self, default_params, mock_pycbc_waveform):
         """Test that from_pycbc is called with copy=True to avoid aliasing issues."""
         with (
-            patch("gwsim.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td,
+            patch("gwmock.waveform.pycbc_wrapper.get_td_waveform") as mock_get_td,
             patch("gwpy.timeseries.TimeSeries.from_pycbc") as mock_from_pycbc,
         ):
             mock_get_td.return_value = mock_pycbc_waveform

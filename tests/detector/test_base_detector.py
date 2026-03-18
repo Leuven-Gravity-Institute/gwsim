@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from gwsim.detector.base import Detector
+from gwmock.detector.base import Detector
 
 
 class TestDetector:
@@ -17,7 +17,7 @@ class TestDetector:
 
     def test_init_with_name(self):
         """Test initialization with a built-in detector name."""
-        with patch("gwsim.detector.base.PyCBCDetector") as mock_det_class:
+        with patch("gwmock.detector.base.PyCBCDetector") as mock_det_class:
             mock_det = mock_det_class.return_value
             det = Detector(name="H1")
             mock_det_class.assert_called_once_with("H1")
@@ -27,8 +27,8 @@ class TestDetector:
     def test_init_with_config_file_absolute_path(self):
         """Test initialization with an absolute path to a config file."""
         with (
-            patch("gwsim.detector.base.load_interferometer_config") as mock_load,
-            patch("gwsim.detector.base.PyCBCDetector") as mock_det_class,
+            patch("gwmock.detector.base.load_interferometer_config") as mock_load,
+            patch("gwmock.detector.base.PyCBCDetector") as mock_det_class,
         ):
             mock_load.return_value = "V1"
             mock_det = mock_det_class.return_value
@@ -48,9 +48,9 @@ class TestDetector:
     def test_init_with_config_file_relative_path(self):
         """Test initialization with a relative path to a config file in DEFAULT_DETECTOR_BASE_PATH."""
         with (
-            patch("gwsim.detector.base.load_interferometer_config") as mock_load,
-            patch("gwsim.detector.base.PyCBCDetector") as mock_det_class,
-            patch("gwsim.detector.base.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
+            patch("gwmock.detector.base.load_interferometer_config") as mock_load,
+            patch("gwmock.detector.base.PyCBCDetector") as mock_det_class,
+            patch("gwmock.detector.base.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
         ):
             mock_load.return_value = "L1"
 
@@ -68,7 +68,7 @@ class TestDetector:
     def test_init_with_config_file_relative_path_not_found(self):
         """Test initialization with relative path when file doesn't exist in DEFAULT_DETECTOR_BASE_PATH."""
         with (
-            patch("gwsim.detector.base.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
+            patch("gwmock.detector.base.DEFAULT_DETECTOR_BASE_PATH", Path("/fake/base")),
             patch.object(Path, "is_file", return_value=False),
             pytest.raises(FileNotFoundError, match=re.escape("Configuration file 'L1.interferometer' not found")),
         ):
@@ -92,7 +92,7 @@ class TestDetector:
 
     def test_antenna_pattern(self):
         """Test antenna_pattern method delegates to underlying detector."""
-        with patch("gwsim.detector.base.PyCBCDetector") as mock_det_class:
+        with patch("gwmock.detector.base.PyCBCDetector") as mock_det_class:
             mock_det = mock_det_class.return_value
             mock_det.antenna_pattern.return_value = (0.7, 0.4)
 
@@ -104,7 +104,7 @@ class TestDetector:
 
     def test_time_delay_from_earth_center(self):
         """Test time_delay_from_earth_center method delegates to underlying detector."""
-        with patch("gwsim.detector.base.PyCBCDetector") as mock_det_class:
+        with patch("gwmock.detector.base.PyCBCDetector") as mock_det_class:
             mock_time_delay = 0.02
             mock_det = mock_det_class.return_value
             mock_det.time_delay_from_earth_center.return_value = mock_time_delay
@@ -117,7 +117,7 @@ class TestDetector:
 
     def test_getattr_delegation(self):
         """Test __getattr__ delegates attribute access to underlying detector."""
-        with patch("gwsim.detector.base.PyCBCDetector") as mock_det_class:
+        with patch("gwmock.detector.base.PyCBCDetector") as mock_det_class:
             mock_det = mock_det_class.return_value
             mock_det.latitude = 46.4551
 
@@ -126,6 +126,6 @@ class TestDetector:
 
     def test_str_method(self):
         """Test __str__ returns the detector name."""
-        with patch("gwsim.detector.base.PyCBCDetector"):
+        with patch("gwmock.detector.base.PyCBCDetector"):
             det = Detector(name="H1")
             assert str(det) == "H1"

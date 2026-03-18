@@ -10,8 +10,8 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 
-from gwsim.cli.utils.config import Config, GlobalsConfig, SimulatorConfig
-from gwsim.cli.utils.simulation_plan import (
+from gwmock.cli.utils.config import Config, GlobalsConfig, SimulatorConfig
+from gwmock.cli.utils.simulation_plan import (
     SimulationBatch,
     SimulationPlan,
     create_batch_metadata,
@@ -382,7 +382,7 @@ class TestMetadataAuthorEmailTimestamp:
     ):
         """Test that author defaults to getpass.getuser() when not provided."""
         # Mock getpass.getuser to return a predictable value
-        monkeypatch.setattr("gwsim.cli.utils.simulation_plan.getpass.getuser", lambda: "testuser")
+        monkeypatch.setattr("gwmock.cli.utils.simulation_plan.getpass.getuser", lambda: "testuser")
 
         metadata = create_batch_metadata(
             simulator_name="noise",

@@ -1,10 +1,10 @@
-# gwsim
+# gwmock
 
 A Python package for simulating gravitational-wave detector data for mock data challenges.
 
 ## Overview
 
-gwsim provides a unified framework for generating Mock Data Challenge (MDC) datasets for the gravitational-wave community.
+gwmock provides a unified framework for generating Mock Data Challenge (MDC) datasets for the gravitational-wave community.
 It focuses on **usability**, **robustness**, and **extensibility**, to become a standard tool for the community.
 
 ### Key Principles
@@ -38,7 +38,7 @@ It focuses on **usability**, **robustness**, and **extensibility**, to become a 
 
 ## Architecture
 
-gwsim uses a **mixin-based architecture**:
+gwmock uses a **mixin-based architecture**:
 
 - **Base Simulators** providing core interfaces and state handling
 - Modular **mixins** for detectors, randomness, and time series
@@ -48,7 +48,7 @@ This enables flexible composition, code reuse, and consistent interfaces.
 
 ## Community Focus
 
-gwsim is designed to become a standard tool for MDC generation in the gravitational-wave community by providing:
+gwmock is designed to become a standard tool for MDC generation in the gravitational-wave community by providing:
 
 - **Integration-Friendly**: Uses thin wrappers around existing tools instead of re-implementing functionality.
 - **Documentation**: Includes extensive examples and API documentation.
@@ -63,4 +63,4 @@ gwsim is designed to become a standard tool for MDC generation in the gravitatio
 
 ---
 
-_gwsim is developed for gravitational-wave research._
+_gwmock is developed for gravitational-wave research._
