@@ -5,10 +5,10 @@ build-backend = "hatchling.build"
 [project]
 name = "gwsim"
 authors = [{ name = "Isaac C. F. Wong", email = "chunfung.wong@kuleuven.be" }]
-description = "A Python package for simulating gravitational wave detector data for mock data challenges."
+description = "DEPRECATED: Moved to gwmock."
 readme = "README.md"
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 7 - Inactive",
   "Intended Audience :: Science/Research",
   "Topic :: Scientific/Engineering :: Physics",
   "Topic :: Scientific/Engineering :: Astronomy",
@@ -19,8 +19,9 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 requires-python = ">=3.10"
-dynamic = ["version"]
+version = "0.3.11"
 dependencies = [
+  "gwmock",
   "typer",
   "tqdm",
   "numpy",
@@ -66,9 +67,9 @@ docs = [
 gwsim = "gwsim.cli.main:app"
 
 [project.urls]
-Documentation = "https://leuven-gravity-institute.github.io/gwsim"
-Source = "https://github.com/Leuven-Gravity-Institute/gwsim"
-Tracker = "https://github.com/Leuven-Gravity-Institute/gwsim/issues"
+Documentation = "https://leuven-gravity-institute.github.io/gwmock"
+Source = "https://github.com/Leuven-Gravity-Institute/gwmock"
+Tracker = "https://github.com/Leuven-Gravity-Institute/gwmock/issues"
 
 [tool.hatch.version]
 source = "vcs"

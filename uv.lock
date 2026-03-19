@@ -1182,6 +1182,30 @@ wheels = [
 ]
 
 [[package]]
+name = "gwmock"
+version = "0.3.11"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bilby" },
+    { name = "gengli" },
+    { name = "h5py" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "psutil" },
+    { name = "pycbc" },
+    { name = "pydantic" },
+    { name = "pymap3d" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.16.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "tqdm" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ab/e3/22dc55bef434490c2cf0c53b531dc19c8404721139ffed2d4c976cd0b5be/gwmock-0.3.11.tar.gz", hash = "sha256:a8d281ce14865f627ba8699a5683a775923c9e1f379caa4edb78bd194ef30a0c", size = 592842, upload-time = "2026-03-19T04:53:05.044Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3b/39/036d3bf8002651bfddc336ef3029eb111aac6ce57876dac5eeec3f027290/gwmock-0.3.11-py3-none-any.whl", hash = "sha256:64a70d595e3efda3d1bf490089b4e5d25626096c95fcc4a255aad9272fe20592", size = 606367, upload-time = "2026-03-19T04:53:03.392Z" },
+]
+
+[[package]]
 name = "gwosc"
 version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1261,10 +1285,12 @@ wheels = [
 
 [[package]]
 name = "gwsim"
+version = "0.3.11"
 source = { editable = "." }
 dependencies = [
     { name = "bilby" },
     { name = "gengli" },
+    { name = "gwmock" },
     { name = "h5py" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1325,6 +1351,7 @@ requires-dist = [
     { name = "flake8-formatter-junit-xml", marker = "extra == 'test'" },
     { name = "flake8-pyproject", marker = "extra == 'test'" },
     { name = "gengli" },
+    { name = "gwmock" },
     { name = "h5py" },
     { name = "mkdocs", marker = "extra == 'docs'" },
     { name = "mkdocs-gen-files", marker = "extra == 'docs'" },
@@ -1350,7 +1377,7 @@ requires-dist = [
     { name = "tqdm" },
     { name = "typer" },
 ]
-provides-extras = ["dev", "docs", "test"]
+provides-extras = ["test", "dev", "docs"]
 
 [[package]]
 name = "h5py"
