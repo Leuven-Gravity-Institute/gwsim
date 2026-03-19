@@ -983,7 +983,7 @@ name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/9f/a65090624ecf468cdca03533906e7c69ed7588582240cfe7cc9e770b50eb/exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88", size = 29749, upload-time = "2025-05-10T17:42:51.123Z" }
 wheels = [
@@ -1182,7 +1182,85 @@ wheels = [
 ]
 
 [[package]]
-name = "gwmock"
+name = "gwosc"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3b/4e/6756e30841a81540ea38d429892f0900c9a33fa5c6269697fd021c20f018/gwosc-0.8.1.tar.gz", hash = "sha256:d4a890147ffbd76bfa800f6d01dd614cfb85b7623c537b93d713656144a9edff", size = 35494, upload-time = "2025-06-04T20:56:20.341Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a9/63/5dc667739398c194679cb44813e1e180fd2dff843155c1c7d8391276f2bc/gwosc-0.8.1-py3-none-any.whl", hash = "sha256:e6040e1901f8b8e43a7ed292f92a17eb67490a85124c93d45b2ab50ae4000b41", size = 32222, upload-time = "2025-06-04T20:56:19.034Z" },
+]
+
+[[package]]
+name = "gwpy"
+version = "3.0.14"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11'",
+]
+dependencies = [
+    { name = "astropy", version = "6.1.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "dateparser", marker = "python_full_version < '3.11'" },
+    { name = "dqsegdb2", marker = "python_full_version < '3.11'" },
+    { name = "gwdatafind", marker = "python_full_version < '3.11'" },
+    { name = "gwosc", marker = "python_full_version < '3.11'" },
+    { name = "h5py", marker = "python_full_version < '3.11'" },
+    { name = "igwn-segments", marker = "python_full_version < '3.11'" },
+    { name = "ligotimegps", version = "2.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "matplotlib", marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "packaging", marker = "python_full_version < '3.11'" },
+    { name = "python-dateutil", marker = "python_full_version < '3.11'" },
+    { name = "requests", marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "tqdm", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/05/cd/bb165e47b18cd255c1ee1fcd59802544d8de57566b449cfdaf848b69108f/gwpy-3.0.14.tar.gz", hash = "sha256:bf25d19763c9128f515144349d3f70925a8334bbd22950c01d35bb954f323f52", size = 1543294, upload-time = "2026-01-16T13:02:28.432Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/46/c893a66bd97f08ddf4a7cfde52cc58fb8e2c83acfa915f3c02c00f0aa721/gwpy-3.0.14-py3-none-any.whl", hash = "sha256:f61ed9d4b3eba7f9f534f72f03956f158ed7f9101726b5387c29fe57ce45c77e", size = 1395825, upload-time = "2026-01-16T13:02:26.55Z" },
+]
+
+[[package]]
+name = "gwpy"
+version = "4.0.1"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14' and sys_platform == 'win32'",
+    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.11.*' and sys_platform == 'win32'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
+    "python_full_version == '3.11.*' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.11.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "astropy", version = "7.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "dateparser", marker = "python_full_version >= '3.11'" },
+    { name = "dqsegdb2", marker = "python_full_version >= '3.11'" },
+    { name = "gwdatafind", marker = "python_full_version >= '3.11'" },
+    { name = "gwosc", marker = "python_full_version >= '3.11'" },
+    { name = "h5py", marker = "python_full_version >= '3.11'" },
+    { name = "igwn-segments", marker = "python_full_version >= '3.11'" },
+    { name = "ligotimegps", version = "2.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "matplotlib", marker = "python_full_version >= '3.11'" },
+    { name = "numpy", version = "2.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "packaging", marker = "python_full_version >= '3.11'" },
+    { name = "python-dateutil", marker = "python_full_version >= '3.11'" },
+    { name = "requests", marker = "python_full_version >= '3.11'" },
+    { name = "scipy", version = "1.16.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "tqdm", marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/92/71/1e652734a0e8f23e0f9dbf5df5698e66fa49aef4446d2c6c9eb914921192/gwpy-4.0.1.tar.gz", hash = "sha256:477aa69bd40506bfb0df5ec779d9dd6fef562a3bfabe58a52b297e25c57f61f0", size = 1615849, upload-time = "2026-02-03T10:14:59.045Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/71/ac/1debaaec791da4475687d22c8c2cbccc2008885046754f5e9f65997886b8/gwpy-4.0.1-py3-none-any.whl", hash = "sha256:587eb66443e41450bd89bf64891e323943afad3be385fccc1645eda2710908b7", size = 1559010, upload-time = "2026-02-03T10:14:56.928Z" },
+]
+
+[[package]]
+name = "gwsim"
 source = { editable = "." }
 dependencies = [
     { name = "bilby" },
@@ -1273,84 +1351,6 @@ requires-dist = [
     { name = "typer" },
 ]
 provides-extras = ["dev", "docs", "test"]
-
-[[package]]
-name = "gwosc"
-version = "0.8.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/4e/6756e30841a81540ea38d429892f0900c9a33fa5c6269697fd021c20f018/gwosc-0.8.1.tar.gz", hash = "sha256:d4a890147ffbd76bfa800f6d01dd614cfb85b7623c537b93d713656144a9edff", size = 35494, upload-time = "2025-06-04T20:56:20.341Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/63/5dc667739398c194679cb44813e1e180fd2dff843155c1c7d8391276f2bc/gwosc-0.8.1-py3-none-any.whl", hash = "sha256:e6040e1901f8b8e43a7ed292f92a17eb67490a85124c93d45b2ab50ae4000b41", size = 32222, upload-time = "2025-06-04T20:56:19.034Z" },
-]
-
-[[package]]
-name = "gwpy"
-version = "3.0.14"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version < '3.11'",
-]
-dependencies = [
-    { name = "astropy", version = "6.1.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "dateparser", marker = "python_full_version < '3.11'" },
-    { name = "dqsegdb2", marker = "python_full_version < '3.11'" },
-    { name = "gwdatafind", marker = "python_full_version < '3.11'" },
-    { name = "gwosc", marker = "python_full_version < '3.11'" },
-    { name = "h5py", marker = "python_full_version < '3.11'" },
-    { name = "igwn-segments", marker = "python_full_version < '3.11'" },
-    { name = "ligotimegps", version = "2.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "matplotlib", marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "packaging", marker = "python_full_version < '3.11'" },
-    { name = "python-dateutil", marker = "python_full_version < '3.11'" },
-    { name = "requests", marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "tqdm", marker = "python_full_version < '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/05/cd/bb165e47b18cd255c1ee1fcd59802544d8de57566b449cfdaf848b69108f/gwpy-3.0.14.tar.gz", hash = "sha256:bf25d19763c9128f515144349d3f70925a8334bbd22950c01d35bb954f323f52", size = 1543294, upload-time = "2026-01-16T13:02:28.432Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/46/c893a66bd97f08ddf4a7cfde52cc58fb8e2c83acfa915f3c02c00f0aa721/gwpy-3.0.14-py3-none-any.whl", hash = "sha256:f61ed9d4b3eba7f9f534f72f03956f158ed7f9101726b5387c29fe57ce45c77e", size = 1395825, upload-time = "2026-01-16T13:02:26.55Z" },
-]
-
-[[package]]
-name = "gwpy"
-version = "4.0.1"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version == '3.11.*' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version == '3.11.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-]
-dependencies = [
-    { name = "astropy", version = "7.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "dateparser", marker = "python_full_version >= '3.11'" },
-    { name = "dqsegdb2", marker = "python_full_version >= '3.11'" },
-    { name = "gwdatafind", marker = "python_full_version >= '3.11'" },
-    { name = "gwosc", marker = "python_full_version >= '3.11'" },
-    { name = "h5py", marker = "python_full_version >= '3.11'" },
-    { name = "igwn-segments", marker = "python_full_version >= '3.11'" },
-    { name = "ligotimegps", version = "2.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "matplotlib", marker = "python_full_version >= '3.11'" },
-    { name = "numpy", version = "2.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "packaging", marker = "python_full_version >= '3.11'" },
-    { name = "python-dateutil", marker = "python_full_version >= '3.11'" },
-    { name = "requests", marker = "python_full_version >= '3.11'" },
-    { name = "scipy", version = "1.16.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "tqdm", marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/92/71/1e652734a0e8f23e0f9dbf5df5698e66fa49aef4446d2c6c9eb914921192/gwpy-4.0.1.tar.gz", hash = "sha256:477aa69bd40506bfb0df5ec779d9dd6fef562a3bfabe58a52b297e25c57f61f0", size = 1615849, upload-time = "2026-02-03T10:14:59.045Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/ac/1debaaec791da4475687d22c8c2cbccc2008885046754f5e9f65997886b8/gwpy-4.0.1-py3-none-any.whl", hash = "sha256:587eb66443e41450bd89bf64891e323943afad3be385fccc1645eda2710908b7", size = 1559010, upload-time = "2026-02-03T10:14:56.928Z" },
-]
 
 [[package]]
 name = "h5py"
