@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from gwmock.data.serialize.encoder import Encoder
+from gwsim.data.serialize.encoder import Encoder
 
 
 class MockSerializable:

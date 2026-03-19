@@ -8,9 +8,9 @@ import numpy as np
 import pytest
 from astropy.units import Quantity
 
-from gwmock.data.time_series.time_series_list import TimeSeriesList
-from gwmock.noise.colored_noise import ColoredNoiseSimulator
-from gwmock.simulator.state import StateAttribute
+from gwsim.data.time_series.time_series_list import TimeSeriesList
+from gwsim.noise.colored_noise import ColoredNoiseSimulator
+from gwsim.simulator.state import StateAttribute
 
 # ============================================================================
 # Fixtures

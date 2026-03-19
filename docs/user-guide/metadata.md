@@ -55,5 +55,5 @@ Users may distribute individual metadata files, allowing others to independently
 To reproduce a dataset from a metadata file, run:
 
 ```bash
-gwmock simulate metadata_filename.metadata.yaml
+gwsim simulate metadata_filename.metadata.yaml
 ```

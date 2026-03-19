@@ -3,7 +3,7 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name = "gwmock"
+name = "gwsim"
 authors = [{ name = "Isaac C. F. Wong", email = "chunfung.wong@kuleuven.be" }]
 description = "A Python package for simulating gravitational wave detector data for mock data challenges."
 readme = "README.md"
@@ -63,18 +63,18 @@ docs = [
 ]
 
 [project.scripts]
-gwmock = "gwmock.cli.main:app"
+gwsim = "gwsim.cli.main:app"
 
 [project.urls]
-Documentation = "https://leuven-gravity-institute.github.io/gwmock"
-Source = "https://github.com/Leuven-Gravity-Institute/gwmock"
-Tracker = "https://github.com/Leuven-Gravity-Institute/gwmock/issues"
+Documentation = "https://leuven-gravity-institute.github.io/gwsim"
+Source = "https://github.com/Leuven-Gravity-Institute/gwsim"
+Tracker = "https://github.com/Leuven-Gravity-Institute/gwsim/issues"
 
 [tool.hatch.version]
 source = "vcs"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/gwmock"]
+packages = ["src/gwsim"]
 
 # Register the custom build hook
 [tool.hatch.build.hooks.custom]
@@ -141,7 +141,7 @@ executionEnvironments = [{ root = "src" }]
 
 [tool.pytest.ini_options]
 addopts = [
-  "--cov=gwmock",
+  "--cov=gwsim",
   "--cov-report=xml",
   "--cov-report=term",
   "--junitxml=test-results.xml",

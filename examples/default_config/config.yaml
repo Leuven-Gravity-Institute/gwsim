@@ -1,4 +1,4 @@
-# Example configuration file for gwmock gravitational-wave data generator
+# Example configuration file for gwsim gravitational-wave data generator
 # This file demonstrates how to configure simulations with noise and signal generators
 # Template variables (e.g., {{ detectors }}) are expanded at runtime using simulator attributes
 
@@ -19,7 +19,7 @@ globals:
 simulators:
   # Example noise simulator configuration
   noise:
-    class: ColoredNoiseSimulator # Full class path resolved via registry (e.g., gwmock.noise.ColoredNoiseSimulator)
+    class: ColoredNoiseSimulator # Full class path resolved via registry (e.g., gwsim.noise.ColoredNoiseSimulator)
     arguments:
       psd_file: ET_10_full_cryo_psd.txt # Power spectral density file for colored noise
       seed: 42 # Random seed for reproducible noise generation

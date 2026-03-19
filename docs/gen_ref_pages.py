@@ -33,20 +33,20 @@ if security_src.exists():
 # Generate the index page
 with mkdocs_gen_files.open("reference/index.md", "w") as fd:
     fd.write("# API Reference\n\n")
-    fd.write("Complete API documentation for the gwmock package.\n\n")
+    fd.write("Complete API documentation for the gwsim package.\n\n")
     fd.write("## Modules\n\n")
 
-    # Collect unique subpackages (immediate children of gwmock)
+    # Collect unique subpackages (immediate children of gwsim)
     modules = set()
-    gwmock_dir = src / "gwmock"
-    if gwmock_dir.exists():
-        for item in gwmock_dir.iterdir():
+    gwsim_dir = src / "gwsim"
+    if gwsim_dir.exists():
+        for item in gwsim_dir.iterdir():
             if item.is_dir() and (item / "__init__.py").exists() and not item.name.startswith("_"):
                 modules.add(item.name)
 
     # Generate module list
     for module in sorted(modules):
-        fd.write(f"- [`gwmock.{module}`](gwmock/{module}/index.md)\n")
+        fd.write(f"- [`gwsim.{module}`](gwsim/{module}/index.md)\n")
 
 # Process all Python modules
 for path in sorted(src.rglob("*.py")):

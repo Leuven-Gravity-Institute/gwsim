@@ -1,6 +1,6 @@
 # Quick Start
 
-This guide will help you run your first gwmock simulation in just a few minutes.
+This guide will help you run your first gwsim simulation in just a few minutes.
 
 ## 1. Run Your First Simulation
 
@@ -8,13 +8,13 @@ Run the following command in your working directory:
 
 ```bash
 # Copy quick-start configuration file to working directory
-gwmock config --get noise/uncorrelated_gaussian/quick_start --output quick_start_config.yaml
+gwsim config --get noise/uncorrelated_gaussian/quick_start --output quick_start_config.yaml
 
 # Run simulation
-gwmock simulate quick_start_config.yaml
+gwsim simulate quick_start_config.yaml
 ```
 
-The configuration file `quick_start_config.yaml` generates a single 1024-second GWF file containing simulated noise data, using the [ET_10_full_cryo_psd](https://github.com/Leuven-Gravity-Institute/gwmock/blob/main/src/gwmock/detector/noise_curves/ET_10_full_cryo_psd.txt) sensitivity curve from the [CoBA Science Study](https://iopscience.iop.org/article/10.1088/1475-7516/2023/07/068), sampled at 4096 Hz.
+The configuration file `quick_start_config.yaml` generates a single 1024-second GWF file containing simulated noise data, using the [ET_10_full_cryo_psd](https://github.com/Leuven-Gravity-Institute/gwsim/blob/main/src/gwsim/detector/noise_curves/ET_10_full_cryo_psd.txt) sensitivity curve from the [CoBA Science Study](https://iopscience.iop.org/article/10.1088/1475-7516/2023/07/068), sampled at 4096 Hz.
 
 You should see output like:
 
@@ -59,8 +59,8 @@ For a quick guide on how to inspect and reuse metadata files to reproduce a data
 
 ## 3. Explore Different Simulators
 
-To run any gwmock simulations, you only need to provide a `.yaml` configuration file.
-A collection of ready-to-use configuration files is available in the [`gwmock/examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples) directory.
+To run any gwsim simulations, you only need to provide a `.yaml` configuration file.
+A collection of ready-to-use configuration files is available in the [`gwsim/examples`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples) directory.
 You can use them directly or adapt them to suit your needs.
 
 - For an overview of all available examples, see the [Examples](examples.md) page.
@@ -68,7 +68,7 @@ You can use them directly or adapt them to suit your needs.
 
 ## 4. Next Steps
 
-- [Generating Data](generating-data.md) - Quick guide for generating datasets with gwmock, including Einstein Telescope (ET) examples.
+- [Generating Data](generating-data.md) - Quick guide for generating datasets with gwsim, including Einstein Telescope (ET) examples.
 - [Examples](examples.md) - Example configuration files for ET simulations.
 - [Request New Features](../dev/contributing.md) - How to request new features or improvements.
 - [API Reference](../reference/index.md) - Programmatic usage documentation.

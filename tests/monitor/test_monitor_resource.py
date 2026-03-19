@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-from gwmock.monitor.resource import ResourceMonitor
+from gwsim.monitor.resource import ResourceMonitor
 
 # Constants for test assertions to avoid magic values
 COUNTER_50 = 50
@@ -248,7 +248,7 @@ class TestResourceMonitor:
 
         with (
             patch.object(Path, "exists", return_value=False),
-            patch("gwmock.monitor.resource.atomic_writer") as mock_atomic_writer,
+            patch("gwsim.monitor.resource.atomic_writer") as mock_atomic_writer,
             patch("json.dump") as mock_json_dump,
         ):
             mock_file = MagicMock()
@@ -267,7 +267,7 @@ class TestResourceMonitor:
 
         with (
             patch.object(Path, "exists", return_value=True),
-            patch("gwmock.monitor.resource.atomic_writer") as mock_atomic_writer,
+            patch("gwsim.monitor.resource.atomic_writer") as mock_atomic_writer,
             patch("json.dump") as mock_json_dump,
         ):
             mock_file = MagicMock()
@@ -297,7 +297,7 @@ class TestResourceMonitor:
 
         with (
             patch.object(Path, "exists", return_value=False),
-            patch("gwmock.monitor.resource.atomic_writer") as mock_atomic_writer,
+            patch("gwsim.monitor.resource.atomic_writer") as mock_atomic_writer,
             patch("json.dump") as mock_json_dump,
         ):
             mock_file = MagicMock()

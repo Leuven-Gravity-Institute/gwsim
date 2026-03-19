@@ -11,7 +11,7 @@ import filelock
 import pytest
 import requests
 
-from gwmock.utils.download import determine_dest_path, download_file, download_file_with_lock, handle_existing_file
+from gwsim.utils.download import determine_dest_path, download_file, download_file_with_lock, handle_existing_file
 
 
 @pytest.fixture
@@ -39,7 +39,7 @@ def test_download_file_basic(temp_dir, mocker, mock_response):
     """Test basic file download."""
     url = "https://example.com/file.txt"
     mock_response.headers = {"Content-Type": "application/octet-stream"}
-    mocker.patch("gwmock.utils.download.requests.get", return_value=mock_response)
+    mocker.patch("gwsim.utils.download.requests.get", return_value=mock_response)
 
     dest_path = download_file(url, outdir=temp_dir)
 
@@ -52,7 +52,7 @@ def test_download_file_basic(temp_dir, mocker, mock_response):
 def test_download_file_with_dest_path(temp_dir, mocker, mock_response):
     """Test download with specified dest_path."""
     url = "https://example.com/file.txt"
-    mocker.patch("gwmock.utils.download.requests.get", return_value=mock_response)
+    mocker.patch("gwsim.utils.download.requests.get", return_value=mock_response)
 
     dest_path = download_file(url, dest_path="custom.txt", outdir=temp_dir)
 
@@ -63,7 +63,7 @@ def test_download_file_with_dest_path(temp_dir, mocker, mock_response):
 def test_download_file_hashed_url(temp_dir, mocker, mock_response):
     """Test download with hashed URL filename."""
     url = "https://example.com/file.txt"
-    mocker.patch("gwmock.utils.download.requests.get", return_value=mock_response)
+    mocker.patch("gwsim.utils.download.requests.get", return_value=mock_response)
 
     dest_path = download_file(url, dest_path_from_hashed_url=True, outdir=temp_dir)
 
@@ -105,7 +105,7 @@ def test_download_file_infer_extension(temp_dir, mocker):
     mock_response.raise_for_status.return_value = None
     mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=None)
-    mocker.patch("gwmock.utils.download.requests.get", return_value=mock_response)
+    mocker.patch("gwsim.utils.download.requests.get", return_value=mock_response)
 
     dest_path = download_file(url, outdir=temp_dir)
 
@@ -115,7 +115,7 @@ def test_download_file_infer_extension(temp_dir, mocker):
 def test_download_file_request_exception(temp_dir, mocker):
     """Test handling of request exceptions."""
     url = "https://example.com/file.txt"
-    mocker.patch("gwmock.utils.download.requests.get", side_effect=requests.RequestException("Network error"))
+    mocker.patch("gwsim.utils.download.requests.get", side_effect=requests.RequestException("Network error"))
 
     with pytest.raises(ValueError, match="Failed to download file"):
         download_file(url, outdir=temp_dir)
@@ -124,8 +124,8 @@ def test_download_file_request_exception(temp_dir, mocker):
 def test_download_file_lock_timeout(temp_dir, mocker, mock_response):
     """Test handling of lock timeout."""
     url = "https://example.com/file.txt"
-    mocker.patch("gwmock.utils.download.requests.get", return_value=mock_response)
-    mocker.patch("gwmock.utils.download.filelock.FileLock", side_effect=filelock.Timeout("Lock timeout"))
+    mocker.patch("gwsim.utils.download.requests.get", return_value=mock_response)
+    mocker.patch("gwsim.utils.download.filelock.FileLock", side_effect=filelock.Timeout("Lock timeout"))
 
     with pytest.raises(ValueError, match="Timeout waiting for download lock"):
         download_file(url, outdir=temp_dir, timeout=1)
@@ -141,7 +141,7 @@ def test_download_file_no_extension_fallback(temp_dir, mocker):
     mock_response.raise_for_status.return_value = None
     mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=None)
-    mocker.patch("gwmock.utils.download.requests.get", return_value=mock_response)
+    mocker.patch("gwsim.utils.download.requests.get", return_value=mock_response)
 
     dest_path = download_file(url, outdir=temp_dir)
 
@@ -199,7 +199,7 @@ def test_download_file_with_lock(temp_dir, mocker, mock_response):
     dest_path = temp_dir / "file.txt"
     lock_path = dest_path.with_suffix(dest_path.suffix + ".lock")
     mock_response.headers = {"Content-Type": "application/octet-stream"}
-    mocker.patch("gwmock.utils.download.requests.get", return_value=mock_response)
+    mocker.patch("gwsim.utils.download.requests.get", return_value=mock_response)
 
     result = download_file_with_lock(url, dest_path, lock_path, timeout=300)
 

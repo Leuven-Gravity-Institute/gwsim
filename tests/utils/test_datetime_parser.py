@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from gwmock.utils.datetime_parser import parse_duration_to_seconds
+from gwsim.utils.datetime_parser import parse_duration_to_seconds
 
 
 @pytest.mark.parametrize(

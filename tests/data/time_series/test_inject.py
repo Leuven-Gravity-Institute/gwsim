@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from gwpy.timeseries import TimeSeries as GWpyTimeSeries
 
-from gwmock.data.time_series.inject import inject
+from gwsim.data.time_series.inject import inject
 
 
 class TestInjectBasic:

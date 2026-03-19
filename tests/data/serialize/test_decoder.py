@@ -6,7 +6,7 @@ import json
 from typing import Any
 from unittest.mock import patch
 
-from gwmock.data.serialize.decoder import Decoder
+from gwsim.data.serialize.decoder import Decoder
 
 
 class MockSerializable:
@@ -28,7 +28,7 @@ class TestDecoder:
         """Test decoding an object with known __type__."""
         decoder = Decoder()
         obj_dict = {"__type__": "MockSerializable", "value": 42}
-        with patch("gwmock.data.serialize.decoder.importlib.import_module") as mock_import:
+        with patch("gwsim.data.serialize.decoder.importlib.import_module") as mock_import:
             mock_module = mock_import.return_value
             mock_module.MockSerializable = MockSerializable
             result = decoder._object_hook(obj_dict)
@@ -53,7 +53,7 @@ class TestDecoder:
         """Test that missing from_json_dict method returns dict unchanged."""
         decoder = Decoder()
         obj_dict = {"__type__": "MockSerializable", "value": 42}
-        with patch("gwmock.data.serialize.decoder.importlib.import_module") as mock_import:
+        with patch("gwsim.data.serialize.decoder.importlib.import_module") as mock_import:
             mock_module = mock_import.return_value
             mock_module.MockSerializable = object  # Class without from_json_dict
             result = decoder._object_hook(obj_dict)
@@ -64,7 +64,7 @@ class TestDecoder:
         value = 100
         data = {"__type__": "MockSerializable", "value": value}
         json_str = json.dumps(data)
-        with patch("gwmock.data.serialize.decoder.importlib.import_module") as mock_import:
+        with patch("gwsim.data.serialize.decoder.importlib.import_module") as mock_import:
             mock_module = mock_import.return_value
             mock_module.MockSerializable = MockSerializable
             result = json.loads(json_str, cls=Decoder)
@@ -81,7 +81,7 @@ class TestDecoder:
             "list": [1, {"__type__": "MockSerializable", "value": value_1}],
         }
         json_str = json.dumps(nested)
-        with patch("gwmock.data.serialize.decoder.importlib.import_module") as mock_import:
+        with patch("gwsim.data.serialize.decoder.importlib.import_module") as mock_import:
             mock_module = mock_import.return_value
             mock_module.MockSerializable = MockSerializable
             result = json.loads(json_str, cls=Decoder)

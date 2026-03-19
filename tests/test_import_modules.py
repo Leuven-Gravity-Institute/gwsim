@@ -5,7 +5,7 @@ import importlib
 import pytest
 
 modules_to_test = [
-    "gwmock",
+    "gwsim",
 ]
 
 

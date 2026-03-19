@@ -11,10 +11,10 @@ import pytest
 from astropy.units import Quantity
 from gwpy.timeseries import TimeSeries as GWPyTimeSeries
 
-from gwmock.data.time_series.time_series import TimeSeries
-from gwmock.data.time_series.time_series_list import TimeSeriesList
-from gwmock.mixin.time_series import TimeSeriesMixin
-from gwmock.simulator.base import Simulator
+from gwsim.data.time_series.time_series import TimeSeries
+from gwsim.data.time_series.time_series_list import TimeSeriesList
+from gwsim.mixin.time_series import TimeSeriesMixin
+from gwsim.simulator.base import Simulator
 
 
 class MockTimeSeriesSimulator(TimeSeriesMixin, Simulator):

@@ -8,10 +8,10 @@ import numpy as np
 import pytest
 from astropy.units import Quantity
 
-from gwmock.data.serialize.decoder import Decoder
-from gwmock.data.serialize.encoder import Encoder
-from gwmock.data.time_series.time_series import TimeSeries
-from gwmock.data.time_series.time_series_list import TimeSeriesList
+from gwsim.data.serialize.decoder import Decoder
+from gwsim.data.serialize.encoder import Encoder
+from gwsim.data.time_series.time_series import TimeSeries
+from gwsim.data.time_series.time_series_list import TimeSeriesList
 
 
 @pytest.fixture

@@ -7,7 +7,7 @@ import contextlib
 import pytest
 from typer.testing import CliRunner
 
-from gwmock.cli.main import app
+from gwsim.cli.main import app
 
 
 @pytest.fixture
@@ -44,10 +44,10 @@ def temp_examples_dir(tmp_path):
 def mock_examples_dir(monkeypatch, temp_examples_dir):
     """Mock get_examples_dir to return our temp directory."""
     # Import and patch at the module level where it's used
-    monkeypatch.setattr("gwmock.cli.config.get_examples_dir", lambda: temp_examples_dir, raising=False)
+    monkeypatch.setattr("gwsim.cli.config.get_examples_dir", lambda: temp_examples_dir, raising=False)
     # Also patch in utils.config in case it's imported there
     with contextlib.suppress(ImportError, AttributeError):
-        monkeypatch.setattr("gwmock.cli.utils.config.get_examples_dir", lambda: temp_examples_dir)
+        monkeypatch.setattr("gwsim.cli.utils.config.get_examples_dir", lambda: temp_examples_dir)
 
 
 def test_config_list(runner, temp_examples_dir):

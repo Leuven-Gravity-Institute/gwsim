@@ -1,4 +1,4 @@
-"""Custom build hook to include only YAML files from examples/ in gwmock/examples/."""
+"""Custom build hook to include only YAML files from examples/ in gwsim/examples/."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 
 class CustomBuildHook(BuildHookInterface):
-    """Copy only YAML files from examples/ to gwmock/examples/ in the wheel."""
+    """Copy only YAML files from examples/ to gwsim/examples/ in the wheel."""
 
     PLUGIN_NAME = "custom"
 
@@ -28,10 +28,10 @@ class CustomBuildHook(BuildHookInterface):
         # Find all YAML files and add them to force_include
         for yaml_file in examples_src.rglob("*.yaml"):
             rel_path = yaml_file.relative_to(examples_src)
-            # Map source file to destination in gwmock/examples/
-            dest_path = f"gwmock/examples/{rel_path.as_posix()}"
+            # Map source file to destination in gwsim/examples/
+            dest_path = f"gwsim/examples/{rel_path.as_posix()}"
             force_include[str(yaml_file)] = dest_path
 
         num_files = len([k for k in force_include if str(k).endswith(".yaml")])
         if num_files > 0:
-            print(f"✓ Including {num_files} YAML file(s) in gwmock/examples/")
+            print(f"✓ Including {num_files} YAML file(s) in gwsim/examples/")

@@ -10,8 +10,8 @@ import click
 import pytest
 import yaml
 
-from gwmock.cli.utils.hash import compute_file_hash
-from gwmock.cli.validate import validate_command
+from gwsim.cli.utils.hash import compute_file_hash
+from gwsim.cli.validate import validate_command
 
 
 @pytest.fixture

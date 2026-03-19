@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from gwmock.utils.io import atomic_writer, get_file_name_from_template
+from gwsim.utils.io import atomic_writer, get_file_name_from_template
 
 
 class MockInstance:

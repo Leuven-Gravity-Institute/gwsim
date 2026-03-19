@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from gwmock.mixin.population_reader import PopulationReaderMixin
-from gwmock.simulator.base import Simulator
+from gwsim.mixin.population_reader import PopulationReaderMixin
+from gwsim.simulator.base import Simulator
 
 
 class MockPopulationSimulator(PopulationReaderMixin, Simulator):
@@ -87,7 +87,7 @@ class TestPopulationReaderMixin:
         data, attrs = mock_h5py_data
         url = "https://example.com/population.h5"
 
-        with patch("gwmock.mixin.population_reader.download_file") as mock_download, patch("h5py.File") as mock_file:
+        with patch("gwsim.mixin.population_reader.download_file") as mock_download, patch("h5py.File") as mock_file:
             mock_download.return_value = "/tmp/downloaded.h5"
             mock_f = mock_file.return_value.__enter__.return_value
             mock_f.items.return_value = [

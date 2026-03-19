@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from gwmock.signal.cbc import CBCSignalSimulator
+from gwsim.signal.cbc import CBCSignalSimulator
 
 
 class TestCBCSignalSimulator:

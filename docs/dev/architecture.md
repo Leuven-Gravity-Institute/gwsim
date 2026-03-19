@@ -1,10 +1,10 @@
 # Architecture
 
-This document describes the high-level architecture and design principles of gwmock.
+This document describes the high-level architecture and design principles of gwsim.
 
 ## Overview
 
-gwmock is designed as an orchestration layer that leverages existing third-party packages (PyCBC, LALSuite, scipy, astropy) for actual signal processing and waveform generation. The package provides:
+gwsim is designed as an orchestration layer that leverages existing third-party packages (PyCBC, LALSuite, scipy, astropy) for actual signal processing and waveform generation. The package provides:
 
 - **Configuration Management**: YAML-based configuration with inheritance and template expansion
 - **Reproducible Workflows**: Full state tracking with checksums and metadata
@@ -15,7 +15,7 @@ gwmock is designed as an orchestration layer that leverages existing third-party
 
 ### 1. Avoid Reinventing the Wheel
 
-gwmock wraps existing, battle-tested libraries rather than reimplementing signal processing algorithms. This approach:
+gwsim wraps existing, battle-tested libraries rather than reimplementing signal processing algorithms. This approach:
 
 - Ensures correctness by relying on established implementations
 - Reduces maintenance burden
@@ -63,7 +63,7 @@ Benefits:
 ## Project Structure
 
 ```
-gwmock/
+gwsim/
 ├── __init__.py
 ├── cli/
 │   ├── __init__.py
@@ -141,7 +141,7 @@ gwmock/
 
 **Features:**
 
-- Commands: `gwmock simulate config.yaml`
+- Commands: `gwsim simulate config.yaml`
 - Flags: `--overwrite`, `--dry-run`, `--metadata`
 - Argument validation and help text
 
@@ -347,7 +347,7 @@ class MyCustomNoise(BaseNoise, RandomnessMixin, TimeSeriesMixin):
 ```yaml
 simulators:
   my_noise:
-    class: gwmock.noise.MyCustomNoise
+    class: gwsim.noise.MyCustomNoise
     arguments:
       param1: value1
 ```

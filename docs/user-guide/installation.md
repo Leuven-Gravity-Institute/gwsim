@@ -1,6 +1,6 @@
 # Installation
 
-We recommend using `uv` to manage virtual environments for installing gwmock.
+We recommend using `uv` to manage virtual environments for installing gwsim.
 
 If you don't have `uv` installed, you can install it with pip. See the project pages for more details:
 
@@ -19,13 +19,13 @@ If you don't have `uv` installed, you can install it with pip. See the project p
 
 ## Install from PyPI
 
-The recommended way to install gwmock is from PyPI:
+The recommended way to install gwsim is from PyPI:
 
 ```bash
 # Create a virtual environment (recommended with uv)
-uv venv gwmock-env --python 3.10
-source gwmock-env/bin/activate  # On Windows: gwmock-env\Scripts\activate
-uv pip install gwmock
+uv venv gwsim-env --python 3.10
+source gwsim-env/bin/activate  # On Windows: gwsim-env\Scripts\activate
+uv pip install gwsim
 ```
 
 ### Optional Dependencies
@@ -34,13 +34,13 @@ For development or specific features:
 
 ```bash
 # Development dependencies (testing, linting, etc.)
-uv pip install gwmock[dev]
+uv pip install gwsim[dev]
 
 # Documentation dependencies
-uv pip install gwmock[docs]
+uv pip install gwsim[docs]
 
 # All dependencies
-uv pip install gwmock[dev,docs]
+uv pip install gwsim[dev,docs]
 ```
 
 ## Install from Source
@@ -48,8 +48,8 @@ uv pip install gwmock[dev,docs]
 For the latest development version:
 
 ```bash
-git clone git@github.com:Leuven-Gravity-Institute/gwmock.git
-ce gwmock
+git clone git@github.com:Leuven-Gravity-Institute/gwsim.git
+ce gwsim
 # Create a virtual environment (recommended with uv)
 uv venv --python 3.10
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
@@ -61,8 +61,8 @@ uv pip install .
 To set up for development:
 
 ```bash
-git clone git@github.com:Leuven-Gravity-Institute/gwmock.git
-cd gwmock
+git clone git@github.com:Leuven-Gravity-Institute/gwsim.git
+cd gwsim
 
 # Create a virtual environment (recommended with uv)
 uv venv --python 3.10
@@ -79,14 +79,14 @@ pre-commit install --hook-type commit-msg
 
 ## Verify Installation
 
-Check that gwmock is installed correctly:
+Check that gwsim is installed correctly:
 
 ```bash
-gwmock --help
+gwsim --help
 ```
 
 ```bash
-python -c "import gwmock; print(gwmock.__version__)"
+python -c "import gwsim; print(gwsim.__version__)"
 ```
 
 ## Dependencies
@@ -108,7 +108,7 @@ python -c "import gwmock; print(gwmock.__version__)"
 ## Getting Help
 
 1. Check the [troubleshooting guide](../dev/troubleshooting.md)
-2. Search existing [issues](https://github.com/Leuven-Gravity-Institute/gwmock/issues)
+2. Search existing [issues](https://github.com/Leuven-Gravity-Institute/gwsim/issues)
 3. Create a new issue with:
    - Your operating system and Python version
    - Full error message

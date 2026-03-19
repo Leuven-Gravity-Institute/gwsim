@@ -1,6 +1,6 @@
 # Generating Data
 
-This guide shows how to use `gwmock` to create realistic mock data for gravitational-wave detectors.
+This guide shows how to use `gwsim` to create realistic mock data for gravitational-wave detectors.
 
 It uses the Einstein Telescope (ET) triangular configuration located in the Meuse-Rhine Euregion as an example.
 
@@ -9,8 +9,8 @@ For a quick guide on reading and working with the output GWF files, see the [Rea
 
 ## Generating Detector Noise
 
-Detector noise can be generated using configuration files in the [`examples/noise`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/noise) directory.
-An example configuration for producing two hours of ET noise data is provided in [`uncorrelated_gaussian/et_triangle_emr/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwmock/blob/main/examples/noise/uncorrelated_gaussian/et_triangle_emr/config.yaml):
+Detector noise can be generated using configuration files in the [`examples/noise`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/noise) directory.
+An example configuration for producing two hours of ET noise data is provided in [`uncorrelated_gaussian/et_triangle_emr/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwsim/blob/main/examples/noise/uncorrelated_gaussian/et_triangle_emr/config.yaml):
 
 ```yaml
 --8<-- "examples/noise/uncorrelated_gaussian/et_triangle_emr/config.yaml"
@@ -19,7 +19,7 @@ An example configuration for producing two hours of ET noise data is provided in
 This configuration generates one day of noise data per detector (E1, E2, E3).
 Each frame file covers 4096 seconds, resulting in 22 frame files, starting on 1 January 2030.
 
-Noise is simulated using the [ET_10_full_cryo_psd](https://github.com/Leuven-Gravity-Institute/gwmock/blob/main/src/gwmock/detector/noise_curves/ET_10_full_cryo_psd.txt) sensitivity curve from the [CoBA Science Study](https://iopscience.iop.org/article/10.1088/1475-7516/2023/07/068) and publicly available.
+Noise is simulated using the [ET_10_full_cryo_psd](https://github.com/Leuven-Gravity-Institute/gwsim/blob/main/src/gwsim/detector/noise_curves/ET_10_full_cryo_psd.txt) sensitivity curve from the [CoBA Science Study](https://iopscience.iop.org/article/10.1088/1475-7516/2023/07/068) and publicly available.
 A low-frequency cutoff of 2 Hz is used.
 
 To generate the ET noise data, run:
@@ -30,10 +30,10 @@ mkdir noise_et_triangle_emr
 cd noise_et_triangle_emr
 
 # Copy configuration file to your working directory
-gwmock config --get noise/uncorrelated_gaussian/et_triangle_emr --output config.yaml
+gwsim config --get noise/uncorrelated_gaussian/et_triangle_emr --output config.yaml
 
 # Run simulation
-gwmock simulate config.yaml
+gwsim simulate config.yaml
 ```
 
 #### Storage Requirements
@@ -46,11 +46,11 @@ Each GWF file is approximately 123 MB. For three detectors with 21 files each:
 
 ## Generating CBC Signals
 
-Compact Binary Coalescence (CBC) signals can be generated using configuration files in the [`examples/signal/bbh`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/signal/bbh) and [`examples/signal/bns`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/signal/bns) directories.
+Compact Binary Coalescence (CBC) signals can be generated using configuration files in the [`examples/signal/bbh`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/signal/bbh) and [`examples/signal/bns`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/signal/bns) directories.
 
 ### Binary Black Hole (BBH) Signals
 
-An example configuration for producing one day of ET data containing BBH signals from a realistic population is provided in [`signal/bbh/et_triangle_emr/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/signal/bbh/et_triangle_emr/config.yaml):
+An example configuration for producing one day of ET data containing BBH signals from a realistic population is provided in [`signal/bbh/et_triangle_emr/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/signal/bbh/et_triangle_emr/config.yaml):
 
 ```yaml
 --8<-- "examples/signal/bbh/et_triangle_emr/config.yaml"
@@ -69,21 +69,21 @@ mkdir bbh_et_triangle_emr
 cd bbh_et_triangle_emr
 
 # Copy configuration file to your working directory
-gwmock config --get signal/bbh/et_triangle_emr --output config.yaml
+gwsim config --get signal/bbh/et_triangle_emr --output config.yaml
 
 # Run simulation
-gwmock simulate config.yaml
+gwsim simulate config.yaml
 ```
 
 <!-- prettier-ignore -->
 !!! note
     The configuration file automatically downloads the BBH population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
-    The file is saved in a cache directory (by default, `~/.gwmock/population/`).
-    When the same population file is needed again, gwmock uses the cached copy to avoid re-downloading.
+    The file is saved in a cache directory (by default, `~/.gwsim/population/`).
+    When the same population file is needed again, gwsim uses the cached copy to avoid re-downloading.
 
 ### Binary Neutron Star (BNS) Signals
 
-An example configuration for producing one day of ET data containing BNS signals from a realistic population is provided in [`signal/bns/et_triangle_emr/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/signal/bns/et_triangle_emr/config.yaml).
+An example configuration for producing one day of ET data containing BNS signals from a realistic population is provided in [`signal/bns/et_triangle_emr/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/signal/bns/et_triangle_emr/config.yaml).
 It is equivalent to the BBH example configuration, except for:
 
 ```yaml
@@ -102,24 +102,24 @@ mkdir bns_et_triangle_emr
 cd bns_et_triangle_emr
 
 # Copy configuration file to your working directory for BNS simulation
-gwmock config --get signal/bns/et_triangle_emr --output config.yaml
+gwsim config --get signal/bns/et_triangle_emr --output config.yaml
 
 # Run simulation
-gwmock simulate config.yaml
+gwsim simulate config.yaml
 ```
 
 <!-- prettier-ignore -->
 !!! note
     The configuration file automatically downloads the BNS population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
-    The file is saved in a cache directory (by default, `~/.gwmock/population/`).
-    When the same population file is needed again, `gwmock` uses the cached copy to avoid re-downloading.
+    The file is saved in a cache directory (by default, `~/.gwsim/population/`).
+    When the same population file is needed again, `gwsim` uses the cached copy to avoid re-downloading.
 
 ## Generating Transient Noise Artifacts (Glitches)
 
-Glitches can be generated using configuration files in the [`examples/glitch`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/glitch/gengli) directory.
+Glitches can be generated using configuration files in the [`examples/glitch`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/glitch/gengli) directory.
 Glitch generation uses the [gengli](https://pypi.org/project/gengli/) package and currently supports only _blip_ glitches.
 
-An example configuration for producing one day of ET data for the E1 detector containing blip glitches from a realistic population is provided in [`glitch/gengli/et_triangle_emr/e1/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/glitch/gengli/et_triangle_emr/e1/config.yaml):
+An example configuration for producing one day of ET data for the E1 detector containing blip glitches from a realistic population is provided in [`glitch/gengli/et_triangle_emr/e1/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/glitch/gengli/et_triangle_emr/e1/config.yaml):
 
 ```yaml
 --8<-- "examples/glitch/gengli/et_triangle_emr/e1/config.yaml"
@@ -127,7 +127,7 @@ An example configuration for producing one day of ET data for the E1 detector co
 
 This configuration file generates one day of data for the E1 detector, divided into 4096-second frame files (for a total of 21 frames), starting on 1 January 2030.
 
-Blip glitches are injected into zero noise from the [blip_glitch_population_E1.h5](https://sandbox.zenodo.org/records/413548) population file, which was generated with gengli using the [following script](https://github.com/Leuven-Gravity-Institute/gwmock/blob/main/src/gwmock/population/glitch.py).
+Blip glitches are injected into zero noise from the [blip_glitch_population_E1.h5](https://sandbox.zenodo.org/records/413548) population file, which was generated with gengli using the [following script](https://github.com/Leuven-Gravity-Institute/gwsim/blob/main/src/gwsim/population/glitch.py).
 These glitches are modeled on LIGO blip glitches observed during the O3 observing run and recolored to match the ET sensitivity.
 
 To generate the ET data for detector E1 with glitches, run:
@@ -138,27 +138,27 @@ mkdir -p glitch_et_triangle_emr/e1
 cd glitch_et_triangle_emr/e1
 
 # Copy configuration file to your working directory for glitch simulation
-gwmock config --get glitch/gengli/et_triangle_emr/e1 --output config.yaml
+gwsim config --get glitch/gengli/et_triangle_emr/e1 --output config.yaml
 
 # Run simulation
-gwmock simulate config.yaml
+gwsim simulate config.yaml
 ```
 
 <!-- prettier-ignore -->
 !!! note
     The configuration file automatically downloads the glitch population file from a [Zenodo repository](https://sandbox.zenodo.org/records/413548).
-    The file is saved in a cache directory (by default, `~/.gwmock/population/`).
-    When the same population file is needed again, gwmock uses the cached copy to avoid re-downloading.
+    The file is saved in a cache directory (by default, `~/.gwsim/population/`).
+    When the same population file is needed again, gwsim uses the cached copy to avoid re-downloading.
 
 <!-- prettier-ignore -->
 !!! note
-    The [`GengliGlitchSimulator`](/reference/gwmock/glitch/gengli_glitch) currently supports only a single detector at a time.
-    To generate glitch-containing data for detectors E2 and E3, rerun the command above using the [`glitch/gengli/et_triangle_emr/e2/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/glitch/gengli/et_triangle_emr/e2/config.yaml) and [`glitch/gengli/et_triangle_emr/e3/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/glitch/gengli/et_triangle_emr/e3/config.yaml) configuration files respectively (updating the working directory name).
+    The [`GengliGlitchSimulator`](/reference/gwsim/glitch/gengli_glitch) currently supports only a single detector at a time.
+    To generate glitch-containing data for detectors E2 and E3, rerun the command above using the [`glitch/gengli/et_triangle_emr/e2/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/glitch/gengli/et_triangle_emr/e2/config.yaml) and [`glitch/gengli/et_triangle_emr/e3/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/examples/glitch/gengli/et_triangle_emr/e3/config.yaml) configuration files respectively (updating the working directory name).
     Note that a different glitch population is used for each detector.
 
 ## Using Different Detector Configurations
 
-`gwmock` includes several pre-configured Einstein Telescope detector geometries, available in [`gwmock/detector/detectors`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/src/gwmock/detector/detectors):
+`gwsim` includes several pre-configured Einstein Telescope detector geometries, available in [`gwsim/detector/detectors`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/src/gwsim/detector/detectors):
 
 Triangular Configuration (Meuse-Rhine Euregion)
 
@@ -199,7 +199,7 @@ detectors:
 
 ## Using Different Sensitivity Curves
 
-Multiple Einstein Telescope sensitivity curves (PSD files) are available in [`gwmock/detector/noise_curves/`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/src/gwmock/detector/noise_curves).
+Multiple Einstein Telescope sensitivity curves (PSD files) are available in [`gwsim/detector/noise_curves/`](https://github.com/Leuven-Gravity-Institute/gwsim/tree/main/src/gwsim/detector/noise_curves).
 These correspond to those used in the CoBA study.
 
 To use a specific sensitivity curve:
@@ -309,7 +309,7 @@ simulators:
         channel: '{{ detectors }}:STRAIN'
 ```
 
-`gwmock` uses a windowing approach to generate long-duration datasets.
+`gwsim` uses a windowing approach to generate long-duration datasets.
 If the input CSD varies rapidly with frequency, this windowing can introduce artifacts in the resulting frame files.
 
 A diagnostic tool to check whether your CSD file is susceptible to such issues will be provided soon.
@@ -320,22 +320,22 @@ If a simulation is interrupted, resume it by running the same command:
 
 ```bash
 # Start
-gwmock simulate config.yaml
+gwsim simulate config.yaml
 
 # If interrupted, resume
-gwmock simulate config.yaml
+gwsim simulate config.yaml
 ```
 
-gwmock automatically detects and continues from the last checkpoint.
+gwsim automatically detects and continues from the last checkpoint.
 
 ## Combining Data Types
 
 To create realistic mock data, you may generate noise, signals, and glitches separately, then combine them:
 
 ```bash
-gwmock simulate noise_config.yaml
-gwmock simulate signal_config.yaml
-gwmock simulate glitch_config.yaml
+gwsim simulate noise_config.yaml
+gwsim simulate signal_config.yaml
+gwsim simulate glitch_config.yaml
 ```
 
 Then merge the files using GWpy (see [Reading Data](reading-data.md) for details).

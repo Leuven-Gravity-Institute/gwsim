@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from gwmock.repository.zenodo import ZenodoClient
+from gwsim.repository.zenodo import ZenodoClient
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ class TestZenodoClient:
         client_prod = ZenodoClient("token", sandbox=False)
         assert client_prod.base_url == "https://zenodo.org/api/"
 
-    @patch("gwmock.repository.zenodo.requests.request")
+    @patch("gwsim.repository.zenodo.requests.request")
     def test_request_success(self, mock_request, zenodo_client, mock_response):
         """Test successful _request call."""
         mock_request.return_value = mock_response
@@ -48,7 +48,7 @@ class TestZenodoClient:
         assert result == {"id": "123", "links": {"bucket": "https://sandbox.zenodo.org/api/files/abc"}}
         mock_request.assert_called_once()
 
-    @patch("gwmock.repository.zenodo.requests.request")
+    @patch("gwsim.repository.zenodo.requests.request")
     def test_request_failure(self, mock_request, zenodo_client):
         """Test _request with HTTP error."""
         mock_request.side_effect = requests.HTTPError("404")

@@ -2,16 +2,16 @@
 
 ## Version Conflicts During Installation
 
-If you encounter version conflicts or dependency errors while installing `gwmock`, this is often due to conflicting package versions in your Python environment. To resolve this:
+If you encounter version conflicts or dependency errors while installing `gwsim`, this is often due to conflicting package versions in your Python environment. To resolve this:
 
 <!-- prettier-ignore-start -->
 
-1. **Use a Virtual Environment**: Always install `gwmock` in a dedicated virtual environment to isolate it from your system Python and other projects. We recommend using `uv` for this:
+1. **Use a Virtual Environment**: Always install `gwsim` in a dedicated virtual environment to isolate it from your system Python and other projects. We recommend using `uv` for this:
 
     ```bash
-    uv venv --python 3.10 gwmock-env  # Replace 3.10 with your preferred version (3.10-3.12)
-    source gwmock-env/bin/activate  # On Windows: gwmock-env\Scripts\activate
-    uv pip install gwmock
+    uv venv --python 3.10 gwsim-env  # Replace 3.10 with your preferred version (3.10-3.12)
+    source gwsim-env/bin/activate  # On Windows: gwsim-env\Scripts\activate
+    uv pip install gwsim
     ```
 
 2. **Check Python Version**: Ensure you're using Python 3.10, 3.11, or 3.12, as these are the versions the package is built and tested against. Using an unsupported version (e.g., 3.9 or 3.13+) may cause compatibility issues:
@@ -24,18 +24,18 @@ If you encounter version conflicts or dependency errors while installing `gwmock
 
     ```bash
     pip install --upgrade pip uv
-    uv pip install --upgrade gwmock
+    uv pip install --upgrade gwsim
     ```
 
 4. **Clean Install**: If issues continue, remove the virtual environment and recreate it:
 
     ```bash
-    rm -rf gwmock-env  # Or delete the folder
-    uv venv --python 3.10 gwmock-env
-    source gwmock-env/bin/activate
-    uv pip install gwmock
+    rm -rf gwsim-env  # Or delete the folder
+    uv venv --python 3.10 gwsim-env
+    source gwsim-env/bin/activate
+    uv pip install gwsim
     ```
 
 <!-- prettier-ignore-end -->
 
-For more details on installation, see the [Installation Guide](../user-guide/installation.md). If problems persist, check the [GitHub issues](https://github.com/Leuven-Gravity-Institute/gwmock/issues) or create a new issue with your Python version and full error output.
+For more details on installation, see the [Installation Guide](../user-guide/installation.md). If problems persist, check the [GitHub issues](https://github.com/Leuven-Gravity-Institute/gwsim/issues) or create a new issue with your Python version and full error output.

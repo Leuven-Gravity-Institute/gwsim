@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from gwmock.mixin.cbc_population_reader import CBCPopulationReaderMixin
-from gwmock.simulator.base import Simulator
+from gwsim.mixin.cbc_population_reader import CBCPopulationReaderMixin
+from gwsim.simulator.base import Simulator
 
 
 class MockCBCSimulator(CBCPopulationReaderMixin, Simulator):
@@ -144,7 +144,7 @@ class TestCBCPopulationReaderMixin:
         data, attrs = mock_cbc_h5py_data
         url = "https://example.com/cbc_population.h5"
 
-        with patch("gwmock.mixin.population_reader.download_file") as mock_download, patch("h5py.File") as mock_file:
+        with patch("gwsim.mixin.population_reader.download_file") as mock_download, patch("h5py.File") as mock_file:
             mock_download.return_value = "/tmp/downloaded_cbc.h5"
             mock_f = mock_file.return_value.__enter__.return_value
             mock_f.items.return_value = [
