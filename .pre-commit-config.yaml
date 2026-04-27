@@ -50,13 +50,13 @@ repos:
         stages: [pre-commit]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 8.0.1
+    rev: 9.0.0a3
     hooks:
       - id: isort
         stages: [pre-commit]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.6
+    rev: v0.15.12
     hooks:
       - id: ruff
         args: [--fix, --config=pyproject.toml]
@@ -83,7 +83,7 @@ repos:
         stages: [pre-commit]
 
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v9.7.0 # Keep this version or update to the latest stable
+    rev: v10.0.0 # Keep this version or update to the latest stable
     hooks:
       - id: cspell
         name: Check spelling in Python, reSt, and Markdown files.
