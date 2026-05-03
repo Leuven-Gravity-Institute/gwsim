@@ -16,13 +16,13 @@ jobs:
     draft-release:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
               with:
                   fetch-depth: 0
 
             - name: Generate changelog
               id: changelog
-              uses: orhun/git-cliff-action@v4.7.0
+              uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
               with:
                   config: cliff.toml
                   args: --unreleased --verbose
@@ -37,7 +37,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
 
             - name: Create or Update Draft Release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
               with:
                   tag_name: next-release
                   name: 'Next Release (Draft)'
