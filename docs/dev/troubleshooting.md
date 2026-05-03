@@ -13,17 +13,17 @@ environment. To resolve this:
     We recommend using `uv` for this:
 
     ```bash
-    uv venv --python 3.10 gwmock-env  # Replace 3.10 with your preferred version (3.10-3.12)
+    uv venv --python 3.12 gwmock-env  # Replace 3.12 with your preferred version (3.12-3.13)
     source gwmock-env/bin/activate  # On Windows: gwmock-env\Scripts\activate
     uv pip install gwmock
     ```
 
-2. **Check Python Version**: Ensure you're using Python 3.10, 3.11, or 3.12, as these are the versions
+2. **Check Python Version**: Ensure you're using Python 3.12 or 3.13, as these are the versions
     the package is built and tested against.
-    Using an unsupported version (e.g., 3.9 or 3.13+) may cause compatibility issues:
+    Using an unsupported version (e.g., 3.11 or 3.14+) may cause compatibility issues:
 
     ```bash
-    python --version  # Should show 3.10.x, 3.11.x, or 3.12.x
+    python --version  # Should show 3.12.x or 3.13.x
     ```
 
 3. **Update Dependencies**: If conflicts persist, try updating `pip` and `uv`:
@@ -37,7 +37,7 @@ environment. To resolve this:
 
     ```bash
     rm -rf gwmock-env  # Or delete the folder
-    uv venv --python 3.10 gwmock-env
+    uv venv --python 3.12 gwmock-env
     source gwmock-env/bin/activate
     uv pip install gwmock
     ```

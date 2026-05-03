@@ -311,7 +311,7 @@ def batch_command(
          --job-name my_simulation \\
          --account my_account_name \\
          --time 08:00:00 \\
-         --extra-line "module load Python/3.11" \\
+         --extra-line "module load Python/3.12" \\
          --extra-line "conda activate gwmock" \\
          --output my_config.yaml
 

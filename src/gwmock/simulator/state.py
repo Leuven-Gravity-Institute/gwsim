@@ -5,12 +5,10 @@ A descriptor class to handle a state attribute.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar, overload
-
-T = TypeVar("T")
+from typing import Any, overload
 
 
-class StateAttribute(Generic[T]):  # pylint: disable=duplicate-code
+class StateAttribute[T]:  # pylint: disable=duplicate-code
     """A state attribute."""
 
     def __init__(

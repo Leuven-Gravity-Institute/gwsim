@@ -399,7 +399,7 @@ class TestMetadataAuthorEmailTimestamp:
         simulator_config: SimulatorConfig,
     ):
         """Test creating metadata with explicit timestamp."""
-        custom_timestamp = datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        custom_timestamp = datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC)
         metadata = create_batch_metadata(
             simulator_name="noise",
             batch_index=0,
@@ -416,7 +416,7 @@ class TestMetadataAuthorEmailTimestamp:
     ):
         """Test that timestamp defaults to current UTC time."""
         # Capture time before creating metadata
-        before = datetime.datetime.now(datetime.timezone.utc)
+        before = datetime.datetime.now(datetime.UTC)
 
         metadata = create_batch_metadata(
             simulator_name="noise",
@@ -426,7 +426,7 @@ class TestMetadataAuthorEmailTimestamp:
         )
 
         # Capture time after
-        after = datetime.datetime.now(datetime.timezone.utc)
+        after = datetime.datetime.now(datetime.UTC)
 
         # Parse the timestamp from metadata
         timestamp = datetime.datetime.fromisoformat(metadata["timestamp"])
