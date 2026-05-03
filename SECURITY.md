@@ -1,7 +1,7 @@
 # Security Policy
 
-We will support the latest stable release of `gwmock`.
-Please ensure you are using the most recent version before reporting a security issue.
+We will support the latest stable release of `gwmock`. Please ensure you are
+using the most recent version before reporting a security issue.
 
 | Version | Supported |
 | ------- | --------- |
@@ -16,8 +16,8 @@ Please ensure you are using the most recent version before reporting a security 
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in `gwmock`,
-please report it using **GitHub's private vulnerability reporting feature**:
+If you discover a security vulnerability in `gwmock`, please report it using
+**GitHub's private vulnerability reporting feature**:
 
 <!-- prettier-ignore-start -->
 
@@ -49,5 +49,5 @@ We aim to:
 
 ## Thanks
 
-We value the security of our users and appreciate responsible disclosures.
-Thank you for helping make `gwmock` better and safer!
+We value the security of our users and appreciate responsible disclosures. Thank
+you for helping make `gwmock` better and safer!

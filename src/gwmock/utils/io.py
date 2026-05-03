@@ -37,8 +37,7 @@ def check_file_overwrite():
             if file_name.exists():
                 if not overwrite:
                     raise FileExistsError(
-                        f"File '{file_name}' already exists. "
-                        f"Use overwrite=True or --overwrite flag to overwrite it."
+                        f"File '{file_name}' already exists. Use overwrite=True or --overwrite flag to overwrite it."
                     )
                 file_size = file_name.stat().st_size
                 logger.warning("File '%s' already exists (size: %d bytes). Overwriting...", file_name, file_size)

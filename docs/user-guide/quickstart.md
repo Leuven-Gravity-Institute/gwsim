@@ -14,11 +14,20 @@ gwmock config --get noise/uncorrelated_gaussian/quick_start --output quick_start
 gwmock simulate quick_start_config.yaml
 ```
 
-The configuration file `quick_start_config.yaml` generates a single 1024-second GWF file containing simulated noise data, using the [ET_10_full_cryo_psd](https://github.com/Leuven-Gravity-Institute/gwmock/blob/main/src/gwmock/detector/noise_curves/ET_10_full_cryo_psd.txt) sensitivity curve from the [CoBA Science Study](https://iopscience.iop.org/article/10.1088/1475-7516/2023/07/068), sampled at 4096 Hz.
+<!-- typos:off -->
+
+The configuration file `quick_start_config.yaml` generates a single 1024-second
+GWF file containing simulated noise data, using the
+[ET_10_full_cryo_psd](https://github.com/Leuven-Gravity-Institute/gwmock/blob/main/src/gwmock/detector/noise_curves/ET_10_full_cryo_psd.txt)
+sensitivity curve from the
+[CoBA Science Study](https://iopscience.iop.org/article/10.1088/1475-7516/2023/07/068),
+sampled at 4096 Hz.
+
+<!-- typos:on -->
 
 You should see output like:
 
-```
+```text
 INFO Config mode: quick_start_config.yaml
 INFO Configuration loaded and validated: 1 simulators
 INFO Created simulation plan from config: 1 batches
@@ -39,7 +48,7 @@ INFO Simulation completed successfully. Output written to data
 
 Your working directory will contain:
 
-```
+```text
 output/
 └── E-E1-NOISE_STRAIN-1577491218-1024.gwf
 metadata/
@@ -49,26 +58,33 @@ metadata/
 
 ### Data File
 
-The GWF file contains the simulated strain data, which can be read using standard gravitational wave analysis software such as [GWpy](https://gwpy.github.io/).
-For a quick guide on reading and working with GWF files, see the [Reading Data](reading-data.md) page.
+The GWF file contains the simulated strain data, which can be read using
+standard gravitational wave analysis software such as
+[GWpy](https://gwpy.github.io/). For a quick guide on reading and working with
+GWF files, see the [Reading Data](reading-data.md) page.
 
 ### Metadata File
 
 The metadata file contains everything needed to reproduce this exact simulation.
-For a quick guide on how to inspect and reuse metadata files to reproduce a dataset, see the [Metadata Files](metadata.md) page.
+For a quick guide on how to inspect and reuse metadata files to reproduce a
+dataset, see the [Metadata Files](metadata.md) page.
 
 ## 3. Explore Different Simulators
 
-To run any gwmock simulations, you only need to provide a `.yaml` configuration file.
-A collection of ready-to-use configuration files is available in the [`gwmock/examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples) directory.
-You can use them directly or adapt them to suit your needs.
+To run any gwmock simulations, you only need to provide a `.yaml` configuration
+file. A collection of ready-to-use configuration files is available in the
+[`gwmock/examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples)
+directory. You can use them directly or adapt them to suit your needs.
 
-- For an overview of all available examples, see the [Examples](examples.md) page.
-- For a more complete and user-friendly guide to writing your own configuration files, see the [Configuration Files](configuration.md) page.
+- For an overview of all available examples, see the [Examples](examples.md)
+  page.
+- For a more complete and user-friendly guide to writing your own configuration
+  files, see the [Configuration Files](configuration.md) page.
 
 ## 4. Next Steps
 
-- [Generating Data](generating-data.md) - Quick guide for generating datasets with gwmock, including Einstein Telescope (ET) examples.
+- [Generating Data](generating-data.md) - Quick guide for generating datasets
+  with gwmock, including Einstein Telescope (ET) examples.
 - [Examples](examples.md) - Example configuration files for ET simulations.
-- [Request New Features](../dev/contributing.md) - How to request new features or improvements.
-- [API Reference](../reference/index.md) - Programmatic usage documentation.
+- [Request New Features](../contributing.md) - How to request new features or
+  improvements.

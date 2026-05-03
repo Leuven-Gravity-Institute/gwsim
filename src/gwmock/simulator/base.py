@@ -303,13 +303,13 @@ class Simulator(ABC):
             if isinstance(file_name_resolved, Path):
                 if file_name_resolved.exists():
                     raise FileExistsError(
-                        f"File '{file_name_resolved}' already exists. " f"Use overwrite=True to overwrite it."
+                        f"File '{file_name_resolved}' already exists. Use overwrite=True to overwrite it."
                     )
             else:
                 for single_file in file_name_resolved.flatten():
                     if single_file.exists():
                         raise FileExistsError(
-                            f"File '{single_file}' already exists. " f"Use overwrite=True to overwrite it."
+                            f"File '{single_file}' already exists. Use overwrite=True to overwrite it."
                         )
 
         self._save_data(data=data, file_name=file_name_resolved, **kwargs)

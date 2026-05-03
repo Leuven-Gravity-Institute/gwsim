@@ -22,8 +22,7 @@ def create_command(  # pylint: disable=too-many-locals
         typer.Option(
             "--token",
             help=(
-                "Zenodo access token (default: ZENODO_API_TOKEN env or"
-                " ZENODO_SANDBOX_API_TOKEN env for Zenodo Sandbox)"
+                "Zenodo access token (default: ZENODO_API_TOKEN env or ZENODO_SANDBOX_API_TOKEN env for Zenodo Sandbox)"
             ),
         ),
     ] = None,

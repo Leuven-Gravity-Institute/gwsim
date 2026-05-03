@@ -2,10 +2,12 @@
 
 We recommend using `uv` to manage virtual environments for installing gwmock.
 
-If you don't have `uv` installed, you can install it with pip. See the project pages for more details:
+If you don't have `uv` installed, you can install it with pip. See the project
+pages for more details:
 
 - Install via pip: `pip install --upgrade pip && pip install uv`
-- Project pages: [uv on PyPI](https://pypi.org/project/uv/) | [uv on GitHub](https://github.com/astral-sh/uv)
+- Project pages: [uv on PyPI](https://pypi.org/project/uv/) |
+  [uv on GitHub](https://github.com/astral-sh/uv)
 - Full documentation and usage guide: [uv docs](https://docs.astral.sh/uv/)
 
 ## Requirements
@@ -15,7 +17,9 @@ If you don't have `uv` installed, you can install it with pip. See the project p
 
 <!-- prettier-ignore -->
 !!!note
-    The package is built and tested against Python 3.10-3.12. When creating a virtual environment with `uv`, specify the Python version to ensure compatibility: `uv venv --python 3.10` (replace `3.10` with your preferred version in the 3.10-3.12 range). This avoids potential issues with unsupported Python versions.
+    The package is built and tested against Python 3.10-3.12. When creating a virtual environment with `uv`,
+    specify the Python version to ensure compatibility: `uv venv --python 3.10` (replace `3.10` with your
+    preferred version in the 3.10-3.12 range). This avoids potential issues with unsupported Python versions.
 
 ## Install from PyPI
 
@@ -108,8 +112,9 @@ python -c "import gwmock; print(gwmock.__version__)"
 ## Getting Help
 
 1. Check the [troubleshooting guide](../dev/troubleshooting.md)
-2. Search existing [issues](https://github.com/Leuven-Gravity-Institute/gwmock/issues)
+2. Search existing
+   [issues](https://github.com/Leuven-Gravity-Institute/gwmock/issues)
 3. Create a new issue with:
-   - Your operating system and Python version
-   - Full error message
-   - Steps to reproduce the problem
+    - Your operating system and Python version
+    - Full error message
+    - Steps to reproduce the problem

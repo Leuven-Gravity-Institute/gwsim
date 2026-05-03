@@ -1,26 +1,33 @@
 # Running Simulations on a Cluster
 
-The `gwmock batch` command allows you to build and submit gwmock simulations as batch jobs on a Slurm-based cluster.
+The `gwmock batch` command allows you to build and submit gwmock simulations as
+batch jobs on a Slurm-based cluster.
 
 ## Overview
 
 The `gwmock batch` command has two mutually exclusive modes:
 
-1. **Create a batch-ready configuration file** from one of the provided examples.
-   This mode is triggered by the `--get` option.
+1. **Create a batch-ready configuration file** from one of the provided
+   examples. This mode is triggered by the `--get` option.
 
-2. **Generate a Slurm submit script** (and optionally submit the job) from an existing configuration file that already contains a `batch` section.
+2. **Generate a Slurm submit script** (and optionally submit the job) from an
+   existing configuration file that already contains a `batch` section.
 
 ## 1. Create a Batch-ready Configuration File
 
-Use this mode when starting from an example configuration file in the in the [`examples/`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples) directory and you want to prepare a configuration file that includes all necessary information for batch submission.
+Use this mode when starting from an example configuration file in the in the
+[`examples/`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples)
+directory and you want to prepare a configuration file that includes all
+necessary information for batch submission.
 
 ```bash
 gwmock batch --get <example_label> [options]
 ```
 
-This command requires the label of the example configuration file to copy, which can be obtained using the `gwmock config --list` command.
-It copies `examples/<example_label>/config.yaml` and adds a complete `batch` section (see the [Examples](examples.md) page).
+This command requires the label of the example configuration file to copy, which
+can be obtained using the `gwmock config --list` command. It copies
+`examples/<example_label>/config.yaml` and adds a complete `batch` section (see
+the [Examples](examples.md) page).
 
 The following default resources are always added:
 
@@ -38,31 +45,26 @@ mem: 16GB
 
 ### Commonly used options (only allowed with `--get`)
 
-- `--job-name <name>`
-  Job name that will appear in SLURM (stored as `batch.job-name`). Default: `gwmock_job`.
+- `--job-name <name>` Job name that will appear in SLURM (stored as
+  `batch.job-name`). Default: `gwmock_job`.
 
-- `--scheduler <scheduler>`
-  Name of the scheduler (only `slurm` currently supported). Default: `slurm`.
+- `--scheduler <scheduler>` Name of the scheduler (only `slurm` currently
+  supported). Default: `slurm`.
 
-- `--account <account>`
-  SLURM account/project to charge.
+- `--account <account>` SLURM account/project to charge.
 
-- `--cluster <partition>`
-  SLURM cluster or partition to run on.
+- `--cluster <partition>` SLURM cluster or partition to run on.
 
-- `--time <time>`
-  Wall time limit in `hh:mm:ss` format.
+- `--time <time>` Wall time limit in `hh:mm:ss` format.
 
-- `--extra-line '<command>'`
-  Add a custom shell line to the submit script before the simulation command (e.g. environment setup, module loads, conda activate).
+- `--extra-line '<command>'` Add a custom shell line to the submit script before
+  the simulation command (e.g. environment setup, module loads, conda activate).
   Can be repeated multiple times.
 
-- `--output <path>`
-  Destination for the new configuration file.
-  Default: `config.yaml` in the current directory.
+- `--output <path>` Destination for the new configuration file. Default:
+  `config.yaml` in the current directory.
 
-- `--overwrite`
-  Overwrite the output configuration file if it already exists.
+- `--overwrite` Overwrite the output configuration file if it already exists.
 
 ### Example
 
@@ -83,55 +85,56 @@ add the following `batch` section to the configuration file:
 
 ```yaml
 batch:
-  scheduler: slurm # Default
-  job-name: gwmock_test
-  resources:
-    nodes: 1 # Default
-    ntasks-per-node: 1 # Default
-    cpus-per-task: 1 # Default
-    mem: 16GB # Default
-  submit:
-    account: my_account
-    cluster: cluster_name
-    time: 02:00:00
-  extra_lines:
-    - export PATH="/my_account/miniconda3/bin:$PATH"
-    - eval "$(conda shell.bash hook)"
-    - conda activate /my_account/miniconda3/envs/my_env
+    scheduler: slurm # Default
+    job-name: gwmock_test
+    resources:
+        nodes: 1 # Default
+        ntasks-per-node: 1 # Default
+        cpus-per-task: 1 # Default
+        mem: 16GB # Default
+    submit:
+        account: my_account
+        cluster: cluster_name
+        time: 02:00:00
+    extra_lines:
+        - export PATH="/my_account/miniconda3/bin:$PATH"
+        - eval "$(conda shell.bash hook)"
+        - conda activate /my_account/miniconda3/envs/my_env
 ```
 
 ## 2. Generate and Submit a Slurm Job
 
-Use this mode when you already have a configuration file that contains a valid `batch` section.
+Use this mode when you already have a configuration file that contains a valid
+`batch` section.
 
 ```bash
 gwmock batch <config.yaml> [--submit]
 ```
 
-This command requires the path to a configuration file that contains a `batch` section with at least `scheduler` and `job-name` (default resources are assumed).
-When executed, the following actions are performed:
+This command requires the path to a configuration file that contains a `batch`
+section with at least `scheduler` and `job-name` (default resources are
+assumed). When executed, the following actions are performed:
 
 1. Directories are created under `<working-directory>/slurm/`:
-   - `output/` – stdout files
-   - `error/` – stderr files
-   - `submit/` – the generated `.submit` script
+    - `output/` – stdout files
+    - `error/` – stderr files
+    - `submit/` – the generated `.submit` script
 
 2. A SLURM submit script is written containing:
-   - All `#SBATCH` directives from `batch.resources`
-   - Any additional `#SBATCH` directives from `batch.submit` (account, cluster, time, etc.)
-   - All custom lines from `batch.extra_lines` (if present)
-   - The command `gwmock simulate <absolute_path_to_config.yaml>`
+    - All `#SBATCH` directives from `batch.resources`
+    - Any additional `#SBATCH` directives from `batch.submit` (account, cluster,
+      time, etc.)
+    - All custom lines from `batch.extra_lines` (if present)
+    - The command `gwmock simulate <absolute_path_to_config.yaml>`
 
 3. If `--submit` is used, `sbatch` is called.
 
 ### Optional
 
-- `--submit`
-  Immediately submit the generated job using `sbatch`.
-  Without this flag, only the submit script is created.
+- `--submit` Immediately submit the generated job using `sbatch`. Without this
+  flag, only the submit script is created.
 
-- `--overwrite`
-  Overwrite an existing submit script if it already exists.
+- `--overwrite` Overwrite an existing submit script if it already exists.
 
 ### Example
 

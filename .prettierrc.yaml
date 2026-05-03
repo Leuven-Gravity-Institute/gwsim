@@ -1,6 +1,7 @@
-tabWidth: 2
+trailingComma: 'es5'
+tabWidth: 4
 useTabs: false
 semi: false
 singleQuote: true
-endOfLine: 'lf'
-bracketSpacing: true
+printWidth: 80
+proseWrap: always

@@ -1,12 +1,16 @@
 # Architecture
 
-This document describes the high-level architecture and design principles of gwmock.
+This document describes the high-level architecture and design principles of
+gwmock.
 
 ## Overview
 
-gwmock is designed as an orchestration layer that leverages existing third-party packages (PyCBC, LALSuite, scipy, astropy) for actual signal processing and waveform generation. The package provides:
+gwmock is designed as an orchestration layer that leverages existing third-party
+packages (PyCBC, LALSuite, scipy, astropy) for actual signal processing and
+waveform generation. The package provides:
 
-- **Configuration Management**: YAML-based configuration with inheritance and template expansion
+- **Configuration Management**: YAML-based configuration with inheritance and
+  template expansion
 - **Reproducible Workflows**: Full state tracking with checksums and metadata
 - **Unified Interfaces**: Consistent APIs across different simulator types
 - **Extensibility**: Easy addition of new simulators without CLI modifications
@@ -15,7 +19,8 @@ gwmock is designed as an orchestration layer that leverages existing third-party
 
 ### 1. Avoid Reinventing the Wheel
 
-gwmock wraps existing, battle-tested libraries rather than reimplementing signal processing algorithms. This approach:
+gwmock wraps existing, battle-tested libraries rather than reimplementing signal
+processing algorithms. This approach:
 
 - Ensures correctness by relying on established implementations
 - Reduces maintenance burden
@@ -30,7 +35,8 @@ gwmock wraps existing, battle-tested libraries rather than reimplementing signal
 
 ### 2. Stable CLI Interface
 
-The command-line interface remains unchanged regardless of underlying implementation changes. New features are added through:
+The command-line interface remains unchanged regardless of underlying
+implementation changes. New features are added through:
 
 - New simulator classes in `signal/`, `noise/`, `glitch/` modules
 - Updated configuration options
@@ -40,7 +46,7 @@ The command-line interface remains unchanged regardless of underlying implementa
 
 The package uses a **mixin pattern** for maximum flexibility and code reuse:
 
-```
+```text
 Base Simulator (interface, state management, iteration)
     ↓
     ├── + RandomnessMixin → handles random number generation
@@ -62,7 +68,7 @@ Benefits:
 
 ## Project Structure
 
-```
+```text
 gwmock/
 ├── __init__.py
 ├── cli/
@@ -204,7 +210,7 @@ class PyCBCStationaryGaussianNoiseSimulator(NoiseSimulator):
 
 **Example flow:**
 
-```
+```text
 config.yaml (user input)
     ↓
 YAML parsing
@@ -263,13 +269,14 @@ class StateAttribute:
         obj._state[self.name] = value
 ```
 
-**Key feature**: Instance-level state isolation prevents cross-contamination in tests
+**Key feature**: Instance-level state isolation prevents cross-contamination in
+tests
 
 ## Data Flow
 
 ### Simulation Workflow
 
-```
+```text
 User Input (config.yaml)
     ↓
 CLI parsing (Typer)
@@ -309,7 +316,7 @@ Output
 
 ### Data Generation
 
-```
+```text
 Simulator.generate()
     ↓
 RandomnessMixin (seed management)
@@ -333,43 +340,43 @@ gwf file + metadata
 
 1. **Create new class** in `noise/`:
 
-```python
-class MyCustomNoise(BaseNoise, RandomnessMixin, TimeSeriesMixin):
-    def generate(self, **params):
-        # Implementation
-        pass
-```
+    ```python
+    class MyCustomNoise(BaseNoise, RandomnessMixin, TimeSeriesMixin):
+        def generate(self, **params):
+            # Implementation
+            pass
+    ```
 
 2. **Register in CLI** (automatic via entry points or manual in registry)
 
 3. **Use in config**:
 
-```yaml
-simulators:
-  my_noise:
-    class: gwmock.noise.MyCustomNoise
-    arguments:
-      param1: value1
-```
+    ```yaml
+    simulators:
+        my_noise:
+            class: gwmock.noise.MyCustomNoise
+            arguments:
+                param1: value1
+    ```
 
 ### Adding a New Mixin
 
 1. **Create mixin class**:
 
-```python
-class MyMixin:
-    """Provides custom functionality."""
+    ```python
+    class MyMixin:
+        """Provides custom functionality."""
 
-    def my_method(self):
-        pass
-```
+        def my_method(self):
+            pass
+    ```
 
 2. **Use in simulator**:
 
-```python
-class MySimulator(BaseSimulator, MyMixin):
-    pass
-```
+    ```python
+    class MySimulator(BaseSimulator, MyMixin):
+        pass
+    ```
 
 ## Thread Safety & Concurrency
 

@@ -101,7 +101,7 @@ class TestEncoder:
 
     def test_handles_non_serializable_in_nested(self):
         """Test that non-serializable objects in nested structures raise errors."""
-        non_ser = NonSerializable(item="bad")
-        nested_data = {"good": MockSerializable(1, "ok"), "bad": non_ser}
+        non_serializable = NonSerializable(item="bad")
+        nested_data = {"good": MockSerializable(1, "ok"), "bad": non_serializable}
         with pytest.raises(TypeError):
             json.dumps(nested_data, cls=Encoder)

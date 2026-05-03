@@ -60,13 +60,11 @@ class Detector:
             configuration_file = Path(configuration_file)
 
             if configuration_file.is_file():
-
                 logger.debug("Loading detector from configuration file: %s", configuration_file)
 
                 prefix = load_interferometer_config(config_file=configuration_file)
 
             elif (DEFAULT_DETECTOR_BASE_PATH / configuration_file).is_file():
-
                 logger.debug("Loading detector from default path: %s", configuration_file)
 
                 prefix = load_interferometer_config(config_file=DEFAULT_DETECTOR_BASE_PATH / configuration_file)

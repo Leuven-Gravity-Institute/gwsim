@@ -2,11 +2,15 @@
 
 ## Version Conflicts During Installation
 
-If you encounter version conflicts or dependency errors while installing `gwmock`, this is often due to conflicting package versions in your Python environment. To resolve this:
+If you encounter version conflicts or dependency errors while installing
+`gwmock`, this is often due to conflicting package versions in your Python
+environment. To resolve this:
 
 <!-- prettier-ignore-start -->
 
-1. **Use a Virtual Environment**: Always install `gwmock` in a dedicated virtual environment to isolate it from your system Python and other projects. We recommend using `uv` for this:
+1. **Use a Virtual Environment**: Always install `gwmock` in a dedicated virtual environment to isolate it from your
+    system Python and other projects.
+    We recommend using `uv` for this:
 
     ```bash
     uv venv --python 3.10 gwmock-env  # Replace 3.10 with your preferred version (3.10-3.12)
@@ -14,7 +18,9 @@ If you encounter version conflicts or dependency errors while installing `gwmock
     uv pip install gwmock
     ```
 
-2. **Check Python Version**: Ensure you're using Python 3.10, 3.11, or 3.12, as these are the versions the package is built and tested against. Using an unsupported version (e.g., 3.9 or 3.13+) may cause compatibility issues:
+2. **Check Python Version**: Ensure you're using Python 3.10, 3.11, or 3.12, as these are the versions
+    the package is built and tested against.
+    Using an unsupported version (e.g., 3.9 or 3.13+) may cause compatibility issues:
 
     ```bash
     python --version  # Should show 3.10.x, 3.11.x, or 3.12.x
@@ -38,4 +44,7 @@ If you encounter version conflicts or dependency errors while installing `gwmock
 
 <!-- prettier-ignore-end -->
 
-For more details on installation, see the [Installation Guide](../user-guide/installation.md). If problems persist, check the [GitHub issues](https://github.com/Leuven-Gravity-Institute/gwmock/issues) or create a new issue with your Python version and full error output.
+For more details on installation, see the
+[Installation Guide](../user-guide/installation.md). If problems persist, check
+the [GitHub issues](https://github.com/Leuven-Gravity-Institute/gwmock/issues)
+or create a new issue with your Python version and full error output.

@@ -10,14 +10,20 @@
 [![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 [![DOI](https://zenodo.org/badge/1115995501.svg)](https://doi.org/10.5281/zenodo.17925458)
 
-A Python package for generating Mock Data Challenge (MDC) datasets for the gravitational-wave (GW) community. It simulates strain data for detectors like Einstein Telescope, providing a unified interface for reproducible GW data generation.
+A Python package for generating Mock Data Challenge (MDC) datasets for the
+gravitational-wave (GW) community. It simulates strain data for detectors like
+Einstein Telescope, providing a unified interface for reproducible GW data
+generation.
 
 ## Features
 
 - **Modular Design**: Uses mixins for flexible simulator composition
-- **Detector Support**: Built-in support for various GW detectors with custom configuration options
-- **Waveform Generation**: Integrates with PyCBC and LALSuite for accurate signal simulation
-- **Noise Models**: Supports colored and correlated noise generation (In-Progress)
+- **Detector Support**: Built-in support for various GW detectors with custom
+  configuration options
+- **Waveform Generation**: Integrates with PyCBC and LALSuite for accurate
+  signal simulation
+- **Noise Models**: Supports colored and correlated noise generation
+  (In-Progress)
 - **Population Models**: Handles injection populations for signals and glitches
 - **Data Formats**: Outputs in standard GW formats (GWF frames)
 - **CLI**: Command-line tools for easy simulation workflows
@@ -26,13 +32,19 @@ A Python package for generating Mock Data Challenge (MDC) datasets for the gravi
 
 We recommend using `uv` to manage virtual environments for installing gwmock.
 
-If you don't have `uv` installed, you can install it with pip. See the project pages for more details:
+If you don't have `uv` installed, you can install it with pip. See the project
+pages for more details:
 
 - Install via pip: `pip install --upgrade pip && pip install uv`
-- Project pages: [uv on PyPI](https://pypi.org/project/uv/) | [uv on GitHub](https://github.com/astral-sh/uv)
+- Project pages: [uv on PyPI](https://pypi.org/project/uv/) |
+  [uv on GitHub](https://github.com/astral-sh/uv)
 - Full documentation and usage guide: [uv docs](https://docs.astral.sh/uv/)
 
-**Note:** The package is built and tested against Python 3.10-3.12. When creating a virtual environment with `uv`, specify the Python version to ensure compatibility: `uv venv --python 3.10` (replace `3.10` with your preferred version in the 3.10-3.12 range). This avoids potential issues with unsupported Python versions.
+**Note:** The package is built and tested against Python 3.10-3.12. When
+creating a virtual environment with `uv`, specify the Python version to ensure
+compatibility: `uv venv --python 3.10` (replace `3.10` with your preferred
+version in the 3.10-3.12 range). This avoids potential issues with unsupported
+Python versions.
 
 ### From PyPI
 
@@ -65,7 +77,8 @@ gwmock simulate config.yaml
 
 ## Configuration
 
-gwmock uses YAML configuration files for reproducible simulations. See `examples/config.yaml` for a complete example.
+gwmock uses YAML configuration files for reproducible simulations. See
+`examples/config.yaml` for a complete example.
 
 Key configuration sections:
 
@@ -74,7 +87,8 @@ Key configuration sections:
 
 ## Documentation
 
-Full documentation to be available at [https://leuven-gravity-institute.github.io/gwmock](https://leuven-gravity-institute.github.io/gwmock).
+Full documentation to be available at
+[https://leuven-gravity-institute.github.io/gwmock](https://leuven-gravity-institute.github.io/gwmock).
 
 ## Contributing
 
@@ -88,10 +102,9 @@ Contributions are welcome!
 
 ### Release Schedule
 
-Releases follow a fixed schedule: every Tuesday at 00:00 UTC,
-unless an emergent bugfix is required.
-This ensures predictable updates while allowing flexibility for critical issues.
-Users can view upcoming changes in the draft release on the
+Releases follow a fixed schedule: every Tuesday at 00:00 UTC, unless an emergent
+bugfix is required. This ensures predictable updates while allowing flexibility
+for critical issues. Users can view upcoming changes in the draft release on the
 [GitHub Releases page](https://github.com/Leuven-Gravity-Institute/gwmock/releases).
 
 ## Testing
@@ -104,8 +117,11 @@ pytest
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
+for details.
 
 ## Support
 
-For questions or issues, please open an issue on [GitHub](https://github.com/Leuven-Gravity-Institute/gwmock/issues/new) or contact the maintainers.
+For questions or issues, please open an issue on
+[GitHub](https://github.com/Leuven-Gravity-Institute/gwmock/issues/new) or
+contact the maintainers.

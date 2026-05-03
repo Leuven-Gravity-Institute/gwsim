@@ -1,8 +1,11 @@
 # Contributing to gwmock
 
-🎉 Thank you for your interest in contributing to gwmock! 🌌📊 Your ideas, fixes, and improvements are welcome and appreciated as we work to enhance this package for generating simulated gravitational-wave (GW) data.
+🎉 Thank you for your interest in contributing to gwmock! 🌌📊 Your ideas,
+fixes, and improvements are welcome and appreciated as we work to enhance this
+package for generating simulated gravitational-wave (GW) data.
 
-Whether you’re fixing a typo, reporting a bug, suggesting a feature, or submitting a merge request—this guide will help you get started.
+Whether you’re fixing a typo, reporting a bug, suggesting a feature, or
+submitting a merge request—this guide will help you get started.
 
 ## How to Contribute
 
@@ -10,7 +13,9 @@ Whether you’re fixing a typo, reporting a bug, suggesting a feature, or submit
 
 1. Open an Issue
 
-    - Have a question, bug report, or feature suggestion? [Open an issue](https://github.com/Leuven-Gravity-Institute/gwmock/issues/new) and describe your idea clearly, including its relevance to generating simulated GW data.
+    - Have a question, bug report, or feature suggestion?
+    [Open an issue](https://github.com/Leuven-Gravity-Institute/gwmock/issues/new) and describe your idea clearly,
+    including its relevance to generating simulated GW data.
     - Check for existing issues before opening a new one.
 
 2. Fork and Clone the Repository
@@ -55,7 +60,8 @@ Whether you’re fixing a typo, reporting a bug, suggesting a feature, or submit
     npm install
     ```
 
-    The project includes a `commitlint.config.js` configuration file that defines the commit message rules. Once installed, commitlint will automatically validate your commit messages when pre-commit runs.
+    The project includes a `commitlint.config.js` configuration file that defines the commit message rules.
+    Once installed, commitlint will automatically validate your commit messages when pre-commit runs.
 
     !!!important
         Commit messages are validated in CI/CD pipelines, and the changelog is auto-generated from commits.
@@ -82,13 +88,17 @@ Whether you’re fixing a typo, reporting a bug, suggesting a feature, or submit
 
 8. Open a Merge Request
 
-    Clearly describe the motivation and scope of your change, especially how it impacts GW data simulation. Link it to the relevant issue if applicable. Ensure all commit messages follow the guidelines in "Commit Message Guidelines" below.
+    Clearly describe the motivation and scope of your change, especially how it impacts GW data simulation.
+    Link it to the relevant issue if applicable. Ensure all commit messages follow the guidelines in
+    "Commit Message Guidelines" below.
 
 <!-- prettier-ignore-end -->
 
 ## Commit Message Guidelines
 
-**Why this matters:** Our changelog is automatically generated from commit messages using git-cliff. Commit messages must follow the Conventional Commits format and adhere to strict rules.
+**Why this matters:** Our changelog is automatically generated from commit
+messages using git-cliff. Commit messages must follow the Conventional Commits
+format and adhere to strict rules.
 
 ### Rules
 
@@ -102,7 +112,8 @@ Whether you’re fixing a typo, reporting a bug, suggesting a feature, or submit
 2. **Descriptive and meaningful messages**
 
     - Describe _what_ changed and _why_, not just _what_ was edited.
-    - Avoid vague messages like "fix bug" or "update code"; instead use "fix: prevent signal saturation in noise simulation" or "feat: add support for multi-detector frame merging".
+    - Avoid vague messages like "fix bug" or "update code"; instead use "fix: prevent signal saturation in noise
+    simulation" or "feat: add support for multi-detector frame merging".
 
 3. **Follow Conventional Commits format**
 
@@ -156,16 +167,21 @@ more fixes (no type/scope)
 
 - Be kind and constructive in your communication.
 - Keep MRs focused and atomic—smaller changes are easier to review.
-- Document new features and update existing docs, especially for new GW simulation parameters or methods.
-- Tag your MR with relevant labels if you can (e.g., `type::bug`, `type::enhancement`, `type::documentation`).
-- If commitlint rejects your message, the error will tell you why; adjust and re-commit.
+- Document new features and update existing docs, especially for new GW
+  simulation parameters or methods.
+- Tag your MR with relevant labels if you can (e.g., `type::bug`,
+  `type::enhancement`, `type::documentation`).
+- If commitlint rejects your message, the error will tell you why; adjust and
+  re-commit.
 
 ## Licensing
 
-By contributing, you agree that your contributions will be licensed under the project’s MIT License.
+By contributing, you agree that your contributions will be licensed under the
+project’s MIT License.
 
 ---
 
-Thanks again for being part of the gwmock community and helping advance gravitational-wave research!
+Thanks again for being part of the gwmock community and helping advance
+gravitational-wave research!
 
 ---
