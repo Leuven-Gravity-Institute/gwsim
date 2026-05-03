@@ -1,0 +1,163 @@
+"""Population adapter bridging ``gwmock-pop`` batches to per-event dictionaries."""
+
+from __future__ import annotations
+
+from collections.abc import Iterator, Mapping, Sequence
+from typing import Any
+
+from gwmock_pop import GWPopSimulator
+
+
+class PopulationAdapter:
+    """Adapt batched population outputs to deterministic per-event dictionaries."""
+
+    def __init__(
+        self,
+        population_mapping: Mapping[str, Sequence[Any]],
+        *,
+        source_type: str,
+        parameter_names: Sequence[str] | None = None,
+    ) -> None:
+        """Initialize the population adapter.
+
+        Args:
+            population_mapping: Batched parameter mapping keyed by canonical parameter names.
+            source_type: Non-empty population routing key supplied by ``gwmock-pop``.
+            parameter_names: Optional ordered parameter names. If omitted, the mapping order is used.
+        """
+        self._population_mapping = dict(population_mapping)
+        self._source_type = self._validate_source_type(source_type)
+        self._parameter_names = tuple(parameter_names or self._population_mapping.keys())
+        self._sample_count = self._validate_population_mapping(
+            population_mapping=self._population_mapping,
+            parameter_names=self._parameter_names,
+        )
+
+    @classmethod
+    def from_backend(
+        cls,
+        backend: GWPopSimulator,
+        *,
+        n_samples: int,
+        **kwargs: Any,
+    ) -> PopulationAdapter:
+        """Build an adapter from a ``gwmock-pop`` protocol backend."""
+        if not isinstance(backend, GWPopSimulator):
+            raise TypeError("backend must satisfy the GWPopSimulator protocol.")
+        if n_samples <= 0:
+            raise ValueError("n_samples must be a positive integer.")
+
+        parameter_names = tuple(backend.parameter_names)
+        if not parameter_names:
+            raise ValueError("backend.parameter_names must not be empty.")
+
+        return cls(
+            backend.simulate(n_samples=n_samples, **kwargs),
+            source_type=backend.source_type,
+            parameter_names=parameter_names,
+        )
+
+    @classmethod
+    def from_mapping(
+        cls,
+        population_mapping: Mapping[str, Sequence[Any]],
+        *,
+        source_type: str,
+        parameter_names: Sequence[str] | None = None,
+    ) -> PopulationAdapter:
+        """Build an adapter from an already-materialized population mapping."""
+        return cls(
+            population_mapping,
+            source_type=source_type,
+            parameter_names=parameter_names,
+        )
+
+    @property
+    def parameter_names(self) -> tuple[str, ...]:
+        """Return the deterministic parameter ordering."""
+        return self._parameter_names
+
+    @property
+    def source_type(self) -> str:
+        """Return the backend routing key."""
+        return self._source_type
+
+    @property
+    def population_mapping(self) -> Mapping[str, Sequence[Any]]:
+        """Return the validated population mapping."""
+        return self._population_mapping
+
+    def __len__(self) -> int:
+        """Return the number of events available in the adapter."""
+        return self._sample_count
+
+    def __iter__(self) -> Iterator[dict[str, Any]]:
+        """Iterate over per-event parameter dictionaries."""
+        return self.iter_event_parameters()
+
+    def iter_event_parameters(self) -> Iterator[dict[str, Any]]:
+        """Yield deterministic per-event parameter dictionaries."""
+        for index in range(len(self)):
+            yield self.get_event_parameters(index)
+
+    def get_event_parameters(self, index: int) -> dict[str, Any]:
+        """Return one event dictionary from the batched population mapping."""
+        if index < 0 or index >= len(self):
+            raise IndexError("Population event index out of range.")
+
+        return {
+            parameter_name: self._coerce_event_value(self._population_mapping[parameter_name][index])
+            for parameter_name in self.parameter_names
+        }
+
+    @staticmethod
+    def _validate_source_type(source_type: str) -> str:
+        if not source_type:
+            raise ValueError("source_type must be a non-empty string.")
+        return source_type
+
+    @classmethod
+    def _validate_population_mapping(
+        cls,
+        *,
+        population_mapping: Mapping[str, Sequence[Any]],
+        parameter_names: Sequence[str],
+    ) -> int:
+        mapping_keys = tuple(population_mapping.keys())
+        expected_keys = tuple(parameter_names)
+        if mapping_keys != expected_keys:
+            raise ValueError("Population mapping keys must match parameter_names in the same order.")
+
+        sample_count: int | None = None
+        for parameter_name in parameter_names:
+            values = population_mapping[parameter_name]
+            sample_count = cls._validate_parameter_values(
+                parameter_name=parameter_name,
+                values=values,
+                expected_length=sample_count,
+            )
+        return sample_count or 0
+
+    @staticmethod
+    def _validate_parameter_values(
+        *,
+        parameter_name: str,
+        values: Sequence[Any],
+        expected_length: int | None,
+    ) -> int:
+        shape = getattr(values, "shape", None)
+        if shape is not None and len(shape) != 1:
+            raise ValueError(f"Population values for {parameter_name} must be one-dimensional.")
+
+        try:
+            length = len(values)
+        except TypeError as exc:
+            raise TypeError(f"Population values for {parameter_name} must be indexable sequences.") from exc
+
+        if expected_length is not None and length != expected_length:
+            raise ValueError("All population parameter arrays must have the same number of samples.")
+        return length
+
+    @staticmethod
+    def _coerce_event_value(value: Any) -> Any:
+        return value.item() if hasattr(value, "item") else value
