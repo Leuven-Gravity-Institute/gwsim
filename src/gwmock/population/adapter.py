@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
+from types import MappingProxyType
 from typing import Any
 
 from gwmock_pop import GWPopSimulator
@@ -25,7 +26,7 @@ class PopulationAdapter:
             source_type: Non-empty population routing key supplied by ``gwmock-pop``.
             parameter_names: Optional ordered parameter names. If omitted, the mapping order is used.
         """
-        self._population_mapping = dict(population_mapping)
+        self._population_mapping = {name: tuple(values) for name, values in population_mapping.items()}
         self._source_type = self._validate_source_type(source_type)
         self._parameter_names = tuple(parameter_names or self._population_mapping.keys())
         self._sample_count = self._validate_population_mapping(
@@ -85,7 +86,7 @@ class PopulationAdapter:
     @property
     def population_mapping(self) -> Mapping[str, Sequence[Any]]:
         """Return the validated population mapping."""
-        return self._population_mapping
+        return MappingProxyType(self._population_mapping)
 
     def __len__(self) -> int:
         """Return the number of events available in the adapter."""
