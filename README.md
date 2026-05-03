@@ -66,23 +66,6 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install .
 ```
 
-### Subpackage adoption baseline
-
-The current packaging baseline for the `gwmock-*` split is:
-
-- Python `>=3.12,<3.14`
-- `gwmock-signal>=0.5.0`
-- `gwmock-noise>=0.1.2`
-- `gwmock-pop>=0.6.0`
-
-Later adapter issues may treat these upstream assumptions as settled:
-
-- `gwmock-pop` ISS-026 provides the canonical `CBC_PARAMETER_NAMES` export used
-  for downstream validation and contract tests.
-- `gwmock-signal` ISS-014 resolved the package's public license surface to a
-  consistent GPL-3.0-or-later declaration; if that upstream license changes,
-  re-audit downstream adoption before widening the dependency plan.
-
 ## Quick Start
 
 ### Command Line
