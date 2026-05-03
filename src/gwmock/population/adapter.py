@@ -113,7 +113,7 @@ class PopulationAdapter:
 
     @staticmethod
     def _validate_source_type(source_type: str) -> str:
-        if not source_type:
+        if not isinstance(source_type, str) or not source_type.strip():
             raise ValueError("source_type must be a non-empty string.")
         return source_type
 
