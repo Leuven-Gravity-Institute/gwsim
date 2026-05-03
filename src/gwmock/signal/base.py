@@ -1,25 +1,23 @@
-"""Base class for signal simulators."""
+"""Base class for signal simulators backed by ``gwmock_signal``."""
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 
 from gwmock.data.time_series.time_series_list import TimeSeriesList
-from gwmock.mixin.detector import DetectorMixin
 from gwmock.mixin.population_reader import PopulationReaderMixin
 from gwmock.mixin.time_series import TimeSeriesMixin
-from gwmock.mixin.waveform import WaveformMixin
+from gwmock.signal.adapter import SignalAdapter
 from gwmock.simulator.base import Simulator
 
 logger = logging.getLogger("gwmock")
 
 
-class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, DetectorMixin, Simulator):
+class SignalSimulator(PopulationReaderMixin, TimeSeriesMixin, Simulator):
     """Base class for signal simulators."""
 
     def __init__(  # noqa: PLR0913
@@ -29,7 +27,7 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
         population_sort_by: str | None = None,
         population_cache_dir: str | Path | None = None,
         population_download_timeout: int = 300,
-        waveform_model: str | Callable = "IMRPhenomXPHM",
+        waveform_model: str = "IMRPhenomXPHM",
         waveform_arguments: dict[str, Any] | None = None,
         start_time: int = 0,
         duration: float = 1024,
@@ -38,6 +36,8 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
         dtype: type = np.float64,
         detectors: list[str] | None = None,
         minimum_frequency: float = 5,
+        source_type: str = "bbh",
+        earth_rotation: bool = True,
         **kwargs,
     ) -> None:
         """Initialize the base signal simulator.
@@ -57,17 +57,24 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
             dtype: Data type for the time series data. Default is np.float64.
             detectors: List of detector names. Default is None.
             minimum_frequency: Minimum GW frequency for waveform generation. Default is 5 Hz.
+            source_type: Public gwmock-pop source-type routing key for backend lookup.
+            earth_rotation: Whether to use time-dependent detector projection in gwmock-signal.
             **kwargs: Additional arguments absorbed by subclasses and mixins.
         """
-        waveform_arguments = waveform_arguments or {}
-        required_waveform_arguments = {
-            "minimum_frequency": minimum_frequency,
-            "sampling_frequency": sampling_frequency,
-        }
-        for key, value in required_waveform_arguments.items():
-            if key not in waveform_arguments:
-                logger.info("%s not specified in waveform_arguments; setting to %s", key, value)
-                waveform_arguments[key] = value
+        if not isinstance(waveform_model, str):
+            raise TypeError("waveform_model must be a gwmock_signal waveform-model name string.")
+
+        self.waveform_model = waveform_model
+        self.waveform_arguments = waveform_arguments or {}
+        self.minimum_frequency = minimum_frequency
+        self.source_type = source_type
+        self.earth_rotation = earth_rotation
+        self.signal_adapter = SignalAdapter.from_source_type(
+            source_type=source_type,
+            waveform_model=waveform_model,
+            detectors=detectors or [],
+        )
+        self.detectors = list(self.signal_adapter.detector_names)
 
         super().__init__(
             population_file=population_file,
@@ -75,12 +82,10 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
             population_sort_by=population_sort_by,
             population_cache_dir=population_cache_dir,
             population_download_timeout=population_download_timeout,
-            waveform_model=waveform_model,
-            waveform_arguments=waveform_arguments,
-            detectors=detectors,
             start_time=start_time,
             duration=duration,
             sampling_frequency=sampling_frequency,
+            num_of_channels=len(self.detectors),
             max_samples=max_samples,
             dtype=dtype,
             **kwargs,
@@ -102,18 +107,12 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
             if parameters is None:
                 break
 
-            # Get the polarizations
-            polarizations = self.waveform_factory.generate(
-                waveform_model=self.waveform_model, parameters=parameters, **self.waveform_arguments
-            )
-
-            # Project onto detectors
-            strain = self.project_polarizations(
-                polarizations=polarizations,
-                right_ascension=parameters["right_ascension"],
-                declination=parameters["declination"],
-                polarization_angle=parameters["polarization_angle"],
-                **self.waveform_arguments,
+            strain = self.signal_adapter.simulate(
+                parameters,
+                sampling_frequency=float(self.sampling_frequency.value),
+                minimum_frequency=self.minimum_frequency,
+                waveform_arguments=self.waveform_arguments,
+                earth_rotation=self.earth_rotation,
             )
 
             # Register the parameters
@@ -133,7 +132,21 @@ class SignalSimulator(PopulationReaderMixin, WaveformMixin, TimeSeriesMixin, Det
         Returns:
             Metadata dictionary.
         """
-        meta = super().metadata
+        meta = {
+            **Simulator.metadata.fget(self),
+            **TimeSeriesMixin.metadata.fget(self),
+            **PopulationReaderMixin.metadata.fget(self),
+            "signal": {
+                "arguments": {
+                    "waveform_model": self.waveform_model,
+                    "waveform_arguments": self.waveform_arguments,
+                    "minimum_frequency": self.minimum_frequency,
+                    "source_type": self.source_type,
+                    "earth_rotation": self.earth_rotation,
+                    "detectors": self.detectors,
+                }
+            },
+        }
         return meta
 
     def update_state(self) -> None:

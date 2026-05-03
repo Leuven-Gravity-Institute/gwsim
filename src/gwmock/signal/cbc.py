@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +20,7 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
         population_parameter_name_mapper: dict[str, str] | None = None,
         population_cache_dir: str | Path | None = None,
         population_download_timeout: int = 300,
-        waveform_model: str | Callable = "IMRPhenomXPHM",
+        waveform_model: str = "IMRPhenomXPHM",
         waveform_arguments: dict[str, Any] | None = None,
         start_time: int = 0,
         duration: float = 1024,
@@ -30,6 +29,8 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
         dtype: type = np.float64,
         detectors: list[str] | None = None,
         minimum_frequency: float = 5,
+        source_type: str = "bbh",
+        earth_rotation: bool = True,
         **kwargs,
     ) -> None:
         """Initialize the CBC signal simulator.
@@ -48,6 +49,8 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
             dtype: Data type for the time series data. Default is np.float64.
             detectors: List of detector names. Default is None.
             minimum_frequency: Minimum GW frequency for waveform generation. Default is 5 Hz.
+            source_type: Public gwmock-pop source-type routing key for backend lookup.
+            earth_rotation: Whether to use time-dependent detector projection in gwmock-signal.
             **kwargs: Additional arguments absorbed by subclasses and mixins.
         """
         super().__init__(
@@ -64,5 +67,7 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
             dtype=dtype,
             detectors=detectors,
             minimum_frequency=minimum_frequency,
+            source_type=source_type,
+            earth_rotation=earth_rotation,
             **kwargs,
         )

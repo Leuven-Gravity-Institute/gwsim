@@ -13,26 +13,36 @@ logger = logging.getLogger("gwmock")
 
 CBC_COMMON_PARAMETER_NAME_MAPPER = {
     # Masses
-    "m1": "mass1",
-    "mass_1": "mass1",
-    "m2": "mass2",
-    "mass_2": "mass2",
-    "m1_source": "srcmass1",
-    "mass1_source": "srcmass1",
-    "mass_1_source": "srcmass1",
-    "m2_source": "srcmass2",
-    "mass2_source": "srcmass2",
-    "mass_2_source": "srcmass2",
+    "m1": "detector_frame_mass_1",
+    "mass1": "detector_frame_mass_1",
+    "mass_1": "detector_frame_mass_1",
+    "m2": "detector_frame_mass_2",
+    "mass2": "detector_frame_mass_2",
+    "mass_2": "detector_frame_mass_2",
+    "m1_source": "source_frame_mass_1",
+    "mass1_source": "source_frame_mass_1",
+    "mass_1_source": "source_frame_mass_1",
+    "srcmass1": "source_frame_mass_1",
+    "m2_source": "source_frame_mass_2",
+    "mass2_source": "source_frame_mass_2",
+    "mass_2_source": "source_frame_mass_2",
+    "srcmass2": "source_frame_mass_2",
     # Spins
-    "chi1x": "spin1x",
-    "chi1y": "spin1y",
-    "chi1z": "spin1z",
-    "chi2x": "spin2x",
-    "chi2y": "spin2y",
-    "chi2z": "spin2z",
+    "chi1x": "spin_1x",
+    "chi1y": "spin_1y",
+    "chi1z": "spin_1z",
+    "chi2x": "spin_2x",
+    "chi2y": "spin_2y",
+    "chi2z": "spin_2z",
+    "spin1x": "spin_1x",
+    "spin1y": "spin_1y",
+    "spin1z": "spin_1z",
+    "spin2x": "spin_2x",
+    "spin2y": "spin_2y",
+    "spin2z": "spin_2z",
     # Tidal deformabilities
-    "Lambda1": "lambda1",
-    "Lambda2": "lambda2",
+    "Lambda1": "lambda_1",
+    "Lambda2": "lambda_2",
     # Luminosity Distance
     "dL": "distance",
     "luminosity_distance": "distance",
@@ -41,7 +51,8 @@ CBC_COMMON_PARAMETER_NAME_MAPPER = {
     # Inclination angle
     "iota": "inclination",
     # Coalescence time
-    "tGPS": "tc",
+    "tGPS": "coa_time",
+    "tc": "coa_time",
     # Sky position
     "ra": "right_ascension",
     "dec": "declination",
@@ -76,7 +87,7 @@ class CBCPopulationReaderMixin(PopulationReaderMixin):
         super().__init__(
             population_file=population_file,
             population_parameter_name_mapper=population_parameter_name_mapper,
-            population_sort_by="tc",
+            population_sort_by="coa_time",
             population_cache_dir=population_cache_dir,
             population_download_timeout=population_download_timeout,
             **kwargs,
@@ -101,16 +112,22 @@ class CBCPopulationReaderMixin(PopulationReaderMixin):
         Returns:
             DataFrame with post-processed population data.
         """
-        if "mass1" not in df.columns:
-            if "srcmass1" in df.columns and "redshift" in df.columns:
-                df["mass1"] = df["srcmass1"] * (1 + df["redshift"])
-                logger.info("Computed mass1 from srcmass1 and redshift.")
+        if "detector_frame_mass_1" not in df.columns:
+            if "source_frame_mass_1" in df.columns and "redshift" in df.columns:
+                df["detector_frame_mass_1"] = df["source_frame_mass_1"] * (1 + df["redshift"])
+                logger.info("Computed detector_frame_mass_1 from source_frame_mass_1 and redshift.")
             else:
-                raise ValueError("mass1 is not in population data, and cannot be computed from srcmass1 and redshift.")
-        if "mass2" not in df.columns:
-            if "srcmass2" in df.columns and "redshift" in df.columns:
-                df["mass2"] = df["srcmass2"] * (1 + df["redshift"])
-                logger.info("Computed mass2 from srcmass2 and redshift.")
+                raise ValueError(
+                    "detector_frame_mass_1 is not in population data, and cannot be computed "
+                    "from source_frame_mass_1 and redshift."
+                )
+        if "detector_frame_mass_2" not in df.columns:
+            if "source_frame_mass_2" in df.columns and "redshift" in df.columns:
+                df["detector_frame_mass_2"] = df["source_frame_mass_2"] * (1 + df["redshift"])
+                logger.info("Computed detector_frame_mass_2 from source_frame_mass_2 and redshift.")
             else:
-                raise ValueError("mass2 is not in population data, and cannot be computed from srcmass2 and redshift.")
+                raise ValueError(
+                    "detector_frame_mass_2 is not in population data, and cannot be computed "
+                    "from source_frame_mass_2 and redshift."
+                )
         return df
