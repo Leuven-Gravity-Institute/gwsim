@@ -33,7 +33,6 @@ def read_pycbc_population_file(file_name):
     # --- HDF5 (.hdf or .h5) ---
     if suffix in {".hdf", ".h5"}:
         with h5py.File(file_path, "r") as f:
-
             # PyCBC stores parameters as datasets
             data = {key: value[()] for key, value in f.items()}
 

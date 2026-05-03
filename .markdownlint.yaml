@@ -1,0 +1,46 @@
+---
+# Disable line length check
+MD013: false
+
+# Require ATX-style headings (# instead of = or -)
+MD003:
+    style: atx
+
+# Enforce consistent list indentation
+MD007:
+    indent: 4
+
+# Allow multiple consecutive blank lines for flexibility
+MD012: false
+
+# Allow duplicate headings in the same document
+MD024: false
+
+# Enforce trailing punctuation in headings for consistency
+MD026: false
+
+# Allow inline HTML for flexibility in Markdown rendering
+MD033: false
+
+# Disable first-line heading requirement
+# to allow flexibility in document structure
+MD041: false
+
+# Dollar signs used before commands without showing output
+MD014: true
+
+# Disable no-space-in-emphasis to allow flexibility in emphasis formatting
+MD036: false
+
+# Lists should be surrounded by blank lines
+MD032: true
+
+# pymdownx/Material admonitions (`!!! note`, `!!! tip`, …) indent the body;
+# MD046 misreads that as an indented code block. Fenced blocks are still the
+# norm everywhere else; this only silences that false positive.
+MD046:
+    enabled: false
+    style: fenced
+
+# Disable only one top-level heading
+MD025: false

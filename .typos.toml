@@ -1,0 +1,26 @@
+[default]
+extend-ignore-re = [
+  # === Block ignore: typos:off → typos:on ===
+  # Supports:
+  #   <!-- typos:off -->   ...   <!-- typos:on -->
+  #   # typos:off          ...   # typos:on
+  #   // typos:off         ...   // typos:on
+  #   /* typos:off */      ...   /* typos:on */
+  "(?s)(<!--|#|//|/\\*)\\s*typos:off.*?\\n\\s*(<!--|#|//|\\*/)\\s*typos:on",
+
+  # === Single-line ignore ===
+  # Example: some text with intentional typo  <!-- typos:disable-line -->
+  # or: some text with intentional typo  # typos:disable-line
+  "(?Rm)^.*(<!--|#|//)\\s*typos:disable-line\\s*.*?(-->)?$",
+
+  # === Ignore next line ===
+  # <!-- typos:ignore-next-line -->
+  # next line with potential false positive
+  "(<!--|#|//)\\s*typos:ignore-next-line\\s*.*?(-->)?\\n.*",
+]
+
+[default.extend-words]
+# numpy function name, not a misspelling of "arrange"
+arange = "arange"
+aer = "aer"
+BA = "BA"

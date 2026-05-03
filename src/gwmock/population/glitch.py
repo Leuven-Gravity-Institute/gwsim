@@ -8,7 +8,6 @@ import pandas as pd
 from astropy.time import Time, TimeDelta
 
 if __name__ == "__main__":
-
     # Configuration
     start_time = Time("2030-01-01T00:00:00", format="isot", scale="utc")
     end_time = Time("2040-01-01T00:00:00", format="isot", scale="utc")

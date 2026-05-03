@@ -1,0 +1,79 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "config:best-practices",
+        ":semanticCommitTypeAll(chore)"
+    ],
+    "dependencyDashboard": true,
+    "dependencyDashboardTitle": "Dependency Dashboard",
+    "pre-commit": {
+        "enabled": true
+    },
+    "lockFileMaintenance": {
+        "enabled": true,
+        "schedule": ["before 4am on monday"]
+    },
+    "packageRules": [
+        {
+            "matchManagers": ["pep621"],
+            "matchUpdateTypes": ["patch", "minor"],
+            "groupName": "runtime minor & patch",
+            "minimumReleaseAge": "3 days",
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        },
+        {
+            "matchUpdateTypes": ["major"],
+            "enabled": false
+        },
+        {
+            "matchManagers": ["pep621"],
+            "matchDepTypes": ["project.optional-dependencies"],
+            "groupName": "test/dev/docs/build tools",
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        },
+        {
+            "matchManagers": ["github-actions"],
+            "groupName": "github actions",
+            "schedule": ["every weekend"],
+            "minimumReleaseAge": "3 days",
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        },
+        {
+            "matchManagers": ["github-actions"],
+            "matchUpdateTypes": ["major"],
+            "enabled": false
+        },
+        {
+            "matchUpdateTypes": ["lockFileMaintenance"],
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash",
+            "groupName": "lock file maintenance"
+        },
+        {
+            "matchDepTypes": ["devDependencies"],
+            "rangeStrategy": "pin",
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        },
+        {
+            "matchDatasources": ["python-version"],
+            "enabled": false
+        },
+        {
+            "matchManagers": ["pre-commit"],
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        }
+    ],
+    "rangeStrategy": "bump"
+}

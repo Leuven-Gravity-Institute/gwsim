@@ -1,6 +1,7 @@
 # Configuration Files
 
-This guide explains how to use and write configuration files to generate datasets tailored to your needs.
+This guide explains how to use and write configuration files to generate
+datasets tailored to your needs.
 
 ## Command-Line Options
 
@@ -10,13 +11,14 @@ This guide explains how to use and write configuration files to generate dataset
 gwmock simulate config.yaml
 ```
 
-This is the primary command used to generate mock data.
-It takes a `.yaml` configuration file as input, which defines the simulation parameters.
+This is the primary command used to generate mock data. It takes a `.yaml`
+configuration file as input, which defines the simulation parameters.
 
 #### Flag `--overwrite` (optional)
 
-By default, gwmock does not overwrite existing output files. If a file already exists, the tool will raise an error and halt execution.
-To force overwriting of existing files, use the `--overwrite` flag:
+By default, gwmock does not overwrite existing output files. If a file already
+exists, the tool will raise an error and halt execution. To force overwriting of
+existing files, use the `--overwrite` flag:
 
 ```bash
 gwmock simulate config.yaml --overwrite
@@ -30,7 +32,8 @@ Test your configuration without generating data:
 gwmock simulate config.yaml --dry-run
 ```
 
-This validates the configuration and shows what would be generated without actually creating files.
+This validates the configuration and shows what would be generated without
+actually creating files.
 
 #### Flag `--metadata` (optional)
 
@@ -61,12 +64,14 @@ gwmock simulate config.yaml --author <your-name> --email <your-email>
 gwmock config <flag>
 ```
 
-This command is used to manage default and example configuration files.
-Exactly one of the flags `--list`, `--get`, or `--init` must be provided.
+This command is used to manage default and example configuration files. Exactly
+one of the flags `--list`, `--get`, or `--init` must be provided.
 
 #### Flag `--list`
 
-List all the available example configuration files stored in the [`examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples) directory (see the [Examples](examples.md) page).
+List all the available example configuration files stored in the
+[`examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples)
+directory (see the [Examples](examples.md) page).
 
 ```bash
 gwmock config --list
@@ -74,7 +79,10 @@ gwmock config --list
 
 #### Flag `--get`
 
-Copy one of the available example configuration files from the [`examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples) directory into the working directory. The `<example_label>` must be one of the example names listed by the `gwmock config --list` command.
+Copy one of the available example configuration files from the
+[`examples`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples)
+directory into the working directory. The `<example_label>` must be one of the
+example names listed by the `gwmock config --list` command.
 
 ```bash
 gwmock config --get <example_label>
@@ -90,8 +98,9 @@ gwmock config --init config.yaml
 
 #### Flag `--overwrite` (optional)
 
-By default, gwmock does not overwrite existing configuration files. If a file already exists, the tool will raise an error and halt execution.
-To force overwriting of existing files, use the `--overwrite` flag:
+By default, gwmock does not overwrite existing configuration files. If a file
+already exists, the tool will raise an error and halt execution. To force
+overwriting of existing files, use the `--overwrite` flag:
 
 ```bash
 gwmock config --overwrite
@@ -99,9 +108,9 @@ gwmock config --overwrite
 
 #### Flag `--output` (optional)
 
-Specifies the directory where the configuration file will be saved.
-This flag must be used together with `--get` or `--init`.
-If not provided, the working directory is used by default.
+Specifies the directory where the configuration file will be saved. This flag
+must be used together with `--get` or `--init`. If not provided, the working
+directory is used by default.
 
 ```bash
 gwmock config --get <label of the configuration file> --output <directory or file>
@@ -109,7 +118,8 @@ gwmock config --get <label of the configuration file> --output <directory or fil
 
 ## Configuration File Structure
 
-The configuration file uses YAML format. They consist of two main sections: globals and simulators.
+The configuration file uses YAML format. They consist of two main sections:
+globals and simulators.
 
 ### Globals
 
@@ -117,15 +127,15 @@ Top-level shared parameters used across all simulators:
 
 ```yaml
 globals:
-  working-directory: .
-  output-directory: output
-  metadata-directory: metadata
-  simulator-arguments:
-    sampling-frequency:
-    duration:
-    start-time:
-    total-duration:
-  output-arguments: {}
+    working-directory: .
+    output-directory: output
+    metadata-directory: metadata
+    simulator-arguments:
+        sampling-frequency:
+        duration:
+        start-time:
+        total-duration:
+    output-arguments: {}
 ```
 
 **Key parameters:**
@@ -145,12 +155,12 @@ List of simulators to run, each with configuration:
 
 ```yaml
 simulators:
-  noise:
-    class:
-    arguments:
-    output:
-      file_name:
-      arguments:
+    noise:
+        class:
+        arguments:
+        output:
+            file_name:
+            arguments:
 ```
 
 **Simulator properties:**
@@ -159,8 +169,6 @@ simulators:
 - `arguments`: Parameters passed to the simulator
 - `output.file_name`: Template for output file naming (supports Jinja2 syntax)
 - `output.arguments`: Channel naming and other output metadata
-
-For details on simulator-specific `arguments`, refer to the [API Reference](../reference/index.md) page.
 
 Available `noise` simulators includes:
 
@@ -178,23 +186,27 @@ Available `glitch` simulators includes:
 
 ## Template Variables
 
-You can use Jinja2-style templates in configuration values such as file names and channel names:
+You can use Jinja2-style templates in configuration values such as file names
+and channel names:
 
 ```yaml
 simulators:
-  noise:
-    arguments:
-      detectors:
-        - E1_Triangle_EMR
-        - E2_Triangle_EMR
-        - E3_Triangle_EMR
-    output:
-      file_name: 'E-{{ detectors }}_NOISE_STRAIN-{{ start_time }}-{{ duration }}.gwf'
-      arguments:
-        channel: '{{ detectors }}:STRAIN'
+    noise:
+        arguments:
+            detectors:
+                - E1_Triangle_EMR
+                - E2_Triangle_EMR
+                - E3_Triangle_EMR
+        output:
+            file_name:
+                'E-{{ detectors }}_NOISE_STRAIN-{{ start_time }}-{{ duration
+                }}.gwf'
+            arguments:
+                channel: '{{ detectors }}:STRAIN'
 ```
 
-In this example, `file_name` and `channel` are automatically updated for each detector being processed.
+In this example, `file_name` and `channel` are automatically updated for each
+detector being processed.
 
 **Common variables:**
 
@@ -204,9 +216,11 @@ In this example, `file_name` and `channel` are automatically updated for each de
 
 ## Checkpointing
 
-gwmock automatically creates checkpoints during long simulations. If a process is interrupted:
+gwmock automatically creates checkpoints during long simulations. If a process
+is interrupted:
 
-1. A `.gwmock_checkpoint/simulation.checkpoint.json` file is saved in the working directory
+1. A `.gwmock_checkpoint/simulation.checkpoint.json` file is saved in the
+   working directory
 2. Rerun the same command to resume from the last checkpoint
 3. The tool automatically detects and continues from where it left off
 
@@ -230,4 +244,5 @@ The checkpoint contains:
 2. **Set seeds**: Always set `seed` for reproducibility
 3. **Check space**: Ensure sufficient disk space before long runs
 4. **Use dry-run**: Test configurations with `--dry-run` before full simulation
-5. **Organize outputs**: Use descriptive `output-directory` and `metadata-directory` names
+5. **Organize outputs**: Use descriptive `output-directory` and
+   `metadata-directory` names

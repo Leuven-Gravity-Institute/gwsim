@@ -1,6 +1,9 @@
 # Publishing Simulation Data to Zenodo
 
-The `gwmock repository` command suite allows you to create, manage, and publish your gravitational-wave simulation datasets to [Zenodo](https://zenodo.org), a community-driven open-access repository. This enables long-term preservation, DOI assignment, and easy sharing with the GW community.
+The `gwmock repository` command suite allows you to create, manage, and publish
+your gravitational-wave simulation datasets to [Zenodo](https://zenodo.org), a
+community-driven open-access repository. This enables long-term preservation,
+DOI assignment, and easy sharing with the GW community.
 
 ## Overview
 
@@ -18,8 +21,10 @@ Publishing a dataset involves these steps:
 
 Before using the repository commands, you need a Zenodo API token:
 
-1. **Production Zenodo:** Go to [https://zenodo.org/account/settings/applications/tokens/new](https://zenodo.org/account/settings/applications/tokens/new)
-2. **Sandbox (Testing):** Go to https://sandbox.zenodo.org/account/settings/applications/tokens/new
+1. **Production Zenodo:** Go to
+   [https://zenodo.org/account/settings/applications/tokens/new](https://zenodo.org/account/settings/applications/tokens/new)
+2. **Sandbox (Testing):** Go to
+   [https://sandbox.zenodo.org/account/settings/applications/tokens/new](https://sandbox.zenodo.org/account/settings/applications/tokens/new)
 
 When creating a token, ensure it has these scopes:
 
@@ -38,7 +43,8 @@ export ZENODO_API_TOKEN="your_production_token_here"
 export ZENODO_SANDBOX_API_TOKEN="your_sandbox_token_here"
 ```
 
-**Tip**: Add these to your .bashrc, .zshrc, or .env file to avoid re-entering them.
+**Tip**: Add these to your .bashrc, .zshrc, or .env file to avoid re-entering
+them.
 
 ## Verify Your Token
 
@@ -54,7 +60,7 @@ gwmock repository verify --sandbox
 
 If successful, you'll see:
 
-```
+```text
 ✓ Token is valid!
   Environment: Zenodo (Production)
   Found 3 draft deposition(s)
@@ -82,7 +88,7 @@ gwmock repository create
 
 **Output**:
 
-```
+```text
 Creating deposition...
 ✓ Deposition created successfully!
   ID: 123456
@@ -129,28 +135,28 @@ Enhance your deposition with structured metadata:
 
 ```yaml
 creators:
-  - name: 'Jane Doe'
-    affiliation: 'LIGO Laboratory'
-    orcid: '0000-0000-0000-0000'
-  - name: 'John Smith'
-    affiliation: 'Virgo Collaboration'
+    - name: 'Jane Doe'
+      affiliation: 'LIGO Laboratory'
+      orcid: '0000-0000-0000-0000'
+    - name: 'John Smith'
+      affiliation: 'Virgo Collaboration'
 
 keywords:
-  - 'gravitational waves'
-  - 'mock data challenge'
-  - 'binary black holes'
-  - 'LIGO'
-  - 'Virgo'
+    - 'gravitational waves'
+    - 'mock data challenge'
+    - 'binary black holes'
+    - 'LIGO'
+    - 'Virgo'
 
 license: 'cc-by-4.0'
 contributors:
-  - name: 'LIGO Laboratory'
-    role: 'Hosting institution'
+    - name: 'LIGO Laboratory'
+      role: 'Hosting institution'
 
 related_identifiers:
-  - identifier: '10.7935/gqm7-wf12'
-    relation: 'references'
-    resource_type: 'publication'
+    - identifier: '10.7935/gqm7-wf12'
+      relation: 'references'
+      resource_type: 'publication'
 ```
 
 **Upload metadata**:
@@ -189,7 +195,8 @@ Publishing deposition 123456...
   DOI: 10.5281/zenodo.123456
 ```
 
-**Important**: Publishing is permanent. Once published, you cannot modify files or delete the record. Always verify metadata before publishing.
+**Important**: Publishing is permanent. Once published, you cannot modify files
+or delete the record. Always verify metadata before publishing.
 
 Step 5: Share & Download
 
@@ -263,7 +270,8 @@ gwmock repository delete 123456
 gwmock repository delete 123456 --force
 ```
 
-**Note**: Only unpublished (draft) depositions can be deleted. Published records are permanent.
+**Note**: Only unpublished (draft) depositions can be deleted. Published records
+are permanent.
 
 Download Existing Records
 
@@ -286,10 +294,12 @@ gwmock repository download 123456 \
 
 When publishing GW simulation data, include:
 
-1. Title: Clear, descriptive (e.g., "GW Mock Data Challenge v1: Binary Black Holes")
+1. Title: Clear, descriptive (e.g., "GW Mock Data Challenge v1: Binary Black
+   Holes")
 2. Description: Simulation parameters, instruments, frequency range
 3. Creators: Full names and ORCiDs (if available)
-4. Keywords: gravitational waves, detector names (LIGO, Virgo), signal types (binary black holes, neutron stars)
+4. Keywords: gravitational waves, detector names (LIGO, Virgo), signal types
+   (binary black holes, neutron stars)
 5. License: Recommend cc-by-4.0 for open science
 6. Related Identifiers: Link to papers, talks, or other related datasets
 
@@ -299,28 +309,28 @@ When publishing GW simulation data, include:
 title: 'GW Mock Data Challenge v1: Synthetic Binary Black Hole Signals'
 
 description: |
-  Simulated gravitational-wave strain data for LIGO Hanford, LIGO Livingston,
-  and Virgo detectors. Includes 1000 binary black hole coalescence waveforms
-  with varying masses (10-100 solar masses), spins, and sky positions.
+    Simulated gravitational-wave strain data for LIGO Hanford, LIGO Livingston,
+    and Virgo detectors. Includes 1000 binary black hole coalescence waveforms
+    with varying masses (10-100 solar masses), spins, and sky positions.
 
-  Sampling rate: 16384 Hz
-  Duration: 8 seconds per event
-  Frequency range: 20-512 Hz
+    Sampling rate: 16384 Hz
+    Duration: 8 seconds per event
+    Frequency range: 20-512 Hz
 
-  Generated using PyCBC v1.18.4 and LALSuite v7.0.
+    Generated using PyCBC v1.18.4 and LALSuite v7.0.
 
 creators:
-  - name: 'Jane Doe'
-    orcid: '0000-0001-2345-6789'
-    affiliation: 'LIGO Laboratory, Caltech'
+    - name: 'Jane Doe'
+      orcid: '0000-0001-2345-6789'
+      affiliation: 'LIGO Laboratory, Caltech'
 
 keywords:
-  - 'gravitational waves'
-  - 'LIGO'
-  - 'Virgo'
-  - 'binary black holes'
-  - 'mock data challenge'
-  - 'synthetic data'
+    - 'gravitational waves'
+    - 'LIGO'
+    - 'Virgo'
+    - 'binary black holes'
+    - 'mock data challenge'
+    - 'synthetic data'
 
 license: 'cc-by-4.0'
 ```
@@ -334,9 +344,11 @@ license: 'cc-by-4.0'
 **Solutions**:
 
 1. Verify your token is valid: `gwmock repository verify`
-2. Generate a new token from https://zenodo.org/account/settings/applications/tokens/new
+2. Generate a new token from
+   [https://zenodo.org/account/settings/applications/tokens/new](https://zenodo.org/account/settings/applications/tokens/new)
 3. Ensure the token has `deposit:write` and `deposit:actions` scopes
-4. Check that you're using the correct environment (--sandbox for sandbox, omit for production)
+4. Check that you're using the correct environment (--sandbox for sandbox, omit
+   for production)
 
 ### Token Not Found
 
@@ -353,19 +365,22 @@ export ZENODO_SANDBOX_API_TOKEN="your_sandbox_token"
 
 **Problem**: Large files fail with timeout errors
 
-**Solution**: The CLI auto-adjusts timeouts based on file size (10 seconds per MB). For very large files (> 10 GB), you can manually specify:
+**Solution**: The CLI auto-adjusts timeouts based on file size (10 seconds per
+MB). For very large files (> 10 GB), you can manually specify:
 
 ```bash
 gwmock repository upload 123456 --file huge_file.gwf
 ```
 
-The retry logic with exponential backoff will automatically retry on transient failures.
+The retry logic with exponential backoff will automatically retry on transient
+failures.
 
 ### Cannot Modify After Publishing
 
 **Problem**: Need to fix metadata after publishing
 
-**Solution**: Create a new deposition. Zenodo treats each published version as immutable. You can:
+**Solution**: Create a new deposition. Zenodo treats each published version as
+immutable. You can:
 
 1. Create a new deposition with updated metadata
 2. Link it to the previous version using `related_identifiers` in metadata

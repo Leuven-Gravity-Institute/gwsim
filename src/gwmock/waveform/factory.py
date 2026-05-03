@@ -49,7 +49,7 @@ class WaveformFactory:
         """
         if name in self._models:
             return self._models[name]
-        raise ValueError(f"Waveform model '{name}' not found. " f"Available: {list(self._models.keys())}.")
+        raise ValueError(f"Waveform model '{name}' not found. Available: {list(self._models.keys())}.")
 
     def list_models(self) -> list[str]:
         """List all registered waveform models.

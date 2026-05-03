@@ -43,14 +43,9 @@ dev = [
   "pytest>=9.0.3",
   "pytest-github-actions-annotate-failures>=0.4.0",
 ]
-docs = [
-  "mkdocs",
-  "mkdocs-material",
-  "mkdocstrings[python]",
-  "mkdocs-gen-files",
-  "mkdocs-literate-nav",
-  "mkdocs-section-index",
-]
+docs = ["zensical>=0.0.38", "mkdocstrings-python>=2.0.3"]
+build = ["hatch>=1.16.5"]
+release = ["git-cliff>=2.13.1"]
 
 [project.scripts]
 gwmock = "gwmock.cli.main:app"

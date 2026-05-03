@@ -1,135 +1,137 @@
 name: Scheduled Release
 
 on:
-  schedule:
-    - cron: '0 0 * * 2'
-  workflow_dispatch:
+    schedule:
+        - cron: '0 0 * * 2'
+    workflow_dispatch:
 
 permissions:
-  contents: write
+    contents: write
 
 jobs:
-  check_new_commits:
-    runs-on: ubuntu-latest
-    outputs:
-      has-changes: ${{ steps.check_commits.outputs.has-changes }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+    check_new_commits:
+        runs-on: ubuntu-latest
+        outputs:
+            has-changes: ${{ steps.check_commits.outputs.has-changes }}
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+              with:
+                  fetch-depth: 0
+
+            - name: Check for new commits
+              id: check_commits
+              uses: isaac-cf-wong/detect-git-changes-action@210e973294fe96c697d768a89205b4b88ddbbf43 # v0.0.10
+              with:
+                  use-latest-tag: true
+
+    ci:
+        needs: check_new_commits
+        if: ${{ needs.check_new_commits.outputs.has-changes == 'true' }}
+        uses: ./.github/workflows/ci.yml
+
+    codeql:
+        needs: check_new_commits
+        if: ${{ needs.check_new_commits.outputs.has-changes == 'true'}}
+        uses: ./.github/workflows/codeql.yml
+        permissions:
+            security-events: write
+
+    create_tag:
+        needs: [ci, codeql]
+        runs-on: ubuntu-latest
+        outputs:
+            new_tag: ${{ steps.tag_version.outputs.new_tag }}
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+              with:
+                  fetch-depth: 0
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+              with:
+                  python-version: '3.13'
+                  enable-cache: 'true'
+
+            - name: Install dependencies
+              run: uv sync --group release --frozen
+
+            - name: Bump version and push tag
+              id: tag_version
+              run: |
+                  PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+                  if [ "$PREVIOUS_TAG" = "none" ]; then
+                    NEW_TAG="v0.1.0"
+                  else
+                    NEW_TAG=$(uv run --frozen git-cliff --bumped-version --config cliff.toml 2>/dev/null)
+                  fi
+                  if ! git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+                    echo "Creating annotated tag $NEW_TAG"
+
+                    git config user.name "github-actions[bot]"
+                    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+                    git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
+                    git push origin "$NEW_TAG"
+                  else
+                    echo "Tag $NEW_TAG already exists, skipping."
+                    exit 1
+                  fi
+                  echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+                  echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+
+            - name: Output tag information
+              if: ${{ steps.check_commits.outputs.has-changes == 'true' }}
+              run: |
+                  echo "### Tag Created :rocket:" >> $GITHUB_STEP_SUMMARY
+                  echo "- **New tag**: ${{ steps.tag_version.outputs.new_tag }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Previous tag**: ${{ steps.tag_version.outputs.previous_tag }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Changelog**: ${{ steps.tag_version.outputs.changelog }}" >> $GITHUB_STEP_SUMMARY
+
+    release:
+        needs: create_tag
+        uses: ./.github/workflows/release.yml
+        permissions:
+            contents: write
+            id-token: write
         with:
-          fetch-depth: 0
+            tag_name: ${{ needs.create_tag.outputs.new_tag }}
 
-      - name: Check for new commits
-        id: check_commits
-        uses: isaac-cf-wong/detect-git-changes-action@210e973294fe96c697d768a89205b4b88ddbbf43 # v0.0.10
-        with:
-          use-latest-tag: true
+    publish:
+        needs: release
+        runs-on: ubuntu-latest
+        environment:
+            name: pypi
+        permissions:
+            id-token: write
+            contents: read
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+              with:
+                  ref: ${{ needs.create_tag.outputs.new_tag }}
+                  fetch-depth: 0
 
-  ci:
-    needs: check_new_commits
-    if: ${{ needs.check_new_commits.outputs.has-changes == 'true' }}
-    uses: ./.github/workflows/ci.yml
+            - name: Output build information
+              run: |
+                  echo "### Publishing Build :package:" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Version tag**: ${{ needs.create_tag.outputs.new_tag }}" >> $GITHUB_STEP_SUMMARY
 
-  codeql:
-    needs: check_new_commits
-    if: ${{ needs.check_new_commits.outputs.has-changes == 'true'}}
-    uses: ./.github/workflows/codeql.yml
-    permissions:
-      security-events: write
+            - name: Install uv
+              uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+              with:
+                  python-version: '3.13'
 
-  create_tag:
-    needs: [ci, codeql]
-    runs-on: ubuntu-latest
-    outputs:
-      new_tag: ${{ steps.tag_version.outputs.new_tag }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          fetch-depth: 0
+            - name: Build distribution
+              run: uv build
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-        with:
-          python-version: '3.13'
-          enable-cache: 'true'
+            - name: Smoke test (wheel)
+              run:
+                  uv run --isolated --no-project --with dist/*.whl
+                  tests/smoke_test.py
 
-      - name: Install dependencies
-        run: uv sync --group release --frozen
+            - name: Smoke test (source distribution)
+              run:
+                  uv run --isolated --no-project --with dist/*.tar.gz
+                  tests/smoke_test.py
 
-      - name: Bump version and push tag
-        id: tag_version
-        run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
-          if [ "$PREVIOUS_TAG" = "none" ]; then
-            NEW_TAG="v0.1.0"
-          else
-            NEW_TAG=$(uv run --frozen git-cliff --bumped-version --config cliff.toml 2>/dev/null)
-          fi
-          if ! git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
-            echo "Creating annotated tag $NEW_TAG"
-
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-            git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-            git push origin "$NEW_TAG"
-          else
-            echo "Tag $NEW_TAG already exists, skipping."
-            exit 1
-          fi
-          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
-          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
-
-      - name: Output tag information
-        if: ${{ steps.check_commits.outputs.has-changes == 'true' }}
-        run: |
-          echo "### Tag Created :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo "- **New tag**: ${{ steps.tag_version.outputs.new_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Previous tag**: ${{ steps.tag_version.outputs.previous_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Changelog**: ${{ steps.tag_version.outputs.changelog }}" >> $GITHUB_STEP_SUMMARY
-
-  release:
-    needs: create_tag
-    uses: ./.github/workflows/release.yml
-    permissions:
-      contents: write
-      id-token: write
-    with:
-      tag_name: ${{ needs.create_tag.outputs.new_tag }}
-
-  publish:
-    needs: release
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          ref: ${{ needs.create_tag.outputs.new_tag }}
-          fetch-depth: 0
-
-      - name: Output build information
-        run: |
-          echo "### Publishing Build :package:" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version tag**: ${{ needs.create_tag.outputs.new_tag }}" >> $GITHUB_STEP_SUMMARY
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-        with:
-          python-version: '3.13'
-
-      - name: Build distribution
-        run: uv build
-
-      - name: Smoke test (wheel)
-        run: uv run --isolated --no-project --with dist/*.whl
-          tests/smoke_test.py
-
-      - name: Smoke test (source distribution)
-        run: uv run --isolated --no-project --with dist/*.tar.gz
-          tests/smoke_test.py
-
-      - name: Publish
-        run: uv publish
+            - name: Publish
+              run: uv publish

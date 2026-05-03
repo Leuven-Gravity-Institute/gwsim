@@ -34,10 +34,7 @@ def resolve_max_samples(
         Resolved max_samples value
 
     Example:
-        >>> resolve_max_samples(
-        ...     {"total_duration": "1h", "duration": 4},
-        ...     {"max_samples": 10}
-        ... )
+        >>> resolve_max_samples({"total_duration": "1h", "duration": 4}, {"max_samples": 10})
         900  # 3600 seconds / 4 seconds
     """
     # Try to compute from total_duration and duration (highest priority)

@@ -1,74 +1,76 @@
 name: Publish to TestPyPI
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 'Tag name for the publish (e.g., v1.2.3)'
-        required: false
-        type: string
-  workflow_call:
-    inputs:
-      tag_name:
-        description: 'Tag name for the publish (e.g., v1.2.3)'
-        required: false
-        type: string
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+        inputs:
+            tag_name:
+                description: 'Tag name for the publish (e.g., v1.2.3)'
+                required: false
+                type: string
+    workflow_call:
+        inputs:
+            tag_name:
+                description: 'Tag name for the publish (e.g., v1.2.3)'
+                required: false
+                type: string
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    environment:
-      name: testpypi
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          ref: ${{ inputs.tag_name || github.sha }}
-          fetch-depth: 0
+    publish:
+        runs-on: ubuntu-latest
+        environment:
+            name: testpypi
+        permissions:
+            id-token: write
+            contents: read
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+              with:
+                  ref: ${{ inputs.tag_name || github.sha }}
+                  fetch-depth: 0
 
-      - name: Output build information
-        run: |
-          echo "### Publishing Build :package:" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version tag**: ${{ inputs.tag_name || github.sha }}" >> $GITHUB_STEP_SUMMARY
+            - name: Output build information
+              run: |
+                  echo "### Publishing Build :package:" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Version tag**: ${{ inputs.tag_name || github.sha }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-        with:
-          python-version: '3.13'
-          enable-cache: 'true'
+            - name: Install uv
+              uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+              with:
+                  python-version: '3.13'
+                  enable-cache: 'true'
 
-      - name: Install dependencies
-        run: uv sync --group dev --group build --frozen
+            - name: Install dependencies
+              run: uv sync --group dev --group build --frozen
 
-      - name: Set version for publishing
-        run: |
-          if [ -n "${{ inputs.tag_name }}" ]; then
-            # Use the tag, stripping 'v' prefix if present
-            VERSION=$(echo "${{ inputs.tag_name }}" | sed 's/^v//')
-          else
-            # For untagged builds, use a dev version without local part
-            # Get the dev version from hatch-vcs, then strip +local
-            VERSION=$(uv run --frozen hatch version | sed 's/+.*//')
-          fi
+            - name: Set version for publishing
+              run: |
+                  if [ -n "${{ inputs.tag_name }}" ]; then
+                    # Use the tag, stripping 'v' prefix if present
+                    VERSION=$(echo "${{ inputs.tag_name }}" | sed 's/^v//')
+                  else
+                    # For untagged builds, use a dev version without local part
+                    # Get the dev version from hatch-vcs, then strip +local
+                    VERSION=$(uv run --frozen hatch version | sed 's/+.*//')
+                  fi
 
-          # Update pyproject.toml with sed
-          sed -i "s/dynamic = \[\"version\"\]/version = \"$VERSION\"\ndynamic = []/" pyproject.toml
+                  # Update pyproject.toml with sed
+                  sed -i "s/dynamic = \[\"version\"\]/version = \"$VERSION\"\ndynamic = []/" pyproject.toml
 
-      - name: Build distribution
-        run: uv build
+            - name: Build distribution
+              run: uv build
 
-      - name: Smoke test (wheel)
-        run: uv run --isolated --no-project --with dist/*.whl
-          tests/smoke_test.py
+            - name: Smoke test (wheel)
+              run:
+                  uv run --isolated --no-project --with dist/*.whl
+                  tests/smoke_test.py
 
-      - name: Smoke test (source distribution)
-        run: uv run --isolated --no-project --with dist/*.tar.gz
-          tests/smoke_test.py
+            - name: Smoke test (source distribution)
+              run:
+                  uv run --isolated --no-project --with dist/*.tar.gz
+                  tests/smoke_test.py
 
-      - name: Publish to TestPyPI
-        run: uv publish --index testpypi
+            - name: Publish to TestPyPI
+              run: uv publish --index testpypi

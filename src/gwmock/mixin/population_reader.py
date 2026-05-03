@@ -257,8 +257,7 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
         if file_name.suffix.lower() == ".csv":
             return self._population_read_csv_population_file(file_name, **kwargs)
         raise ValueError(
-            f"Unsupported population file format: {file_name.suffix}. "
-            "Supported formats are .hdf5, .h5, .hdf, and .csv."
+            f"Unsupported population file format: {file_name.suffix}. Supported formats are .hdf5, .h5, .hdf, and .csv."
         )
 
     def _population_read_hdf5_population_file(self, file_name: str | Path, **kwargs) -> pd.DataFrame:

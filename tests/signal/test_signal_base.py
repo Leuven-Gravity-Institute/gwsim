@@ -26,7 +26,6 @@ def signal_simulator_with_mocks(tmp_path):
         patch("gwmock.mixin.detector.DetectorMixin.__init__", return_value=None),
         patch("gwmock.simulator.base.Simulator.__init__", return_value=None),
     ):
-
         simulator = SignalSimulator(
             population_file=str(dummy_file),
             waveform_model="IMRPhenomD",
@@ -177,7 +176,6 @@ class TestSignalSimulatorSimulate:
             patch.object(simulator.waveform_factory, "generate", return_value=MagicMock()),
             patch.object(simulator, "project_polarizations", side_effect=project_mock),
         ):
-
             result = simulator._simulate()
 
             # Should include first two signals (first is in segment, second triggers break but is added before break)
@@ -209,7 +207,6 @@ class TestSignalSimulatorSimulate:
             patch.object(simulator.waveform_factory, "generate", return_value=MagicMock()),
             patch.object(simulator, "project_polarizations", return_value=strain),
         ):
-
             result = simulator._simulate()
 
             # Check that metadata was updated
@@ -238,7 +235,6 @@ class TestSignalSimulatorSimulate:
             patch.object(simulator.waveform_factory, "generate") as mock_generate,
             patch.object(simulator, "project_polarizations", return_value=strain),
         ):
-
             mock_generate.return_value = MagicMock()
             simulator._simulate()
 
@@ -270,7 +266,6 @@ class TestSignalSimulatorSimulate:
             patch.object(simulator.waveform_factory, "generate", return_value=MagicMock()),
             patch.object(simulator, "project_polarizations", return_value=strain) as mock_project,
         ):
-
             simulator._simulate()
 
             # Verify project_polarizations was called with correct parameters
@@ -348,7 +343,6 @@ class TestSignalSimulatorEdgeCases:
             patch.object(simulator.waveform_factory, "generate", return_value=MagicMock()),
             patch.object(simulator, "project_polarizations", return_value=strain),
         ):
-
             result = simulator._simulate()
 
             # Should include this signal (starts before end_time)
@@ -396,7 +390,6 @@ class TestSignalSimulatorEdgeCases:
             patch.object(simulator.waveform_factory, "generate", return_value=MagicMock()),
             patch.object(simulator, "project_polarizations", side_effect=project_mock),
         ):
-
             result = simulator._simulate()
 
             # Should include both signals
@@ -433,7 +426,6 @@ class TestSignalSimulatorEdgeCases:
             patch.object(simulator.waveform_factory, "generate", return_value=MagicMock()),
             patch.object(simulator, "project_polarizations", return_value=strain),
         ):
-
             result = simulator._simulate()
 
             # Signal is added first, then break condition triggers, so it's included

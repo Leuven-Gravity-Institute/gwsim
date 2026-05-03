@@ -897,9 +897,9 @@ class TestSimulateCommandIntegration:
             metadata_dir = tmpdir_path / "metadata"
 
             assert (output_dir / "data.json").exists(), f"Output file not found at {output_dir / 'data.json'}"
-            assert (
-                metadata_dir / "mock-0.metadata.yaml"
-            ).exists(), f"Metadata file not found at {metadata_dir / 'mock-0.metadata.yaml'}"
+            assert (metadata_dir / "mock-0.metadata.yaml").exists(), (
+                f"Metadata file not found at {metadata_dir / 'mock-0.metadata.yaml'}"
+            )
             assert (metadata_dir / "index.yaml").exists(), f"Index file not found at {metadata_dir / 'index.yaml'}"
 
     def test_simulate_command_data_correctness(self):
@@ -983,8 +983,7 @@ class TestSimulateCommandIntegration:
             # Check for all 3 batch metadata files
             metadata_files = list(metadata_dir.glob("mock-*.metadata.yaml"))
             assert len(metadata_files) == NUM_FILES_3, (
-                f"Expected 3 batch metadata files (max-samples: 3), "
-                f"but found {len(metadata_files)}: {metadata_files}"
+                f"Expected 3 batch metadata files (max-samples: 3), but found {len(metadata_files)}: {metadata_files}"
             )
 
             assert (metadata_dir / "index.yaml").exists(), "Index file not created"
@@ -1039,7 +1038,7 @@ class TestSimulateCommandIntegration:
             metadata_dir = tmpdir_path / "metadata"
             initial_metadata_files = sorted(metadata_dir.glob("mock-*.metadata.yaml"))
             assert len(initial_metadata_files) == NUM_FILES_3, (
-                f"Expected 3 metadata files from initial run, " f"but found {len(initial_metadata_files)}"
+                f"Expected 3 metadata files from initial run, but found {len(initial_metadata_files)}"
             )
 
             # Load metadata for batch 1 (the middle batch)
@@ -1047,9 +1046,9 @@ class TestSimulateCommandIntegration:
             batch_1_metadata = parse_batch_metadata(batch_1_metadata_file)
 
             # Verify metadata has pre-batch state
-            assert (
-                "pre_batch_state" in batch_1_metadata
-            ), "Metadata must contain pre_batch_state for exact reproducibility"
+            assert "pre_batch_state" in batch_1_metadata, (
+                "Metadata must contain pre_batch_state for exact reproducibility"
+            )
             batch_1_initial_counter = batch_1_metadata["pre_batch_state"].get("counter")
             assert batch_1_initial_counter is not None, "pre_batch_state should contain counter value"
 
@@ -1065,9 +1064,9 @@ class TestSimulateCommandIntegration:
             # ===== STEP 3: Verify reproduction worked =====
             # After reproduction, the output files should exist in the default output dir
             reproduced_files = list((tmpdir_path / "output").glob("batch_*.json"))
-            assert (
-                len(reproduced_files) > 0
-            ), "Reproduced batches should create output files"  # Verify each reproduced batch file contains counter information
+            assert len(reproduced_files) > 0, (
+                "Reproduced batches should create output files"
+            )  # Verify each reproduced batch file contains counter information
             for batch_file in reproduced_files:
                 with batch_file.open() as f:
                     batch_data = json.load(f)
@@ -1152,9 +1151,9 @@ class TestSimulateCommandIntegration:
 
             # Verify metadata has the required reproducibility info
             assert "pre_batch_state" in metadata, "Metadata must contain pre_batch_state for exact reproducibility"
-            assert (
-                metadata.get("source") == "config"
-            ), "Initial simulation should have source='config' (not a recovery from checkpoint)"
+            assert metadata.get("source") == "config", (
+                "Initial simulation should have source='config' (not a recovery from checkpoint)"
+            )
 
             # Store the counter value from batch 1's metadata
             # This represents the RNG/state position before batch 1 was generated
@@ -1209,15 +1208,13 @@ class TestSimulateCommandIntegration:
 
             # Verify batch 2 can also be reproduced
             assert sim2.counter == batch_2_initial_counter, (
-                f"Batch 2 reproducibility failed: "
-                f"counter should be {batch_2_initial_counter}, "
-                f"but got {sim2.counter}"
+                f"Batch 2 reproducibility failed: counter should be {batch_2_initial_counter}, but got {sim2.counter}"
             )
 
             # Verify batches have different initial states
             # (batch 1 counter != batch 2 counter because RNG advances between batches)
             assert batch_1_initial_counter != batch_2_initial_counter, (
-                "Batch 1 and batch 2 should have different initial counters, " "indicating correct state progression"
+                "Batch 1 and batch 2 should have different initial counters, indicating correct state progression"
             )
 
     def test_simulate_command_dry_run_mode(self):
@@ -1257,15 +1254,15 @@ class TestSimulateCommandIntegration:
 
             # Verify no output files were created
             output_dir = tmpdir_path / "output"
-            assert not output_dir.exists() or not list(
-                output_dir.glob("*")
-            ), "No output files should be created in dry-run mode"
+            assert not output_dir.exists() or not list(output_dir.glob("*")), (
+                "No output files should be created in dry-run mode"
+            )
 
             # Verify no metadata files were created
             metadata_dir = tmpdir_path / "metadata"
-            assert not metadata_dir.exists() or not list(
-                metadata_dir.glob("*")
-            ), "No metadata files should be created in dry-run mode"
+            assert not metadata_dir.exists() or not list(metadata_dir.glob("*")), (
+                "No metadata files should be created in dry-run mode"
+            )
 
 
 class TestSimulateCommandCheckpoint:
@@ -1307,9 +1304,9 @@ class TestSimulateCommandCheckpoint:
             _simulate_impl(str(config_file), overwrite=True, metadata=True)
 
             # Verify checkpoint was created and then cleaned up (successful completion)
-            assert not checkpoint_dir.exists() or not list(
-                checkpoint_dir.glob("simulation.checkpoint.json*")
-            ), "Checkpoint files should be cleaned up after successful completion"
+            assert not checkpoint_dir.exists() or not list(checkpoint_dir.glob("simulation.checkpoint.json*")), (
+                "Checkpoint files should be cleaned up after successful completion"
+            )
 
     def test_checkpoint_skips_already_completed_batches(self):
         """Test that checkpoint allows resumption by skipping completed batches."""
@@ -1451,9 +1448,9 @@ class TestSimulateCommandCheckpoint:
             checkpoint_files = (
                 list(checkpoint_dir.glob("simulation.checkpoint.json*")) if checkpoint_dir.exists() else []
             )
-            assert (
-                len(checkpoint_files) == 0
-            ), f"Checkpoint should be cleaned up after completion, but found: {checkpoint_files}"
+            assert len(checkpoint_files) == 0, (
+                f"Checkpoint should be cleaned up after completion, but found: {checkpoint_files}"
+            )
 
     def test_multiple_simulators_with_checkpoint(self):
         """Test checkpoint behavior with multiple simulators."""
