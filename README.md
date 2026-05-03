@@ -40,17 +40,17 @@ pages for more details:
   [uv on GitHub](https://github.com/astral-sh/uv)
 - Full documentation and usage guide: [uv docs](https://docs.astral.sh/uv/)
 
-**Note:** The package is built and tested against Python 3.10-3.12. When
+**Note:** The package is built and tested against Python 3.12-3.13. When
 creating a virtual environment with `uv`, specify the Python version to ensure
-compatibility: `uv venv --python 3.10` (replace `3.10` with your preferred
-version in the 3.10-3.12 range). This avoids potential issues with unsupported
+compatibility: `uv venv --python 3.12` (replace `3.12` with your preferred
+version in the 3.12-3.13 range). This avoids potential issues with unsupported
 Python versions.
 
 ### From PyPI
 
 ```bash
 # Create a virtual environment (recommended with uv)
-uv venv gwmock-env --python 3.10
+uv venv gwmock-env --python 3.12
 source gwmock-env/bin/activate  # On Windows: gwmock-env\Scripts\activate
 uv pip install gwmock
 ```
@@ -61,10 +61,27 @@ uv pip install gwmock
 git clone git@github.com:Leuven-Gravity-Institute/gwmock.git
 ce gwmock
 # Create a virtual environment (recommended with uv)
-uv venv --python 3.10
+uv venv --python 3.12
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install .
 ```
+
+### Subpackage adoption baseline
+
+The current packaging baseline for the `gwmock-*` split is:
+
+- Python `>=3.12,<3.14`
+- `gwmock-signal>=0.5.0`
+- `gwmock-noise>=0.1.2`
+- `gwmock-pop>=0.6.0`
+
+Later adapter issues may treat these upstream assumptions as settled:
+
+- `gwmock-pop` ISS-026 provides the canonical `CBC_PARAMETER_NAMES` export used
+  for downstream validation and contract tests.
+- `gwmock-signal` ISS-014 resolved the package's public license surface to a
+  consistent GPL-3.0-or-later declaration; if that upstream license changes,
+  re-audit downstream adoption before widening the dependency plan.
 
 ## Quick Start
 

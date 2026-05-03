@@ -204,7 +204,7 @@ def create_batch_metadata(
         author = getpass.getuser()
 
     if timestamp is None:
-        timestamp = datetime.datetime.now(datetime.timezone.utc)
+        timestamp = datetime.datetime.now(datetime.UTC)
 
     metadata: dict[str, Any] = {
         "simulator_name": simulator_name,

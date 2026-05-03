@@ -12,14 +12,14 @@ pages for more details:
 
 ## Requirements
 
-- Python 3.10 or higher
+- Python 3.12 or 3.13
 - Operating System: Linux, macOS, or Windows
 
 <!-- prettier-ignore -->
 !!!note
-    The package is built and tested against Python 3.10-3.12. When creating a virtual environment with `uv`,
-    specify the Python version to ensure compatibility: `uv venv --python 3.10` (replace `3.10` with your
-    preferred version in the 3.10-3.12 range). This avoids potential issues with unsupported Python versions.
+    The package is built and tested against Python 3.12-3.13. When creating a virtual environment with `uv`,
+    specify the Python version to ensure compatibility: `uv venv --python 3.12` (replace `3.12` with your
+    preferred version in the 3.12-3.13 range). This avoids potential issues with unsupported Python versions.
 
 ## Install from PyPI
 
@@ -27,7 +27,7 @@ The recommended way to install gwmock is from PyPI:
 
 ```bash
 # Create a virtual environment (recommended with uv)
-uv venv gwmock-env --python 3.10
+uv venv gwmock-env --python 3.12
 source gwmock-env/bin/activate  # On Windows: gwmock-env\Scripts\activate
 uv pip install gwmock
 ```
@@ -55,7 +55,7 @@ For the latest development version:
 git clone git@github.com:Leuven-Gravity-Institute/gwmock.git
 ce gwmock
 # Create a virtual environment (recommended with uv)
-uv venv --python 3.10
+uv venv --python 3.12
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install .
 ```
@@ -69,7 +69,7 @@ git clone git@github.com:Leuven-Gravity-Institute/gwmock.git
 cd gwmock
 
 # Create a virtual environment (recommended with uv)
-uv venv --python 3.10
+uv venv --python 3.12
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install ".[dev]"
 
@@ -94,6 +94,24 @@ python -c "import gwmock; print(gwmock.__version__)"
 ```
 
 ## Dependencies
+
+### Subpackage adoption baseline
+
+Later refactor issues may assume this dependency baseline without reopening the
+packaging question:
+
+- Python `>=3.12,<3.14`
+- `gwmock-signal>=0.5.0`
+- `gwmock-noise>=0.1.2`
+- `gwmock-pop>=0.6.0`
+
+The baseline also depends on two upstream assumptions that are now explicit:
+
+- `gwmock-pop` ISS-026 exports `CBC_PARAMETER_NAMES` for downstream validation
+  and cross-package contract tests.
+- `gwmock-signal` ISS-014 made the public license surface internally consistent;
+  if that license declaration changes upstream, revisit downstream adoption
+  before broadening the dependency plan.
 
 ### Core Dependencies
 
