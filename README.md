@@ -91,10 +91,29 @@ Key configuration sections:
 | `orchestration.noise`      | Public `gwmock-noise` adapter arguments and noise output settings                                     |
 
 The legacy `simulators.*.class` configuration remains available for
-compatibility and metadata reproduction, but new configs should prefer the
-adapter-backed `orchestration` flow. See `examples/default_config/config.yaml`
-and `examples/signal/bbh/et_triangle_sardinia/config.yaml` for concrete
-examples.
+compatibility and metadata reproduction, but it is deprecated for fresh runs;
+new configs should prefer the adapter-backed `orchestration` flow. See
+`examples/default_config/config.yaml` and
+`examples/signal/bbh/et_triangle_sardinia/config.yaml` for concrete examples.
+
+The first protocol-based compatibility release is intentionally scoped to the
+path covered by the end-to-end tests:
+
+- file-backed CBC population catalogues loaded through the public `gwmock-pop`
+  contract,
+- transient CBC signal backends resolved by `source-type` through public
+  `gwmock-signal` APIs,
+- stateless segment generation through the public `gwmock-noise` run boundary,
+  with gwmock still owning orchestration, metadata, and output layout.
+
+Deferred behavior is explicit rather than silent:
+
+- fresh `simulators.*.class` configs are deprecated and retained only for
+  backwards compatibility plus metadata reproduction,
+- exact hidden-filter continuation across noise segments is still out of scope
+  until `gwmock-noise` exposes a public stateful continuation protocol,
+- non-transient signal backends that do not expose `generate_polarizations()`
+  are not part of the initial compatibility contract.
 
 ## Documentation
 
