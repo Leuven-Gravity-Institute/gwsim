@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -266,6 +267,14 @@ def load_config(file_name: Path, encoding: str = "utf-8") -> Config:
     try:
         config = Config(**raw_config)
         configured_units = len(config.simulators) if config.simulators is not None else 1
+        if config.simulators is not None:
+            warnings.warn(
+                "Legacy 'simulators' configurations are deprecated for fresh runs and remain supported "
+                "only for backwards compatibility and metadata reproduction. Prefer the adapter-backed "
+                "'orchestration' surface for new configs.",
+                FutureWarning,
+                stacklevel=2,
+            )
         logger.info("Configuration loaded and validated: %s execution unit(s)", configured_units)
         return config
     except ValueError as e:

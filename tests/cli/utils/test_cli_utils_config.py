@@ -5,6 +5,7 @@ Unit tests for configuration utilities.
 from __future__ import annotations
 
 import tempfile
+import warnings
 from pathlib import Path
 
 import pytest
@@ -257,11 +258,57 @@ simulators:
             config_path = Path(f.name)
 
         try:
-            config = load_config(config_path)
+            with pytest.warns(FutureWarning, match="Legacy 'simulators' configurations are deprecated"):
+                config = load_config(config_path)
             assert isinstance(config, Config)
             assert config.globals.simulator_arguments["sampling-frequency"] == SAMPLING_FREQUENCY_2048
             assert "noise" in config.simulators
             assert config.simulators["noise"].class_ == "WhiteNoise"
+        finally:
+            config_path.unlink()
+
+    def test_load_orchestration_config_does_not_warn(self):
+        """Fresh orchestration configs should not trigger the legacy deprecation warning."""
+        config_yaml = """\
+globals:
+  working-directory: .
+  simulator-arguments:
+    sampling-frequency: 64
+    duration: 4
+    start-time: 1000
+    max-samples: 1
+orchestration:
+  population:
+    backend: file
+    source-type: bbh
+    n-samples: 1
+    arguments:
+      path: population.h5
+  signal:
+    detectors:
+      - H1
+    output:
+      file_name: signal-{{ counter }}.gwf
+      arguments:
+        channel: H1:STRAIN
+  noise:
+    arguments:
+      seed: 7
+    output:
+      file_name: noise-{{ counter }}.npy
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(config_yaml)
+            f.flush()
+            config_path = Path(f.name)
+
+        try:
+            with warnings.catch_warnings(record=True) as record:
+                warnings.simplefilter("always")
+                config = load_config(config_path)
+            assert not record
+            assert config.orchestration is not None
+            assert config.orchestration.population.backend == "file"
         finally:
             config_path.unlink()
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import h5py
 import numpy as np
 import yaml
 
@@ -127,6 +128,60 @@ def _orchestration_config(tmp_path: Path) -> Config:
     )
 
 
+def _write_real_population_catalog(path: Path) -> None:
+    with h5py.File(path, "w") as handle:
+        group = handle.create_group("data")
+        group.create_dataset("detector_frame_mass_1", data=[30.0])
+        group.create_dataset("detector_frame_mass_2", data=[20.0])
+        group.create_dataset("coa_time", data=[1001.0])
+        group.create_dataset("distance", data=[400.0])
+        group.create_dataset("inclination", data=[0.3])
+        group.create_dataset("right_ascension", data=[1.1])
+        group.create_dataset("declination", data=[-0.5])
+        group.create_dataset("polarization_angle", data=[0.2])
+
+
+def _real_orchestration_config(tmp_path: Path, population_path: Path) -> Config:
+    return Config(
+        globals=GlobalsConfig(
+            working_directory=str(tmp_path),
+            output_directory="output",
+            metadata_directory="metadata",
+            simulator_arguments={
+                "sampling-frequency": 64,
+                "duration": 4,
+                "start-time": 1000,
+                "max-samples": 1,
+            },
+        ),
+        orchestration=OrchestrationConfig(
+            population=PopulationConfig(
+                backend="file",
+                source_type="bbh",
+                n_samples=1,
+                arguments={"path": str(population_path)},
+            ),
+            signal=SignalConfig(
+                detectors=["H1"],
+                waveform_model="IMRPhenomD",
+                minimum_frequency=20.0,
+                output=SimulatorOutputConfig(
+                    file_name="signal-{{ counter }}.gwf",
+                    output_directory="signal",
+                    arguments={"channel": "H1:STRAIN"},
+                ),
+            ),
+            noise=NoiseAdapterConfig(
+                arguments={"seed": 7},
+                output=SimulatorOutputConfig(
+                    file_name="noise-{{ counter }}.npy",
+                    output_directory="noise",
+                ),
+            ),
+        ),
+    )
+
+
 def test_create_plan_from_orchestration_config(tmp_path: Path):
     """Batch planning should respect the new orchestration config surface."""
     config = _orchestration_config(tmp_path)
@@ -174,3 +229,36 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     metadata = yaml.safe_load((tmp_path / "metadata" / "orchestration-0.metadata.yaml").read_text())
     assert metadata["simulator_config"]["population"]["backend"] == "file"
     assert metadata["simulator_config"]["signal"]["detectors"] == ["H1"]
+
+
+def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Path):
+    """The orchestration path should work against the real public subpackage contracts."""
+    population_path = tmp_path / "population.h5"
+    _write_real_population_catalog(population_path)
+    config = _real_orchestration_config(tmp_path, population_path)
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(yaml.safe_dump(config.model_dump(by_alias=True, exclude_none=True), sort_keys=False))
+
+    monkeypatch.setattr(
+        "gwmock.mixin.time_series.TimeSeriesMixin._save_gwf_data",
+        lambda self, data, file_name, channel=None, **kwargs: (
+            Path(file_name).parent.mkdir(parents=True, exist_ok=True),
+            Path(file_name).write_text(channel or "STRAIN"),
+        )[-1],
+    )
+
+    _simulate_impl(str(config_file), overwrite=True, metadata=True)
+
+    signal_path = tmp_path / "output" / "signal" / "signal-0.gwf"
+    noise_path = tmp_path / "output" / "noise" / "noise-0_H1.npy"
+    metadata_path = tmp_path / "metadata" / "orchestration-0.metadata.yaml"
+
+    assert signal_path.read_text() == "H1:STRAIN"
+    assert noise_path.exists()
+    assert np.load(noise_path).shape == (256,)
+    metadata = yaml.safe_load(metadata_path.read_text())
+    assert metadata["simulator_config"]["population"]["backend"] == "file"
+    assert metadata["simulator_config"]["signal"]["waveform_model"] == "IMRPhenomD"
+    assert metadata["versions"]["gwmock-pop"] >= "0.6.0"
+    assert metadata["versions"]["gwmock-signal"] >= "0.5.0"
+    assert metadata["versions"]["gwmock-noise"] >= "0.1.2"
