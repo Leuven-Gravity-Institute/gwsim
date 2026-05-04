@@ -1,6 +1,6 @@
 # gwmock
 
-[![Python CI](https://github.com/Leuven-Gravity-Institute/gwmock/actions/workflows/CI.yml/badge.svg)](https://github.com/Leuven-Gravity-Institute/gwmock/actions/workflows/CI.yml)
+[![Python CI](https://github.com/Leuven-Gravity-Institute/gwmock/actions/workflows/ci.yml/badge.svg)](https://github.com/Leuven-Gravity-Institute/gwmock/actions/workflows/ci.yml)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Leuven-Gravity-Institute/gwmock/main.svg)](https://results.pre-commit.ci/latest/github/Leuven-Gravity-Institute/gwmock/main)
 [![Documentation Status](https://github.com/Leuven-Gravity-Institute/gwmock/actions/workflows/documentation.yml/badge.svg)](https://leuven-gravity-institute.github.io/gwmock)
 [![codecov](https://codecov.io/gh/Leuven-Gravity-Institute/gwmock/graph/badge.svg?token=GLW2LEFKW7)](https://codecov.io/gh/Leuven-Gravity-Institute/gwmock)
