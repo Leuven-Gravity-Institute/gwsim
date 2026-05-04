@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 import yaml
+from gwmock_noise import SimulationResult
 from tqdm import tqdm
 
 from gwmock.cli.utils.checkpoint import CheckpointManager
@@ -347,6 +348,21 @@ def process_batch(
         batch.simulator_config.output.file_name,
     )
 
+    if isinstance(batch_data, SimulationResult):
+        output_files_list = list(batch_data.output_paths.values())
+        missing_outputs = [path for path in output_files_list if not path.exists()]
+        if missing_outputs:
+            raise FileNotFoundError(
+                "Noise adapter reported output files that do not exist: "
+                + ", ".join(str(path) for path in missing_outputs)
+            )
+        logger.debug(
+            "[PROCESS] Batch %s: Using upstream-written outputs - %s",
+            batch.batch_index,
+            [str(path.name) for path in output_files_list],
+        )
+        return output_files_list
+
     # Build output configuration
     output_config = batch.simulator_config.output
     file_name_template = output_config.file_name
@@ -550,6 +566,14 @@ def execute_plan(  # noqa: PLR0915
                         _pre_batch_state=pre_batch_state,
                     ):
                         """Execute a single batch with state management."""
+                        set_batch_context = getattr(_simulator, "set_batch_context", None)
+                        if callable(set_batch_context):
+                            set_batch_context(
+                                batch=_batch,
+                                output_directory=_output_directory,
+                                overwrite=overwrite,
+                            )
+
                         # Generate data by calling next() - this advances simulator state
                         logger.debug("[BATCH] %s: Before next() - counter=%s", _batch.batch_index, _simulator.counter)
                         batch_data = _simulator.simulate()
