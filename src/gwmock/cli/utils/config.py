@@ -272,7 +272,7 @@ def load_config(file_name: Path, encoding: str = "utf-8") -> Config:
                 "Legacy 'simulators' configurations are deprecated for fresh runs and remain supported "
                 "only for backwards compatibility and metadata reproduction. Prefer the adapter-backed "
                 "'orchestration' surface for new configs.",
-                DeprecationWarning,
+                FutureWarning,
                 stacklevel=2,
             )
         logger.info("Configuration loaded and validated: %s execution unit(s)", configured_units)
