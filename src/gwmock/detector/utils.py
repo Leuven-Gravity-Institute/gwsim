@@ -1,4 +1,4 @@
-"""A utility module for loading gravitational wave interferometer configurations."""
+"""Utilities for loading gravitational wave interferometer configurations."""
 
 from __future__ import annotations
 
@@ -42,6 +42,56 @@ def _bilby_to_pycbc_detector_parameters(bilby_params: dict) -> dict:
     return pycbc_params
 
 
+def resolve_interferometer_config_path(config_file: str | Path) -> Path:
+    """Resolve one interferometer config path against the built-in detector directory."""
+    config_path = Path(config_file)
+    if config_path.is_file():
+        return config_path
+
+    default_path = DEFAULT_DETECTOR_BASE_PATH / config_path
+    if default_path.is_file():
+        return default_path
+
+    raise FileNotFoundError(f"Config file {config_file} not found.")
+
+
+def read_interferometer_config(config_file: str | Path, encoding: str = "utf-8") -> dict:
+    """Read one ``.interferometer`` file into its Bilby-style parameter mapping."""
+    resolved_config_file = resolve_interferometer_config_path(config_file)
+
+    bilby_params = {}
+    with resolved_config_file.open(encoding=encoding) as f:
+        lines = f.readlines()
+        for line in lines:
+            if line[0] == "#" or line[0] == "\n":
+                continue
+            split_line = line.split("=")
+            key = split_line[0].strip()
+            if key == "power_spectral_density":
+                continue
+            value = literal_eval("=".join(split_line[1:]))
+            bilby_params[key] = value
+
+    return bilby_params
+
+
+def interferometer_config_to_custom_detector(config_file: str | Path, encoding: str = "utf-8"):
+    """Convert one ``.interferometer`` file into a public ``gwmock_signal`` detector."""
+    from gwmock_signal import CustomDetector  # noqa: PLC0415
+
+    bilby_params = read_interferometer_config(config_file=config_file, encoding=encoding)
+    return CustomDetector(
+        name=str(bilby_params["name"]),
+        latitude_rad=float(np.deg2rad(float(bilby_params["latitude"]))),
+        longitude_rad=float(np.deg2rad(float(bilby_params["longitude"]))),
+        elevation_m=float(bilby_params["elevation"]),
+        xarm_azimuth_rad=float(np.deg2rad(float(bilby_params["xarm_azimuth"]))),
+        yarm_azimuth_rad=float(np.deg2rad(float(bilby_params["yarm_azimuth"]))),
+        xarm_tilt_rad=float(bilby_params.get("xarm_tilt", 0.0)),
+        yarm_tilt_rad=float(bilby_params.get("yarm_tilt", 0.0)),
+    )
+
+
 def load_interferometer_config(config_file: str | Path, encoding: str = "utf-8") -> str:
     """
     Load a .interferometer config file and add its detector using pycbc.detector.add_detector_on_earth.
@@ -53,23 +103,7 @@ def load_interferometer_config(config_file: str | Path, encoding: str = "utf-8")
     Returns:
         str: Added detector name (e.g., "E1").
     """
-    # Load the .interferometer config file
-    config_file = Path(config_file)
-    if not config_file.exists():
-        raise FileNotFoundError(f"Config file {config_file} not found.")
-
-    bilby_params = {}
-    with config_file.open(encoding=encoding) as f:
-        lines = f.readlines()
-        for line in lines:
-            if line[0] == "#" or line[0] == "\n":
-                continue
-            split_line = line.split("=")
-            key = split_line[0].strip()
-            if key == "power_spectral_density":
-                continue
-            value = literal_eval("=".join(split_line[1:]))
-            bilby_params[key] = value
+    bilby_params = read_interferometer_config(config_file=config_file, encoding=encoding)
 
     params = _bilby_to_pycbc_detector_parameters(bilby_params)
     det_name = params["name"]

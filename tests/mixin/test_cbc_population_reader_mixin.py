@@ -69,11 +69,11 @@ class TestCBCPopulationReaderMixin:
 
             simulator = MockCBCSimulator(file_path, start_time=0, duration=100)
             assert simulator.population_data is not None
-            # Check sorting by tc
-            assert list(simulator.population_data["tc"]) == [50.0, 100.0, 200.0]
-            # Check parameter mapping: m1 -> mass1, m2 -> mass2, z -> redshift
-            assert "mass1" in simulator.population_data.columns
-            assert "mass2" in simulator.population_data.columns
+            # Check sorting by canonical coa_time
+            assert list(simulator.population_data["coa_time"]) == [50.0, 100.0, 200.0]
+            # Check parameter mapping to gwmock-signal canonical names
+            assert "detector_frame_mass_1" in simulator.population_data.columns
+            assert "detector_frame_mass_2" in simulator.population_data.columns
             assert "redshift" in simulator.population_data.columns
             assert "m1" not in simulator.population_data.columns
 
@@ -96,8 +96,8 @@ class TestCBCPopulationReaderMixin:
             expected_mass1 = 25.0
             expected_mass2 = 20.0
             expected_redshift = 0.05
-            assert simulator.population_data["mass1"].iloc[0] == expected_mass1  # m1[1] = 25.0
-            assert simulator.population_data["mass2"].iloc[0] == expected_mass2  # m2[1] = 20.0
+            assert simulator.population_data["detector_frame_mass_1"].iloc[0] == expected_mass1  # m1[1] = 25.0
+            assert simulator.population_data["detector_frame_mass_2"].iloc[0] == expected_mass2  # m2[1] = 20.0
             assert simulator.population_data["redshift"].iloc[0] == expected_redshift  # z[1] = 0.05
 
     def test_post_process_compute_masses(self, mock_cbc_srcmass_data, tmp_path):
@@ -115,11 +115,11 @@ class TestCBCPopulationReaderMixin:
             file_path.touch()
 
             simulator = MockCBCSimulator(file_path, start_time=0, duration=100)
-            # mass1 = m1_source * (1 + z) - first after sorting: m1_source=24.0, z=0.05
+            # detector-frame masses = source-frame masses * (1 + z)
             expected_mass1 = 24.0 * (1 + 0.05)  # 25.2
             expected_mass2 = 19.0 * (1 + 0.05)  # 19.95
-            assert simulator.population_data["mass1"].iloc[0] == pytest.approx(expected_mass1)
-            assert simulator.population_data["mass2"].iloc[0] == pytest.approx(expected_mass2)
+            assert simulator.population_data["detector_frame_mass_1"].iloc[0] == pytest.approx(expected_mass1)
+            assert simulator.population_data["detector_frame_mass_2"].iloc[0] == pytest.approx(expected_mass2)
 
     def test_post_process_missing_srcmass_raises_error(self, tmp_path):
         """Test that missing source masses raise ValueError."""
@@ -136,7 +136,7 @@ class TestCBCPopulationReaderMixin:
             file_path = tmp_path / "cbc_error.h5"
             file_path.touch()
 
-            with pytest.raises(ValueError, match="mass1 is not in population data"):
+            with pytest.raises(ValueError, match="detector_frame_mass_1 is not in population data"):
                 MockCBCSimulator(file_path, start_time=0, duration=100)
 
     def test_url_population_file(self, mock_cbc_h5py_data):
@@ -173,9 +173,9 @@ class TestCBCPopulationReaderMixin:
             simulator = MockCBCSimulator(file_path, start_time=0, duration=100)
             params = simulator.get_next_injection_parameters()
             assert params is not None
-            assert "tc" in params
+            assert "coa_time" in params
             expected_tc = 50.0
-            assert params["tc"] == expected_tc  # First after sorting
-            assert "mass1" in params
-            assert "mass2" in params
+            assert params["coa_time"] == expected_tc  # First after sorting
+            assert "detector_frame_mass_1" in params
+            assert "detector_frame_mass_2" in params
             assert "redshift" in params

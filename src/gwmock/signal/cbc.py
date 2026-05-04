@@ -21,7 +21,7 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
         population_parameter_name_mapper: dict[str, str] | None = None,
         population_cache_dir: str | Path | None = None,
         population_download_timeout: int = 300,
-        waveform_model: str | Callable = "IMRPhenomXPHM",
+        waveform_model: str | Callable[..., Any] | None = None,
         waveform_arguments: dict[str, Any] | None = None,
         start_time: int = 0,
         duration: float = 1024,
@@ -30,6 +30,8 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
         dtype: type = np.float64,
         detectors: list[str] | None = None,
         minimum_frequency: float = 5,
+        source_type: str = "bbh",
+        earth_rotation: bool = True,
         **kwargs,
     ) -> None:
         """Initialize the CBC signal simulator.
@@ -39,15 +41,19 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
             population_parameter_name_mapper: Dict mapping population column names to simulator parameter names.
             population_cache_dir: Directory to cache downloaded population files.
             population_download_timeout: Timeout in seconds for downloading population files. Default is 300.
-            waveform_model: Name (from registry) or callable for waveform generation.
+            waveform_model: Name (from registry), custom callable, or ``None`` for
+                ``IMRPhenomXPHM`` (same default as ``SignalSimulator``).
             waveform_arguments: Fixed parameters to pass to waveform model.
             start_time: Start time of the first signal segment in GPS seconds. Default is 0.
             duration: Duration of each signal segment in seconds. Default is 1024.
             sampling_frequency: Sampling frequency of the signals in Hz. Default is 4096.
             max_samples: Maximum number of samples to generate. None means infinite.
             dtype: Data type for the time series data. Default is np.float64.
-            detectors: List of detector names. Default is None.
+            detectors: List of detector names. If ``None`` or empty, defaults to the
+                same three-detector network as ``SignalSimulator`` (``H1``, ``L1``, ``V1``).
             minimum_frequency: Minimum GW frequency for waveform generation. Default is 5 Hz.
+            source_type: Public gwmock-pop source-type routing key for backend lookup.
+            earth_rotation: Whether to use time-dependent detector projection in gwmock-signal.
             **kwargs: Additional arguments absorbed by subclasses and mixins.
         """
         super().__init__(
@@ -64,5 +70,7 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
             dtype=dtype,
             detectors=detectors,
             minimum_frequency=minimum_frequency,
+            source_type=source_type,
+            earth_rotation=earth_rotation,
             **kwargs,
         )
