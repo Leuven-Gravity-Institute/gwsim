@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from gwmock.cli.utils.config import Config, GlobalsConfig, SimulatorConfig
+from gwmock.cli.utils.config import Config, GlobalsConfig, OrchestrationConfig, SimulatorConfig
 from gwmock.cli.utils.config_resolution import resolve_max_samples
 from gwmock.cli.utils.metadata import load_metadata_with_external_state
 from gwmock.utils.log import get_dependency_versions
@@ -36,7 +36,7 @@ class SimulationBatch:
     simulator_name: str
     """Name of the simulator (e.g., 'noise', 'signal', 'glitch')"""
 
-    simulator_config: SimulatorConfig
+    simulator_config: SimulatorConfig | OrchestrationConfig
     """Configuration for this simulator"""
 
     globals_config: GlobalsConfig
@@ -258,22 +258,17 @@ def create_plan_from_config(
         checkpoint_directory=checkpoint_dir,
     )
 
-    # For each simulator, create batches (each simulator can generate multiple batches)
     global_batch_index = 0
-    for simulator_name, simulator_config in config.simulators.items():
-        # Determine number of batches for this simulator
-        # This comes from simulator_arguments in globals_config (max_samples parameter)
-        # First check simulator-specific arguments, then fall back to global simulator_arguments
-        # Note: Keys in simulator_arguments may have hyphens (YAML style), so normalize them
+    orchestration_config = getattr(config, "orchestration", None)
+    simulators_config = getattr(config, "simulators", None)
+
+    if orchestration_config is not None:
         global_sim_args = {k.replace("-", "_"): v for k, v in config.globals.simulator_arguments.items()}
-        local_sim_args = {k.replace("-", "_"): v for k, v in simulator_config.arguments.items()}
-
-        max_samples = resolve_max_samples(simulator_args=local_sim_args, global_args=global_sim_args)
-
+        max_samples = resolve_max_samples(simulator_args={}, global_args=global_sim_args)
         for _ in range(max_samples):
             batch = SimulationBatch(
-                simulator_name=simulator_name,
-                simulator_config=simulator_config,
+                simulator_name="orchestration",
+                simulator_config=orchestration_config,
                 globals_config=config.globals,
                 batch_index=global_batch_index,
                 source="config",
@@ -282,6 +277,30 @@ def create_plan_from_config(
             )
             plan.add_batch(batch)
             global_batch_index += 1
+    elif simulators_config is not None:
+        # For each simulator, create batches (each simulator can generate multiple batches)
+        for simulator_name, simulator_config in simulators_config.items():
+            # Determine number of batches for this simulator
+            # This comes from simulator_arguments in globals_config (max_samples parameter)
+            # First check simulator-specific arguments, then fall back to global simulator_arguments
+            # Note: Keys in simulator_arguments may have hyphens (YAML style), so normalize them
+            global_sim_args = {k.replace("-", "_"): v for k, v in config.globals.simulator_arguments.items()}
+            local_sim_args = {k.replace("-", "_"): v for k, v in simulator_config.arguments.items()}
+
+            max_samples = resolve_max_samples(simulator_args=local_sim_args, global_args=global_sim_args)
+
+            for _ in range(max_samples):
+                batch = SimulationBatch(
+                    simulator_name=simulator_name,
+                    simulator_config=simulator_config,
+                    globals_config=config.globals,
+                    batch_index=global_batch_index,
+                    source="config",
+                    author=author,
+                    email=email,
+                )
+                plan.add_batch(batch)
+                global_batch_index += 1
 
     logger.info("Created simulation plan from config: %d batches", plan.total_batches)
     return plan
@@ -327,8 +346,14 @@ def create_plan_from_metadata_files(
         # Reconstruct configs from metadata
         try:
             globals_config = GlobalsConfig(**metadata["globals_config"])
-            simulator_config = SimulatorConfig(**metadata["simulator_config"])
-        except (KeyError, TypeError) as e:
+            raw_simulator_config = metadata["simulator_config"]
+            if "class" in raw_simulator_config or "class_" in raw_simulator_config:
+                simulator_config = SimulatorConfig(**raw_simulator_config)
+            elif {"population", "signal", "noise"}.issubset(raw_simulator_config):
+                simulator_config = OrchestrationConfig(**raw_simulator_config)
+            else:
+                raise ValueError("unknown simulator_config shape")
+        except (KeyError, TypeError, ValueError) as e:
             raise ValueError(f"Invalid metadata in {metadata_file}: missing or malformed config: {e}") from e
 
         simulator_name = metadata.get("simulator_name")
