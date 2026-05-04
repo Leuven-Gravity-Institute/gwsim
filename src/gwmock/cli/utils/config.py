@@ -327,7 +327,7 @@ def validate_config(config: dict) -> None:  # noqa: PLR0912
     has_orchestration = "orchestration" in config
 
     if not has_simulators and not has_orchestration:
-        raise ValueError("Invalid configuration: Must contain 'simulators' section with simulator definitions")
+        raise ValueError("Invalid configuration: Must define exactly one of 'simulators' or 'orchestration'")
     if has_simulators and has_orchestration:
         raise ValueError("Invalid configuration: Define exactly one of 'simulators' or 'orchestration'")
 
