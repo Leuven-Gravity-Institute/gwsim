@@ -49,7 +49,8 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
             sampling_frequency: Sampling frequency of the signals in Hz. Default is 4096.
             max_samples: Maximum number of samples to generate. None means infinite.
             dtype: Data type for the time series data. Default is np.float64.
-            detectors: List of detector names. Default is None.
+            detectors: List of detector names. If ``None`` or empty, defaults to the
+                same three-detector network as ``SignalSimulator`` (``H1``, ``L1``, ``V1``).
             minimum_frequency: Minimum GW frequency for waveform generation. Default is 5 Hz.
             source_type: Public gwmock-pop source-type routing key for backend lookup.
             earth_rotation: Whether to use time-dependent detector projection in gwmock-signal.

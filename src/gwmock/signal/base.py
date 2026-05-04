@@ -17,6 +17,9 @@ from gwmock.simulator.base import Simulator
 
 logger = logging.getLogger("gwmock")
 
+# Used when ``detectors`` is omitted or empty so ``SignalAdapter`` always receives a non-empty network.
+DEFAULT_SIGNAL_SIMULATOR_DETECTORS: tuple[str, ...] = ("H1", "L1", "V1")
+
 
 class SignalSimulator(PopulationReaderMixin, TimeSeriesMixin, Simulator):
     """Base class for signal simulators."""
@@ -60,7 +63,8 @@ class SignalSimulator(PopulationReaderMixin, TimeSeriesMixin, Simulator):
             sampling_frequency: Sampling frequency of the signals in Hz. Default is 4096.
             max_samples: Maximum number of samples to generate. None means infinite.
             dtype: Data type for the time series data. Default is np.float64.
-            detectors: List of detector names. Default is None.
+            detectors: List of detector names. If ``None`` or empty, defaults to
+                ``H1``, ``L1``, and ``V1`` (see ``DEFAULT_SIGNAL_SIMULATOR_DETECTORS``).
             minimum_frequency: Minimum GW frequency for waveform generation. Default is 5 Hz.
             source_type: Public gwmock-pop source-type routing key for backend lookup.
             earth_rotation: Whether to use time-dependent detector projection in gwmock-signal.
@@ -76,10 +80,11 @@ class SignalSimulator(PopulationReaderMixin, TimeSeriesMixin, Simulator):
         self.minimum_frequency = minimum_frequency
         self.source_type = source_type
         self.earth_rotation = earth_rotation
+        detectors = list(DEFAULT_SIGNAL_SIMULATOR_DETECTORS) if not detectors else list(detectors)
         self.signal_adapter = SignalAdapter.from_source_type(
             source_type=source_type,
             waveform_model=waveform_model,
-            detectors=detectors or [],
+            detectors=detectors,
         )
         self.detectors = list(self.signal_adapter.detector_names)
 

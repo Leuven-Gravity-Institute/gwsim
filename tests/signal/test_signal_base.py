@@ -11,7 +11,7 @@ from astropy.units import Quantity
 
 from gwmock.data.time_series.time_series import TimeSeries
 from gwmock.data.time_series.time_series_list import TimeSeriesList
-from gwmock.signal.base import SignalSimulator
+from gwmock.signal.base import DEFAULT_SIGNAL_SIMULATOR_DETECTORS, SignalSimulator
 
 
 @pytest.fixture
@@ -76,6 +76,40 @@ class TestSignalSimulatorInitialization:
             waveform_model="IMRPhenomD",
             detectors=["H1"],
         )
+
+    def test_init_uses_default_detector_network_when_detectors_missing(self, tmp_path):
+        """Omitted or empty ``detectors`` should fall back to a non-empty HLV network."""
+        dummy_file = tmp_path / "dummy_file.csv"
+        dummy_file.write_text("")
+        mock_adapter = MagicMock()
+        mock_adapter.detector_names = tuple(DEFAULT_SIGNAL_SIMULATOR_DETECTORS)
+
+        expected = list(DEFAULT_SIGNAL_SIMULATOR_DETECTORS)
+        with (
+            patch("gwmock.mixin.population_reader.PopulationReaderMixin.__init__", return_value=None),
+            patch("gwmock.mixin.time_series.TimeSeriesMixin.__init__", return_value=None),
+            patch("gwmock.simulator.base.Simulator.__init__", return_value=None),
+            patch(
+                "gwmock.signal.base.SignalAdapter.from_source_type", return_value=mock_adapter
+            ) as mock_from_source_type,
+        ):
+            for detectors in (None, []):
+                mock_from_source_type.reset_mock()
+                SignalSimulator(
+                    population_file=str(dummy_file),
+                    waveform_model="IMRPhenomD",
+                    detectors=detectors,
+                    start_time=0,
+                    duration=100.0,
+                    sampling_frequency=4096,
+                    minimum_frequency=5.0,
+                    source_type="bbh",
+                )
+                mock_from_source_type.assert_called_once_with(
+                    source_type="bbh",
+                    waveform_model="IMRPhenomD",
+                    detectors=expected,
+                )
 
 
 class TestSignalSimulatorSimulate:
