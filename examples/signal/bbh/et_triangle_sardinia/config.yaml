@@ -15,32 +15,40 @@ globals:
     # Directory to store metadata sidecars and checkpoints
     metadata-directory: metadata
 
-simulators:
-    # Compact binary coalescence (CBC) gravitational-wave signal simulator configuration
-    signal:
-        class: CBCSignalSimulator
+orchestration:
+    population:
+        backend: FilePopulationLoader
+        source-type: bbh
+        n-samples: 128
         arguments:
-            # Path or URL to population file (HDF5) containing simulated BBH events
-            population_file: https://sandbox.zenodo.org/records/413548/files/18321_1yrCatalogBBH.h5
-            # Waveform model and arguments for signal generation
-            waveform_model: IMRPhenomXPHM
-            # Additional waveform model arguments
-            waveform_arguments:
-                # Reference frequency in Hz for waveform generation
-                reference_frequency: 50
-            # Minimum frequency in Hz for the waveform generation
-            minimum_frequency: 20
-            # List of detector names to generate signal for (network support)
+            # Path or URL to a population catalogue handled by the public gwmock-pop loader
+            path: https://sandbox.zenodo.org/records/413548/files/18321_1yrCatalogBBH.h5
+    signal:
+        waveform-model: IMRPhenomXPHM
+        waveform-arguments:
+            reference_frequency: 50
+        minimum-frequency: 20
+        detectors:
+            - E1_triangle_sardinia
+            - E2_triangle_sardinia
+            - E3_triangle_sardinia
+        output:
+            output_directory: signal
+            file_name:
+                'E-{{ detectors }}_STRAIN_BBH-{{ start_time }}-{{ duration
+                }}.gwf'
+            arguments:
+                channel: '{{ detectors }}:STRAIN'
+    noise:
+        arguments:
+            psd_file: ET_10_full_cryo_psd.txt
+            seed: 42
             detectors:
                 - E1_triangle_sardinia
                 - E2_triangle_sardinia
                 - E3_triangle_sardinia
         output:
-            # Template used to construct the output file name at runtime. Uses template variables
-            # such as `detectors`, `start_time` and `duration` expanded by the config loader.
-            file_name:
-                'E-{{ detectors }}_STRAIN_BBH-{{ start_time }}-{{ duration
-                }}.gwf'
+            output_directory: noise
+            file_name: et-noise-{{ counter }}.gwf
             arguments:
-                # Channel name (template) for the output frame (e.g. "E1_triangle_sardinia:STRAIN")
-                channel: '{{ detectors }}:STRAIN'
+                channel_prefix: STRAIN

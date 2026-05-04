@@ -77,13 +77,24 @@ gwmock simulate config.yaml
 
 ## Configuration
 
-gwmock uses YAML configuration files for reproducible simulations. See
-`examples/config.yaml` for a complete example.
+gwmock uses YAML configuration files for reproducible simulations. The primary
+CLI path is now the adapter-backed `orchestration` surface, which keeps backend
+selection explicit without asking users to provide internal Python class paths.
 
 Key configuration sections:
 
-- `globals`: Shared parameters (sampling rate, duration, etc.)
-- `simulators`: List of noise, signal, and glitch generators
+| Section                    | Purpose                                                                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `globals`                  | Shared orchestration parameters such as sampling rate, segment duration, start time, and output roots |
+| `orchestration.population` | Public `gwmock-pop` backend or loader plus its arguments and explicit event count                     |
+| `orchestration.signal`     | Public `gwmock-signal` routing inputs, detector network, and signal output settings                   |
+| `orchestration.noise`      | Public `gwmock-noise` adapter arguments and noise output settings                                     |
+
+The legacy `simulators.*.class` configuration remains available for
+compatibility and metadata reproduction, but new configs should prefer the
+adapter-backed `orchestration` flow. See `examples/default_config/config.yaml`
+and `examples/signal/bbh/et_triangle_sardinia/config.yaml` for concrete
+examples.
 
 ## Documentation
 

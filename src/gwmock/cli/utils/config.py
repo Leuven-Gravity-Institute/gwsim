@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 logger = logging.getLogger("gwmock")
 
@@ -52,6 +52,96 @@ class SimulatorConfig(BaseModel):
         if not isinstance(v, str) or not v.strip():
             raise ValueError("'class' must be a non-empty string")
         return v
+
+
+class PopulationConfig(BaseModel):
+    """Adapter-backed population configuration."""
+
+    backend: str = Field(..., description="Public gwmock-pop backend or loader name")
+    n_samples: int = Field(..., alias="n-samples", description="Number of population events to materialize")
+    source_type: str | None = Field(default=None, alias="source-type", description="Optional explicit source type")
+    sort_by: str | None = Field(default="coa_time", alias="sort-by", description="Event ordering key")
+    arguments: dict[str, Any] = Field(default_factory=dict, description="Arguments passed to the population backend")
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    @field_validator("backend", mode="before")
+    @classmethod
+    def validate_backend_name(cls, v: str) -> str:
+        """Validate the backend identifier is non-empty."""
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError("'backend' must be a non-empty string")
+        return v
+
+    @field_validator("n_samples")
+    @classmethod
+    def validate_n_samples(cls, v: int) -> int:
+        """Require an explicit positive population sample count."""
+        if v <= 0:
+            raise ValueError("'n-samples' must be a positive integer")
+        return v
+
+
+class SignalConfig(BaseModel):
+    """Adapter-backed signal configuration."""
+
+    waveform_model: str | None = Field(default=None, alias="waveform-model", description="Waveform model name")
+    waveform_arguments: dict[str, Any] = Field(
+        default_factory=dict,
+        alias="waveform-arguments",
+        description="Fixed waveform arguments passed to gwmock-signal",
+    )
+    detectors: list[str] = Field(..., description="Detector names or detector config paths")
+    minimum_frequency: float = Field(default=5.0, alias="minimum-frequency", description="Minimum waveform frequency")
+    earth_rotation: bool = Field(
+        default=True,
+        alias="earth-rotation",
+        description="Whether to project using time-dependent detector response",
+    )
+    output: SimulatorOutputConfig = Field(
+        default_factory=lambda: SimulatorOutputConfig(
+            file_name="signal-{{ detectors }}-{{ start_time }}-{{ duration }}.gwf",
+            output_directory="signal",
+            arguments={"channel": "{{ detectors }}:STRAIN"},
+        ),
+        description="Signal output configuration",
+    )
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    @field_validator("detectors")
+    @classmethod
+    def validate_detectors(cls, v: list[str]) -> list[str]:
+        """Require at least one detector."""
+        if not v:
+            raise ValueError("'detectors' must contain at least one detector")
+        return v
+
+
+class NoiseAdapterConfig(BaseModel):
+    """Adapter-backed noise configuration."""
+
+    arguments: dict[str, Any] = Field(default_factory=dict, description="Arguments passed to the gwmock-noise adapter")
+    output: SimulatorOutputConfig = Field(
+        default_factory=lambda: SimulatorOutputConfig(
+            file_name="noise-{{ counter }}.gwf",
+            output_directory="noise",
+            arguments={"channel_prefix": "MOCK"},
+        ),
+        description="Noise output configuration",
+    )
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+
+class OrchestrationConfig(BaseModel):
+    """Composite adapter-backed orchestration configuration."""
+
+    population: PopulationConfig
+    signal: SignalConfig
+    noise: NoiseAdapterConfig
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
 
 
 class GlobalsConfig(BaseModel):
@@ -119,18 +209,32 @@ class Config(BaseModel):
     """Top-level configuration model."""
 
     globals: GlobalsConfig = Field(default_factory=GlobalsConfig, description="Global configuration")
-    simulators: dict[str, SimulatorConfig] = Field(..., description="Dictionary of simulators")
+    simulators: dict[str, SimulatorConfig] | None = Field(
+        default=None, description="Legacy simulator dictionary configuration"
+    )
+    orchestration: OrchestrationConfig | None = Field(
+        default=None, description="Adapter-backed orchestration configuration"
+    )
     batch: BatchConfig | None = Field(default=None, description="Resources and scheduler configuration")
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     @field_validator("simulators", mode="before")
     @classmethod
-    def validate_simulators_not_empty(cls, v: dict[str, Any]) -> dict[str, Any]:
+    def validate_simulators_not_empty(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
         """Ensure simulators section is not empty."""
-        if not v:
+        if v == {}:
             raise ValueError("'simulators' section cannot be empty")
         return v
+
+    @model_validator(mode="after")
+    def validate_execution_mode(self) -> Config:
+        """Require exactly one primary execution surface."""
+        has_legacy = self.simulators is not None
+        has_orchestration = self.orchestration is not None
+        if has_legacy == has_orchestration:
+            raise ValueError("Configuration must define exactly one of 'simulators' or 'orchestration'.")
+        return self
 
 
 def load_config(file_name: Path, encoding: str = "utf-8") -> Config:
@@ -161,7 +265,8 @@ def load_config(file_name: Path, encoding: str = "utf-8") -> Config:
     # Validate and convert to Config dataclass
     try:
         config = Config(**raw_config)
-        logger.info("Configuration loaded and validated: %s simulators", len(config.simulators))
+        configured_units = len(config.simulators) if config.simulators is not None else 1
+        logger.info("Configuration loaded and validated: %s execution unit(s)", configured_units)
         return config
     except ValueError as e:
         raise ValueError(f"Configuration validation failed: {e}") from e
@@ -209,7 +314,7 @@ def save_config(
         raise ValueError(f"Failed to save configuration: {e}") from e
 
 
-def validate_config(config: dict) -> None:
+def validate_config(config: dict) -> None:  # noqa: PLR0912
     """Validate configuration structure and provide helpful error messages.
 
     Args:
@@ -218,40 +323,49 @@ def validate_config(config: dict) -> None:
     Raises:
         ValueError: If configuration is invalid with detailed error message
     """
-    # Check for required top-level structure
-    if "simulators" not in config:
-        raise ValueError("Invalid configuration: Must contain 'simulators' section with simulator definitions")
+    has_simulators = "simulators" in config
+    has_orchestration = "orchestration" in config
 
-    simulators = config["simulators"]
+    if not has_simulators and not has_orchestration:
+        raise ValueError("Invalid configuration: Must define exactly one of 'simulators' or 'orchestration'")
+    if has_simulators and has_orchestration:
+        raise ValueError("Invalid configuration: Define exactly one of 'simulators' or 'orchestration'")
 
-    if not isinstance(simulators, dict):
-        raise ValueError("'simulators' must be a dictionary")
+    if has_simulators:
+        simulators = config["simulators"]
 
-    if not simulators:
-        raise ValueError("'simulators' section cannot be empty")
+        if not isinstance(simulators, dict):
+            raise ValueError("'simulators' must be a dictionary")
 
-    for name, sim_config in simulators.items():
-        if not isinstance(sim_config, dict):
-            raise ValueError(f"Simulator '{name}' configuration must be a dictionary")
+        if not simulators:
+            raise ValueError("'simulators' section cannot be empty")
 
-        # Check required fields
-        if "class" not in sim_config:
-            raise ValueError(f"Simulator '{name}' missing required 'class' field")
+        for name, sim_config in simulators.items():
+            if not isinstance(sim_config, dict):
+                raise ValueError(f"Simulator '{name}' configuration must be a dictionary")
 
-        # Validate class specification
-        class_spec = sim_config["class"]
-        if not isinstance(class_spec, str) or not class_spec.strip():
-            raise ValueError(f"Simulator '{name}' 'class' must be a non-empty string")
+            if "class" not in sim_config:
+                raise ValueError(f"Simulator '{name}' missing required 'class' field")
 
-        # Validate arguments if present
-        if "arguments" in sim_config and not isinstance(sim_config["arguments"], dict):
-            raise ValueError(f"Simulator '{name}' 'arguments' must be a dictionary")
+            class_spec = sim_config["class"]
+            if not isinstance(class_spec, str) or not class_spec.strip():
+                raise ValueError(f"Simulator '{name}' 'class' must be a non-empty string")
 
-        # Validate output configuration if present
-        if "output" in sim_config:
-            output_config = sim_config["output"]
-            if not isinstance(output_config, dict):
+            if "arguments" in sim_config and not isinstance(sim_config["arguments"], dict):
+                raise ValueError(f"Simulator '{name}' 'arguments' must be a dictionary")
+
+            if "output" in sim_config and not isinstance(sim_config["output"], dict):
                 raise ValueError(f"Simulator '{name}' 'output' must be a dictionary")
+    else:
+        orchestration = config["orchestration"]
+        if not isinstance(orchestration, dict):
+            raise ValueError("'orchestration' must be a dictionary")
+
+        for section in ("population", "signal", "noise"):
+            if section not in orchestration:
+                raise ValueError(f"'orchestration' missing required '{section}' section")
+            if not isinstance(orchestration[section], dict):
+                raise ValueError(f"'orchestration.{section}' must be a dictionary")
 
     # Validate globals section if present
     if "globals" in config:

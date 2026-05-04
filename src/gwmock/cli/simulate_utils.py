@@ -10,15 +10,16 @@ import logging
 import signal
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import yaml
 from gwmock_noise import SimulationResult
 from tqdm import tqdm
 
+from gwmock.cli.adapter_orchestration import AdapterOrchestrationResult, AdapterOrchestrator
 from gwmock.cli.utils.checkpoint import CheckpointManager
-from gwmock.cli.utils.config import SimulatorConfig, resolve_class_path
+from gwmock.cli.utils.config import OrchestrationConfig, SimulatorConfig, resolve_class_path
 from gwmock.cli.utils.hash import compute_file_hash
 from gwmock.cli.utils.metadata import save_metadata_with_external_state
 from gwmock.cli.utils.simulation_plan import (
@@ -139,7 +140,7 @@ def update_metadata_index(
 
 
 def instantiate_simulator(
-    simulator_config: SimulatorConfig,
+    simulator_config: SimulatorConfig | OrchestrationConfig,
     simulator_name: str | None = None,
     global_simulator_arguments: dict[str, Any] | None = None,
 ) -> Simulator:
@@ -163,6 +164,14 @@ def instantiate_simulator(
         ImportError: If simulator class cannot be imported
         TypeError: If simulator instantiation fails
     """
+    if isinstance(simulator_config, OrchestrationConfig):
+        simulator = AdapterOrchestrator.from_config(
+            orchestration_config=simulator_config,
+            global_simulator_arguments=global_simulator_arguments,
+        )
+        logger.info("Instantiated adapter-backed orchestration path")
+        return simulator
+
     class_spec = simulator_config.class_
 
     # Resolve short class names to full paths
@@ -341,12 +350,38 @@ def process_batch(
         List of Path objects for all generated output files
     """
     output_directory.mkdir(parents=True, exist_ok=True)
-    logger.debug(
-        "[PROCESS] Batch %s: Saving data - counter=%s, file_template=%s",
-        batch.batch_index,
-        simulator.counter,
-        batch.simulator_config.output.file_name,
-    )
+    if isinstance(batch_data, AdapterOrchestrationResult):
+        if not isinstance(batch.simulator_config, OrchestrationConfig):
+            raise TypeError("Adapter orchestration results require an OrchestrationConfig batch.")
+
+        signal_output = batch.simulator_config.signal.output
+        logger.debug(
+            "[PROCESS] Batch %s: Saving adapter-backed outputs - counter=%s, signal_template=%s, noise_template=%s",
+            batch.batch_index,
+            simulator.counter,
+            signal_output.file_name,
+            batch.simulator_config.noise.output.file_name,
+        )
+        signal_output_files = _resolve_output_paths(
+            file_name_template=signal_output.file_name,
+            simulator=simulator,
+            output_directory=cast(AdapterOrchestrator, simulator).signal_output_directory(),
+        )
+        simulator.save_data(
+            data=batch_data.signal_segment,
+            file_name=signal_output.file_name,
+            output_directory=cast(AdapterOrchestrator, simulator).signal_output_directory(),
+            overwrite=overwrite,
+            **cast(AdapterOrchestrator, simulator).signal_output_arguments(),
+        )
+        noise_output_files = list(batch_data.noise_result.output_paths.values())
+        missing_noise_outputs = [path for path in noise_output_files if not path.exists()]
+        if missing_noise_outputs:
+            raise FileNotFoundError(
+                "Noise adapter reported output files that do not exist: "
+                + ", ".join(str(path) for path in missing_noise_outputs)
+            )
+        return [*signal_output_files, *noise_output_files]
 
     if isinstance(batch_data, SimulationResult):
         output_files_list = list(batch_data.output_paths.values())
@@ -365,6 +400,12 @@ def process_batch(
 
     # Build output configuration
     output_config = batch.simulator_config.output
+    logger.debug(
+        "[PROCESS] Batch %s: Saving data - counter=%s, file_template=%s",
+        batch.batch_index,
+        simulator.counter,
+        output_config.file_name,
+    )
     file_name_template = output_config.file_name
     output_args = output_config.arguments.copy() if output_config.arguments else {}
 
@@ -400,6 +441,14 @@ def process_batch(
     logger.debug("[PROCESS] Batch %s: Data saved - counter=%s", batch.batch_index, simulator.counter)
 
     return output_files_list
+
+
+def _resolve_output_paths(file_name_template: str, simulator: Simulator, output_directory: Path) -> list[Path]:
+    """Resolve one or more concrete output paths for a template."""
+    output_files = expand_template_variables(value=file_name_template, simulator_instance=simulator)
+    if isinstance(output_files, str):
+        return [output_directory / Path(output_files)]
+    return [output_directory / Path(str(f)) for f in np.array(output_files).flatten()]
 
 
 def setup_signal_handlers(checkpoint_dirs: list[Path]) -> None:
@@ -445,10 +494,15 @@ def validate_plan(plan: SimulationPlan) -> None:
         if batch.batch_index < 0:
             raise ValueError(f"Batch {batch.batch_index} has invalid index")
 
-        # Validate output configuration
-        output_config = batch.simulator_config.output
-        if not output_config.file_name:
-            raise ValueError(f"Batch {batch.simulator_name}-{batch.batch_index} missing file_name")
+        if isinstance(batch.simulator_config, OrchestrationConfig):
+            if not batch.simulator_config.signal.output.file_name:
+                raise ValueError(f"Batch {batch.simulator_name}-{batch.batch_index} missing signal output file_name")
+            if not batch.simulator_config.noise.output.file_name:
+                raise ValueError(f"Batch {batch.simulator_name}-{batch.batch_index} missing noise output file_name")
+        else:
+            output_config = batch.simulator_config.output
+            if not output_config.file_name:
+                raise ValueError(f"Batch {batch.simulator_name}-{batch.batch_index} missing file_name")
 
     logger.info("Simulation plan validation completed successfully")
 

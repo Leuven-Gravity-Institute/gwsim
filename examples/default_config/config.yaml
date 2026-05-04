@@ -1,6 +1,6 @@
-# Example configuration file for gwmock gravitational-wave data generator
-# This file demonstrates how to configure simulations with noise and signal generators
-# Template variables (e.g., {{ detectors }}) are expanded at runtime using simulator attributes
+# Example adapter-backed orchestration file for gwmock.
+# Template variables (e.g., {{ detectors }}) are expanded at runtime using the
+# gwmock-owned orchestration state for reproducible outputs.
 
 # Global configuration shared across all simulators
 globals:
@@ -15,19 +15,31 @@ globals:
     output-directory: output # Where generated data files are saved
     metadata-directory: metadata # Where simulation metadata and checkpoints are stored
 
-# List of simulators to run (each generates data independently)
-simulators:
-    # Example noise simulator configuration
-    noise:
-        class: ColoredNoiseSimulator # Full class path resolved via registry (e.g., gwmock.noise.ColoredNoiseSimulator)
+# Adapter-backed orchestration: population -> signal + noise
+orchestration:
+    population:
+        backend: FilePopulationLoader # Public gwmock-pop loader/backend name
+        source-type: bbh
+        n-samples: 128
         arguments:
-            psd_file: ET_10_full_cryo_psd.txt # Power spectral density file for colored noise
-            seed: 42 # Random seed for reproducible noise generation
-            detectors: # List of detectors
-                - ET1
-        # Output configuration for this simulator
+            path: population.h5 # Local path or URL accepted by the public loader
+    signal:
+        detectors:
+            - ET1
+        waveform-model: IMRPhenomXPHM
+        minimum-frequency: 20
         output:
-            file_name: '{{ detectors }}-NOISE_STRAIN-{{ start_time }}-{{
-                duration }}.gwf' # Template for output filename
+            output_directory: signal
+            file_name:
+                '{{ detectors }}-SIGNAL-{{ start_time }}-{{ duration }}.gwf'
             arguments:
-                channel: '{{ detectors }}-STRAIN' # Channel name template for GWF frame writing
+                channel: '{{ detectors }}:STRAIN'
+    noise:
+        arguments:
+            psd_file: ET_10_full_cryo_psd.txt
+            seed: 42
+        output:
+            output_directory: noise
+            file_name: 'noise-{{ counter }}.gwf'
+            arguments:
+                channel_prefix: MOCK
