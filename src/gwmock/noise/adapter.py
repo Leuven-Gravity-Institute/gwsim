@@ -327,9 +327,14 @@ class UpstreamNoiseSimulator(Simulator):
             if self._active_output_format == "npy":
                 artifact = self._active_output_directory / f"{self._active_output_prefix}_{detector}.npy"
             else:
+                # Match ``gwmock_noise.output.frame.FrameWriter._frame_path`` (GWF naming).
                 channel = f"{detector}:{self._active_channel_prefix}_NOISE"
                 artifact_name = f"{detector[0]}-{channel}_{start_token}-{duration_token}.gwf"
-                artifact = self._active_output_directory / f"{self._active_output_prefix}_{artifact_name}"
+                prefix = self._active_output_prefix
+                if prefix:
+                    artifact = self._active_output_directory / f"{prefix}_{artifact_name}"
+                else:
+                    artifact = self._active_output_directory / artifact_name
             output_paths.append(artifact)
             output_paths.append(self._active_output_directory / f"{self._active_output_prefix}_{detector}.json")
         return output_paths

@@ -24,14 +24,32 @@ class FakeNoiseBackend:
     def __init__(self) -> None:
         self.run_calls = []
 
+    @staticmethod
+    def _format_time_token(value: float) -> str:
+        """Same rules as ``gwmock_noise.output.frame.FrameWriter._format_time_token``."""
+        if float(value).is_integer():
+            return str(int(value))
+        return f"{value:.6f}".rstrip("0").rstrip(".").replace(".", "p")
+
+    def _artifact_path(self, config, detector: str) -> Path:
+        """Match ``DefaultNoiseSimulator`` output paths (NumPy vs GWF frame writer)."""
+        if config.output.format == "npy":
+            return config.output.directory / f"{config.output.prefix}_{detector}.npy"
+        start_token = self._format_time_token(float(config.output.gps_start))
+        duration_token = self._format_time_token(config.duration)
+        channel = f"{detector}:{config.output.channel_prefix}_NOISE"
+        artifact_name = f"{detector[0]}-{channel}_{start_token}-{duration_token}.gwf"
+        prefix = config.output.prefix or ""
+        name = f"{prefix}_{artifact_name}" if prefix else artifact_name
+        return config.output.directory / name
+
     def run(self, config):
         """Record the config and materialize the declared outputs."""
         self.run_calls.append(config)
         config.output.directory.mkdir(parents=True, exist_ok=True)
         output_paths = {}
         for detector in config.detectors:
-            suffix = ".npy" if config.output.format == "npy" else ".gwf"
-            artifact_path = config.output.directory / f"{config.output.prefix}_{detector}{suffix}"
+            artifact_path = self._artifact_path(config, detector)
             artifact_path.write_text(f"{detector}:{config.output.format}")
             (config.output.directory / f"{config.output.prefix}_{detector}.json").write_text("{}")
             output_paths[detector] = artifact_path
@@ -142,3 +160,20 @@ class TestUpstreamNoiseSimulator:
 
         with pytest.raises(ValueError, match="Unsupported keys: channel"):
             simulator.set_batch_context(batch=batch, output_directory=tmp_path, overwrite=False)
+
+    def test_simulate_gwf_overwrite_false_raises_when_outputs_exist(self, tmp_path: Path):
+        """GWF pre-run existence checks should see the same paths the backend writes."""
+        backend = FakeNoiseBackend()
+        simulator = UpstreamNoiseSimulator(
+            duration=SEGMENT_DURATION,
+            sampling_frequency=128.0,
+            detectors=["H1"],
+            channel_prefix="MOCK",
+            noise_adapter=NoiseAdapter.from_backend(backend),
+        )
+        batch = self._batch("noise-{{counter}}.gwf", {"prefix": "seg", "gps_start": 100.0})
+
+        simulator.set_batch_context(batch=batch, output_directory=tmp_path, overwrite=False)
+        simulator.simulate()
+        with pytest.raises(FileExistsError, match="Noise adapter output"):
+            simulator.simulate()
