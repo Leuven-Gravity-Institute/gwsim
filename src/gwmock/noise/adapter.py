@@ -301,7 +301,7 @@ class UpstreamNoiseSimulator(Simulator):
         suffix = Path(file_name_template).suffix.lower().lstrip(".")
         if suffix in _SUPPORTED_OUTPUT_FORMATS:
             return cast(Literal["npy", "gwf"], suffix)
-        if suffix and suffix not in _SUPPORTED_OUTPUT_FORMATS and self.output_format == "npy":
+        if suffix and suffix not in _SUPPORTED_OUTPUT_FORMATS:
             raise ValueError(
                 "Noise adapter output templates must use a .npy or .gwf suffix, or specify "
                 "`output.arguments.format` explicitly."
