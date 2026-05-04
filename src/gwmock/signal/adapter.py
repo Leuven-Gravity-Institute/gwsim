@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +14,28 @@ from gwmock.detector.utils import (
     DEFAULT_DETECTOR_BASE_PATH,
     interferometer_config_to_custom_detector,
 )
+
+_DEFAULT_WAVEFORM_MODEL = "IMRPhenomXPHM"
+
+
+def _callable_waveform_registry_key(func: Callable[..., Any]) -> str:
+    """Return a unique registry name for *func* on a ``WaveformFactory`` instance."""
+    qual = getattr(func, "__qualname__", type(func).__name__)
+    mod = getattr(func, "__module__", "")
+    return f"__gwmock_custom__{mod}:{qual}__{id(func):#x}"
+
+
+def _register_callable_waveform(backend: Any, registry_key: str, factory: Callable[..., Any]) -> None:
+    """Register *factory* under *registry_key* on the backend's internal ``WaveformFactory``."""
+    try:
+        waveform_factory = backend._waveform_factory
+    except AttributeError as exc:
+        msg = (
+            "Callable waveform_model is only supported when the resolved gwmock_signal "
+            "backend exposes _waveform_factory (e.g. CBCSimulator)."
+        )
+        raise TypeError(msg) from exc
+    waveform_factory.register_model(registry_key, factory)
 
 
 class SignalAdapter:
@@ -42,12 +64,19 @@ class SignalAdapter:
         cls,
         *,
         source_type: str,
-        waveform_model: str,
+        waveform_model: str | Callable[..., Any] | None,
         detectors: Sequence[str],
     ) -> SignalAdapter:
         """Resolve the public gwmock-signal backend for one source type."""
         backend_class = resolve_simulator_backend(source_type)
-        backend = backend_class(waveform_model=waveform_model)
+        if waveform_model is None:
+            backend = backend_class(waveform_model=_DEFAULT_WAVEFORM_MODEL)
+        elif callable(waveform_model):
+            registry_key = _callable_waveform_registry_key(waveform_model)
+            backend = backend_class(waveform_model=registry_key)
+            _register_callable_waveform(backend, registry_key, waveform_model)
+        else:
+            backend = backend_class(waveform_model=waveform_model)
         return cls(
             source_type=source_type,
             backend=backend,

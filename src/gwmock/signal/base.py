@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
@@ -27,7 +28,7 @@ class SignalSimulator(PopulationReaderMixin, TimeSeriesMixin, Simulator):
         population_sort_by: str | None = None,
         population_cache_dir: str | Path | None = None,
         population_download_timeout: int = 300,
-        waveform_model: str = "IMRPhenomXPHM",
+        waveform_model: str | Callable[..., Any] | None = None,
         waveform_arguments: dict[str, Any] | None = None,
         start_time: int = 0,
         duration: float = 1024,
@@ -48,7 +49,11 @@ class SignalSimulator(PopulationReaderMixin, TimeSeriesMixin, Simulator):
             population_sort_by: Column name to sort the population by.
             population_cache_dir: Directory to cache downloaded population files.
             population_download_timeout: Timeout in seconds for downloading population files. Default is 300.
-            waveform_model: Name (from registry) or callable for waveform generation.
+            waveform_model: Name (from registry), custom callable, or ``None`` for
+                ``IMRPhenomXPHM``. If a callable, it is registered on the backend's
+                ``WaveformFactory`` and invoked with merged injection parameters,
+                ``waveform_arguments``, ``tc``, ``sampling_frequency``, and
+                ``minimum_frequency`` (see ``gwmock_signal`` waveform docs).
             waveform_arguments: Fixed parameters to pass to waveform model.
             start_time: Start time of the first signal segment in GPS seconds. Default is 0.
             duration: Duration of each signal segment in seconds. Default is 1024.
@@ -61,8 +66,10 @@ class SignalSimulator(PopulationReaderMixin, TimeSeriesMixin, Simulator):
             earth_rotation: Whether to use time-dependent detector projection in gwmock-signal.
             **kwargs: Additional arguments absorbed by subclasses and mixins.
         """
-        if not isinstance(waveform_model, str):
-            raise TypeError("waveform_model must be a gwmock_signal waveform-model name string.")
+        if waveform_model is None:
+            waveform_model = "IMRPhenomXPHM"
+        if not (isinstance(waveform_model, str) or callable(waveform_model)):
+            raise TypeError("waveform_model must be a str, a callable waveform generator, or None.")
 
         self.waveform_model = waveform_model
         self.waveform_arguments = waveform_arguments or {}
@@ -132,13 +139,21 @@ class SignalSimulator(PopulationReaderMixin, TimeSeriesMixin, Simulator):
         Returns:
             Metadata dictionary.
         """
+        wm_meta: str
+        if isinstance(self.waveform_model, str):
+            wm_meta = self.waveform_model
+        else:
+            qual = getattr(self.waveform_model, "__qualname__", repr(self.waveform_model))
+            mod = getattr(self.waveform_model, "__module__", "")
+            wm_meta = f"{mod}.{qual}" if mod else qual
+
         meta = {
             **Simulator.metadata.fget(self),
             **TimeSeriesMixin.metadata.fget(self),
             **PopulationReaderMixin.metadata.fget(self),
             "signal": {
                 "arguments": {
-                    "waveform_model": self.waveform_model,
+                    "waveform_model": wm_meta,
                     "waveform_arguments": self.waveform_arguments,
                     "minimum_frequency": self.minimum_frequency,
                     "source_type": self.source_type,

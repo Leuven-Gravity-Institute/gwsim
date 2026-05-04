@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +21,7 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
         population_parameter_name_mapper: dict[str, str] | None = None,
         population_cache_dir: str | Path | None = None,
         population_download_timeout: int = 300,
-        waveform_model: str = "IMRPhenomXPHM",
+        waveform_model: str | Callable[..., Any] | None = None,
         waveform_arguments: dict[str, Any] | None = None,
         start_time: int = 0,
         duration: float = 1024,
@@ -40,7 +41,8 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
             population_parameter_name_mapper: Dict mapping population column names to simulator parameter names.
             population_cache_dir: Directory to cache downloaded population files.
             population_download_timeout: Timeout in seconds for downloading population files. Default is 300.
-            waveform_model: Name (from registry) or callable for waveform generation.
+            waveform_model: Name (from registry), custom callable, or ``None`` for
+                ``IMRPhenomXPHM`` (same default as ``SignalSimulator``).
             waveform_arguments: Fixed parameters to pass to waveform model.
             start_time: Start time of the first signal segment in GPS seconds. Default is 0.
             duration: Duration of each signal segment in seconds. Default is 1024.
