@@ -375,6 +375,12 @@ def process_batch(
             **cast(AdapterOrchestrator, simulator).signal_output_arguments(),
         )
         noise_output_files = list(batch_data.noise_result.output_paths.values())
+        missing_noise_outputs = [path for path in noise_output_files if not path.exists()]
+        if missing_noise_outputs:
+            raise FileNotFoundError(
+                "Noise adapter reported output files that do not exist: "
+                + ", ".join(str(path) for path in missing_noise_outputs)
+            )
         return [*signal_output_files, *noise_output_files]
 
     if isinstance(batch_data, SimulationResult):
