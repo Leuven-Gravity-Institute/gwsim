@@ -40,6 +40,8 @@ def _coerce_path_schedule(values: list[tuple[float, str | Path]] | None) -> list
 def _flatten_first(value: str | list[str] | list[list[str]]) -> str:
     """Return the first scalar string from an expanded template value."""
     while isinstance(value, list):
+        if not value:
+            raise ValueError("Template expansion produced an empty list; cannot derive a scalar string.")
         value = value[0]
     return value
 
