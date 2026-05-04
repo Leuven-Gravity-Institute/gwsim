@@ -228,7 +228,8 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         while self.population_index < len(self._population_events):
             parameters = self._population_events[int(self.population_index)]
             coa_time = parameters.get("coa_time")
-            if coa_time is not None and float(coa_time) >= float(self.end_time):
+            end_time_value = float(getattr(self.end_time, "value", self.end_time))
+            if coa_time is not None and float(coa_time) >= end_time_value:
                 break
             strain = self.signal_adapter.simulate(
                 parameters,

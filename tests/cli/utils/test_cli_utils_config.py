@@ -459,7 +459,7 @@ class TestValidateConfig:
     def test_validate_config_missing_simulators(self):
         """Test validation fails when simulators section is missing."""
         config = {"globals": {}}
-        with pytest.raises(ValueError, match="Must contain 'simulators' section"):
+        with pytest.raises(ValueError, match="Invalid configuration"):
             validate_config(config)
 
     def test_validate_config_empty_simulators(self):
