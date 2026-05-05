@@ -136,6 +136,15 @@ def _resolve_entry_point_backend(kind: BackendKind, backend_name: str) -> type[A
     matches = [entry_point for entry_point in entry_points if entry_point.name == backend_name]
     if not matches:
         return None
+    if len(matches) > 1:
+        import warnings  # noqa: PLC0415
+
+        warnings.warn(
+            f"Multiple {kind} entry points named '{backend_name}' found; "
+            f"using '{matches[-1].value}'. Others: {[ep.value for ep in matches[:-1]]}",
+            UserWarning,
+            stacklevel=4,
+        )
     return _load_entry_point_backend(kind, backend_name, matches[-1])
 
 
