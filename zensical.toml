@@ -52,6 +52,7 @@ nav = [
     { "Generating Data" = "user-guide/generating-data.md" },
     { "Reading Data" = "user-guide/reading-data.md" },
     { "Configuration Files" = "user-guide/configuration.md" },
+    { "Protocol Contracts" = "user-guide/protocols.md" },
     { "Metadata Files" = "user-guide/metadata.md" },
     { Examples = "user-guide/examples.md" },
     { "Publishing Data to Zenodo" = "user-guide/repository.md" },
