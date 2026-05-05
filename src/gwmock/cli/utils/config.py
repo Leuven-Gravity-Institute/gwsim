@@ -86,6 +86,10 @@ class PopulationConfig(BaseModel):
 class SignalConfig(BaseModel):
     """Adapter-backed signal configuration."""
 
+    backend: str | None = Field(
+        default=None,
+        description="Optional public gwmock-signal backend alias, entry point, or import path",
+    )
     waveform_model: str | None = Field(default=None, alias="waveform-model", description="Waveform model name")
     waveform_arguments: dict[str, Any] = Field(
         default_factory=dict,
@@ -122,6 +126,10 @@ class SignalConfig(BaseModel):
 class NoiseAdapterConfig(BaseModel):
     """Adapter-backed noise configuration."""
 
+    backend: str | None = Field(
+        default=None,
+        description="Optional public gwmock-noise backend alias, entry point, or import path",
+    )
     arguments: dict[str, Any] = Field(default_factory=dict, description="Arguments passed to the gwmock-noise adapter")
     output: SimulatorOutputConfig = Field(
         default_factory=lambda: SimulatorOutputConfig(

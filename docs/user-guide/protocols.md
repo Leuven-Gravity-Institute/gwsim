@@ -71,8 +71,10 @@ The protocol-oriented backend reference is the `backend:` field in the
 orchestration config. A backend identifier may resolve as:
 
 1. A built-in alias registered by `gwmock`.
-2. A `module:Class` reference imported directly by `gwmock`.
-3. An entry point in a `gwmock.*` group once plugin discovery is enabled.
+2. An entry point in a `gwmock.*` group.
+3. A `module:Class` reference imported directly by `gwmock`.
+4. A legacy `module.Class` reference, which still works but emits a
+   `DeprecationWarning`.
 
 For third-party integrations, the important part is that resolution ends in a
 class or instance that satisfies the relevant upstream protocol.
@@ -119,23 +121,32 @@ class GalacticBinaryPopulation:
         }
 ```
 
-Once that class is importable from `my_pkg.populations`, it can be referenced in
-YAML like this:
+Once that class is importable from `my_pkg.populations`, expose it through an
+entry point:
+
+```toml
+[project.entry-points."gwmock.population"]
+galactic_binaries = "my_pkg.populations:GalacticBinaryPopulation"
+```
+
+Then reference the entry-point alias in YAML:
 
 ```yaml
 orchestration:
     population:
-        backend: my_pkg.populations:GalacticBinaryPopulation
+        backend: galactic_binaries
         n-samples: 128
         arguments:
             catalog_path: /data/catalogs/galactic-binaries.h5
     signal:
+        backend: my_pkg.signals:GalacticBinarySimulator
         waveform-model: IMRPhenomXPHM
         detectors:
             - E1_triangle_emr
             - E2_triangle_emr
             - E3_triangle_emr
     noise:
+        backend: my_pkg.noise:LaserShotNoise
         arguments:
             seed: 42
             psd_file: ET_10_full_cryo_psd.txt

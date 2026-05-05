@@ -7,15 +7,9 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from gwmock_noise import SimulationResult
-from gwmock_pop import (
-    BBHSimulator,
-    BNSPriorSimulator,
-    CBCPriorSimulator,
-    FilePopulationLoader,
-    GWPopSimulator,
-    NSBHPriorSimulator,
-)
+from gwmock_pop import GWPopSimulator
 
+from gwmock.cli.utils.backend_resolver import instantiate_backend, resolve_backend_class, validate_backend
 from gwmock.cli.utils.config import OrchestrationConfig
 from gwmock.cli.utils.config_resolution import resolve_max_samples
 from gwmock.cli.utils.template import expand_template_variables
@@ -29,19 +23,6 @@ from gwmock.simulator.base import Simulator
 from gwmock.simulator.state import StateAttribute
 
 _DETECTOR_PLACEHOLDER = "{{ detectors }}"
-
-_POPULATION_BACKENDS: dict[str, type[GWPopSimulator]] = {
-    "BBHSimulator": BBHSimulator,
-    "bbh": BBHSimulator,
-    "CBCPriorSimulator": CBCPriorSimulator,
-    "cbc_prior": CBCPriorSimulator,
-    "BNSPriorSimulator": BNSPriorSimulator,
-    "bns_prior": BNSPriorSimulator,
-    "NSBHPriorSimulator": NSBHPriorSimulator,
-    "nsbh_prior": NSBHPriorSimulator,
-    "FilePopulationLoader": FilePopulationLoader,
-    "file": FilePopulationLoader,
-}
 
 
 @dataclass(slots=True)
@@ -88,6 +69,8 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         earth_rotation: bool,
         noise_arguments: dict[str, Any],
         orchestration_config: OrchestrationConfig,
+        signal_adapter: SignalAdapter | None = None,
+        noise_adapter: NoiseAdapter | None = None,
     ) -> None:
         self._population_events = tuple(population_events)
         self._population_metadata = dict(population_metadata)
@@ -97,14 +80,18 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         self.minimum_frequency = minimum_frequency
         self.earth_rotation = earth_rotation
         self.orchestration_config = orchestration_config
-        self.signal_adapter = SignalAdapter.from_source_type(
-            source_type=source_type,
-            waveform_model=waveform_model,
-            detectors=detectors,
+        self.signal_adapter = (
+            signal_adapter
+            if signal_adapter is not None
+            else SignalAdapter.from_source_type(
+                source_type=source_type,
+                waveform_model=waveform_model,
+                detectors=detectors,
+            )
         )
         self.detectors = list(self.signal_adapter.detector_names)
         self.noise_arguments = noise_arguments
-        self.noise_adapter = NoiseAdapter.from_backend()
+        self.noise_adapter = noise_adapter if noise_adapter is not None else NoiseAdapter.from_backend()
         self._active_signal_output_directory = Path("signal")
         self._active_noise_output_directory = Path("noise")
         self._active_noise_output_arguments: dict[str, Any] = {}
@@ -136,6 +123,10 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             population_backend,
             n_samples=orchestration_config.population.n_samples,
         )
+        signal_adapter = cls._instantiate_signal_adapter(
+            orchestration_config.signal,
+            source_type=population_adapter.source_type,
+        )
         population_events = list(population_adapter.iter_event_parameters())
         if orchestration_config.population.sort_by:
             sort_key = orchestration_config.population.sort_by
@@ -145,6 +136,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
 
         noise_arguments = _normalize_keys(orchestration_config.noise.arguments)
         noise_arguments.setdefault("detectors", list(orchestration_config.signal.detectors))
+        noise_adapter = cls._instantiate_noise_adapter(orchestration_config.noise)
 
         return cls(
             population_events=population_events,
@@ -161,24 +153,47 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             earth_rotation=orchestration_config.signal.earth_rotation,
             noise_arguments=noise_arguments,
             orchestration_config=orchestration_config,
+            signal_adapter=signal_adapter,
+            noise_adapter=noise_adapter,
         )
 
     @staticmethod
     def _instantiate_population_backend(population_config) -> GWPopSimulator:
-        backend_name = population_config.backend
-        try:
-            backend_cls = _POPULATION_BACKENDS[backend_name]
-        except KeyError as exc:
-            available = ", ".join(sorted(_POPULATION_BACKENDS))
-            raise ValueError(
-                f"Unknown population backend '{backend_name}'. Available public backends: {available}."
-            ) from exc
-
         backend_arguments = dict(population_config.arguments)
         if population_config.source_type is not None:
             backend_arguments.setdefault("source_type", population_config.source_type)
 
-        return backend_cls(**backend_arguments)
+        return instantiate_backend(
+            "population",
+            population_config.backend,
+            init_kwargs=backend_arguments,
+        )
+
+    @staticmethod
+    def _instantiate_signal_adapter(signal_config, *, source_type: str) -> SignalAdapter:
+        backend_name = signal_config.backend or source_type
+        backend_class = resolve_backend_class("signal", backend_name)
+        backend_instance = SignalAdapter.instantiate_backend(
+            backend_class,
+            waveform_model=signal_config.waveform_model,
+        )
+        validate_backend("signal", backend_name, backend_class, backend_instance)
+        return SignalAdapter.from_backend(
+            source_type=source_type,
+            backend=backend_instance,
+            detectors=list(signal_config.detectors),
+        )
+
+    @staticmethod
+    def _instantiate_noise_adapter(noise_config) -> NoiseAdapter:
+        if noise_config.backend is None:
+            return NoiseAdapter.from_backend()
+        backend_instance = instantiate_backend(
+            "noise",
+            noise_config.backend,
+            init_kwargs=dict(noise_config.arguments),
+        )
+        return NoiseAdapter.from_backend(backend_instance)
 
     @property
     def metadata(self) -> dict[str, Any]:

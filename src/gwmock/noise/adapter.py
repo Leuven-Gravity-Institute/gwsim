@@ -6,7 +6,16 @@ import re
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from gwmock_noise import BaseNoiseSimulator, DefaultNoiseSimulator, NoiseConfig, OutputConfig, SimulationResult
+import numpy as np
+from gwmock_noise import (
+    BaseNoiseSimulator,
+    DefaultNoiseSimulator,
+    FrameWriter,
+    NoiseConfig,
+    OutputConfig,
+    SimulationResult,
+)
+from gwmock_noise.simulators.protocol import NoiseSimulator
 
 from gwmock.cli.utils.template import expand_template_variables
 from gwmock.simulator.base import Simulator
@@ -49,17 +58,27 @@ def _flatten_first(value: str | list[str] | list[list[str]]) -> str:
 class NoiseAdapter:
     """Bridge gwmock orchestration state to public ``gwmock_noise`` APIs."""
 
-    def __init__(self, *, backend: BaseNoiseSimulator) -> None:
+    def __init__(self, *, backend: Any) -> None:
         """Store the resolved public gwmock-noise backend."""
         self._backend = backend
 
     @classmethod
-    def from_backend(cls, backend: BaseNoiseSimulator | None = None) -> NoiseAdapter:
+    def from_backend(cls, backend: BaseNoiseSimulator | NoiseSimulator | Any | None = None) -> NoiseAdapter:
         """Build an adapter from a public gwmock-noise backend."""
-        return cls(backend=DefaultNoiseSimulator() if backend is None else backend)
+        if backend is None:
+            resolved_backend = DefaultNoiseSimulator()
+        elif isinstance(backend, BaseNoiseSimulator):
+            resolved_backend = backend
+        elif isinstance(backend, NoiseSimulator):
+            resolved_backend = _ProtocolNoiseBackendRunner(backend=backend)
+        elif callable(getattr(backend, "run", None)):
+            resolved_backend = backend
+        else:
+            raise TypeError("backend must satisfy BaseNoiseSimulator or NoiseSimulator.")
+        return cls(backend=resolved_backend)
 
     @property
-    def backend(self) -> BaseNoiseSimulator:
+    def backend(self) -> Any:
         """Return the public backend used by the adapter."""
         return self._backend
 
@@ -345,3 +364,47 @@ class UpstreamNoiseSimulator(Simulator):
         if float(value).is_integer():
             return str(int(value))
         return f"{value:.6f}".rstrip("0").rstrip(".").replace(".", "p")
+
+
+class _ProtocolNoiseBackendRunner(BaseNoiseSimulator):
+    """Adapt a protocol-style ``NoiseSimulator`` to ``BaseNoiseSimulator.run()``."""
+
+    def __init__(self, *, backend: NoiseSimulator) -> None:
+        self._backend = backend
+
+    def run(self, config: NoiseConfig) -> SimulationResult:
+        if config.output.format == "gwf":
+            output_paths = FrameWriter(
+                self._backend,
+                gps_start=config.output.gps_start,
+                output_dir=config.output.directory,
+                channel_prefix=config.output.channel_prefix,
+                prefix=config.output.prefix,
+            ).write(
+                duration=config.duration,
+                sampling_frequency=config.sampling_frequency,
+                detectors=config.detectors,
+                seed=config.seed,
+            )
+        else:
+            output_paths = self._write_npy_outputs(config)
+        return SimulationResult(output_paths=output_paths, config=config)
+
+    def _write_npy_outputs(self, config: NoiseConfig) -> dict[str, Path]:
+        generated = self._backend.generate(
+            duration=config.duration,
+            sampling_frequency=config.sampling_frequency,
+            detectors=config.detectors,
+            seed=config.seed,
+        )
+        config.output.directory.mkdir(parents=True, exist_ok=True)
+
+        output_paths: dict[str, Path] = {}
+        for detector in config.detectors:
+            if detector not in generated:
+                raise ValueError(f"Noise backend did not produce detector '{detector}'.")
+            file_name = f"{config.output.prefix}_{detector}.npy" if config.output.prefix else f"{detector}.npy"
+            output_path = config.output.directory / file_name
+            np.save(output_path, generated[detector])
+            output_paths[detector] = output_path
+        return output_paths
