@@ -7,29 +7,54 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+from gwmock_signal import DetectorStrainStack
 from gwpy.timeseries import TimeSeries as GWpyTimeSeries
 
 from gwmock.signal.adapter import SignalAdapter
 
 
 class FakeBackend:
-    """Minimal backend exposing the transient-style gwmock_signal interface."""
+    """Minimal backend exposing the public gwmock_signal ``simulate`` interface."""
 
     def __init__(self, *, waveform_model: str) -> None:
         self.waveform_model = waveform_model
-        self.generate_calls: list[tuple[dict, float, float]] = []
+        self.required_params = frozenset({"coa_time"})
+        self.simulate_calls: list[tuple[dict, tuple[str, ...], float, float]] = []
 
-    def generate_polarizations(
+    def register_waveform_model(self, name: str, factory) -> None:
+        self.waveform_model = name
+        self._registered = (name, factory)
+
+    def simulate(
         self,
         params: dict,
+        detector_names: tuple[str, ...],
+        background=None,
+        *,
         sampling_frequency: float,
         minimum_frequency: float,
-    ) -> tuple[GWpyTimeSeries, GWpyTimeSeries]:
-        """Record the call and return simple test polarizations."""
-        self.generate_calls.append((params, sampling_frequency, minimum_frequency))
-        hp = GWpyTimeSeries([1.0, 2.0, 3.0, 4.0], t0=8.0, sample_rate=sampling_frequency)
-        hc = GWpyTimeSeries([0.5, 0.0, -0.5, -1.0], t0=8.0, sample_rate=sampling_frequency)
-        return hp, hc
+        earth_rotation: bool = True,
+        interpolate_if_offset: bool = True,
+    ) -> DetectorStrainStack:
+        """Record the call and return simple per-detector strains."""
+        _ = background, earth_rotation, interpolate_if_offset
+        self.simulate_calls.append((params, detector_names, sampling_frequency, minimum_frequency))
+        return DetectorStrainStack.from_mapping(
+            detector_names,
+            {
+                detector: GWpyTimeSeries(
+                    [10.0 + index, 20.0 + index, 30.0 + index, 40.0 + index], t0=8.0, sample_rate=sampling_frequency
+                )
+                for index, detector in enumerate(detector_names)
+            },
+        )
+
+
+class NoRegistrationBackend:
+    """Backend without waveform registration support."""
+
+    def __init__(self, *, waveform_model: str) -> None:
+        self.waveform_model = waveform_model
 
 
 class TestSignalAdapter:
@@ -40,8 +65,8 @@ class TestSignalAdapter:
         reference_frequency = 50.0
         detector_frame_mass_1 = 30.0
         projected = {
-            "H1": GWpyTimeSeries([10.0, 20.0, 30.0, 40.0], t0=8.0, sample_rate=4.0),
-            "L1": GWpyTimeSeries([11.0, 21.0, 31.0, 41.0], t0=8.0, sample_rate=4.0),
+            "H1": [10.0, 20.0, 30.0, 40.0],
+            "L1": [11.0, 21.0, 31.0, 41.0],
         }
         parameters = {
             "detector_frame_mass_1": detector_frame_mass_1,
@@ -56,7 +81,6 @@ class TestSignalAdapter:
 
         with (
             patch("gwmock.signal.adapter.resolve_simulator_backend", return_value=FakeBackend),
-            patch("gwmock.signal.adapter.project_polarizations_to_network", return_value=projected) as mock_project,
         ):
             adapter = SignalAdapter.from_source_type(
                 source_type="bbh",
@@ -72,11 +96,10 @@ class TestSignalAdapter:
 
         backend = adapter._backend
         assert adapter.detector_names == ("H1", "L1")
-        assert backend.generate_calls[0][0]["reference_frequency"] == reference_frequency
-        assert backend.generate_calls[0][0]["detector_frame_mass_1"] == detector_frame_mass_1
+        assert backend.simulate_calls[0][0]["reference_frequency"] == reference_frequency
+        assert backend.simulate_calls[0][0]["detector_frame_mass_1"] == detector_frame_mass_1
         assert strain.shape == (2, 4)
-        np.testing.assert_allclose(strain[0].value, [10.0, 20.0, 30.0, 40.0])
-        mock_project.assert_called_once()
+        np.testing.assert_allclose(strain[0].value, projected["H1"])
 
     def test_from_source_type_converts_detector_config_files(self, tmp_path):
         """Detector config paths should be converted into public gwmock_signal detector specs."""
@@ -108,7 +131,7 @@ class TestSignalAdapter:
             return {"plus": None, "cross": None}
 
         with (
-            patch("gwmock.signal.adapter.resolve_simulator_backend", return_value=FakeBackend),
+            patch("gwmock.signal.adapter.resolve_simulator_backend", return_value=NoRegistrationBackend),
             pytest.raises(TypeError, match="Callable waveform_model"),
         ):
             SignalAdapter.from_source_type(
@@ -133,10 +156,6 @@ class TestSignalAdapter:
             hc = TimeSeries(np.linspace(1, 0, n), t0=t0, sample_rate=sampling_frequency)
             return {"plus": hp, "cross": hc}
 
-        projected = {
-            "H1": GWpyTimeSeries([1.0, 2.0], t0=0.0, sample_rate=4.0),
-            "L1": GWpyTimeSeries([1.1, 2.1], t0=0.0, sample_rate=4.0),
-        }
         parameters = {
             "detector_frame_mass_1": 30.0,
             "detector_frame_mass_2": 25.0,
@@ -148,20 +167,19 @@ class TestSignalAdapter:
             "polarization_angle": 0.2,
         }
 
-        with patch("gwmock.signal.adapter.project_polarizations_to_network", return_value=projected):
-            adapter = SignalAdapter.from_source_type(
-                source_type="bbh",
-                waveform_model=custom_waveform,
-                detectors=["H1", "L1"],
-            )
-            strain = adapter.simulate(
-                parameters,
-                sampling_frequency=4.0,
-                minimum_frequency=5.0,
-                waveform_arguments={"reference_frequency": 50.0},
-            )
+        adapter = SignalAdapter.from_source_type(
+            source_type="bbh",
+            waveform_model=custom_waveform,
+            detectors=["H1", "L1"],
+        )
+        strain = adapter.simulate(
+            parameters,
+            sampling_frequency=4.0,
+            minimum_frequency=5.0,
+            waveform_arguments={"reference_frequency": 50.0},
+        )
 
-        assert strain.shape == (2, 2)
+        assert strain.shape == (2, n)
         backend = adapter._backend
         assert isinstance(backend.waveform_model, str)
         assert backend.waveform_model.startswith("__gwmock_custom__")

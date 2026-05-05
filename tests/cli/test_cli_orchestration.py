@@ -9,8 +9,9 @@ from typing import ClassVar
 import h5py
 import numpy as np
 import yaml
+from gwmock_signal import DetectorStrainStack
+from gwpy.timeseries import TimeSeries as GWpyTimeSeries
 
-from gwmock.cli import adapter_orchestration
 from gwmock.cli.simulate import _simulate_impl
 from gwmock.cli.utils.config import (
     Config,
@@ -22,7 +23,6 @@ from gwmock.cli.utils.config import (
     SimulatorOutputConfig,
 )
 from gwmock.cli.utils.simulation_plan import create_plan_from_config
-from gwmock.data.time_series.time_series import TimeSeries
 
 EXPECTED_BATCHES = 2
 
@@ -51,51 +51,89 @@ class FakePopulationBackend:
 
 
 class FakeSignalAdapter:
-    """Minimal signal adapter stub returning deterministic strains."""
+    """Minimal signal backend returning deterministic strain stacks."""
 
-    detector_names = ("H1",)
+    required_params = frozenset({"detector_frame_mass_1", "coa_time"})
+
+    def __init__(self, waveform_model: str = "IMRPhenomXPHM") -> None:
+        self.waveform_model = waveform_model
 
     def simulate(
         self,
         parameters: dict,
+        detector_names: tuple[str, ...],
+        background=None,
         *,
         sampling_frequency: float,
         minimum_frequency: float,
-        waveform_arguments: dict | None = None,
         earth_rotation: bool = True,
-    ) -> TimeSeries:
-        _ = minimum_frequency, waveform_arguments, earth_rotation
-        return TimeSeries(
-            data=np.full((1, 4), parameters["detector_frame_mass_1"]),
-            start_time=parameters["coa_time"],
-            sampling_frequency=sampling_frequency,
+        interpolate_if_offset: bool = True,
+    ) -> DetectorStrainStack:
+        _ = background, minimum_frequency, earth_rotation, interpolate_if_offset
+        return DetectorStrainStack.from_mapping(
+            detector_names,
+            {
+                detector: GWpyTimeSeries(
+                    np.full(4, parameters["detector_frame_mass_1"]),
+                    t0=parameters["coa_time"],
+                    sample_rate=sampling_frequency,
+                )
+                for detector in detector_names
+            },
         )
 
 
 class FakeNoiseAdapter:
-    """Minimal noise adapter stub that materializes declared outputs."""
+    """Minimal noise protocol backend that materializes deterministic arrays."""
 
-    def run(
+    def __init__(
         self,
-        *,
+        duration: float = 4.0,
+        sampling_frequency: float = 4.0,
+        detectors: list[str] | None = None,
+        seed: int | None = None,
+    ) -> None:
+        self.duration = duration
+        self.sampling_frequency = sampling_frequency
+        self.detectors = ["H1"] if detectors is None else detectors
+        self.seed = seed
+
+    def generate(
+        self,
+        duration: float,
+        sampling_frequency: float,
         detectors: list[str],
-        output_directory: Path,
-        output_prefix: str,
-        output_format: str,
-        **_kwargs,
+        seed: int | None = None,
+    ) -> dict[str, np.ndarray]:
+        _ = duration, sampling_frequency, seed
+        return {detector: np.zeros(4) for detector in detectors}
+
+    def generate_stream(
+        self,
+        chunk_duration: float,
+        sampling_frequency: float,
+        detectors: list[str],
+        seed: int | None = None,
     ):
-        if output_format != "npy":
-            raise AssertionError("Test noise adapter expects npy outputs.")
-        output_directory.mkdir(parents=True, exist_ok=True)
-        output_paths = {}
-        for detector in detectors:
-            output_path = output_directory / f"{output_prefix}_{detector}.npy"
-            output_path.write_bytes(b"noise")
-            output_paths[detector] = output_path
-        return type("SimulationResultStub", (), {"output_paths": output_paths})()
+        yield self.generate(
+            duration=chunk_duration,
+            sampling_frequency=sampling_frequency,
+            detectors=detectors,
+            seed=seed,
+        )
+
+    @property
+    def metadata(self) -> dict[str, object]:
+        return {"kind": "fake-noise"}
 
 
-def _orchestration_config(tmp_path: Path) -> Config:
+def _write_signal_file(self, data, file_name, channel=None, **kwargs):
+    _ = data, kwargs
+    Path(file_name).parent.mkdir(parents=True, exist_ok=True)
+    Path(file_name).write_text(channel or "STRAIN")
+
+
+def _fake_orchestration_config(tmp_path: Path) -> Config:
     return Config(
         globals=GlobalsConfig(
             working_directory=str(tmp_path),
@@ -110,12 +148,13 @@ def _orchestration_config(tmp_path: Path) -> Config:
         ),
         orchestration=OrchestrationConfig(
             population=PopulationConfig(
-                backend="file",
+                backend="tests.cli.test_cli_orchestration:FakePopulationBackend",
                 source_type="bbh",
                 n_samples=2,
                 arguments={"path": str(tmp_path / "population.h5")},
             ),
             signal=SignalConfig(
+                backend="tests.cli.test_cli_orchestration:FakeSignalAdapter",
                 detectors=["H1"],
                 output=SimulatorOutputConfig(
                     file_name="signal-{{ counter }}.gwf",
@@ -124,7 +163,8 @@ def _orchestration_config(tmp_path: Path) -> Config:
                 ),
             ),
             noise=NoiseAdapterConfig(
-                arguments={"seed": 7},
+                backend="tests.cli.test_cli_orchestration:FakeNoiseAdapter",
+                arguments={"seed": 7, "detectors": ["H1"], "duration": 4.0, "sampling_frequency": 4.0},
                 output=SimulatorOutputConfig(
                     file_name="noise-{{ counter }}.npy",
                     output_directory="noise",
@@ -132,6 +172,16 @@ def _orchestration_config(tmp_path: Path) -> Config:
             ),
         ),
     )
+
+
+def _orchestration_config(tmp_path: Path) -> Config:
+    return _fake_orchestration_config(tmp_path)
+
+
+def _assert_noise_outputs_exist(output_directory: Path) -> None:
+    for counter in range(EXPECTED_BATCHES):
+        for detector in ["H1"]:
+            assert (output_directory / f"noise-{counter}_{detector}.npy").exists()
 
 
 def _write_real_population_catalog(path: Path) -> None:
@@ -205,35 +255,18 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.safe_dump(config.model_dump(by_alias=True, exclude_none=True), sort_keys=False))
 
-    monkeypatch.setitem(
-        adapter_orchestration._POPULATION_BACKENDS,
-        "file",
-        FakePopulationBackend,
-    )
-    monkeypatch.setattr(
-        "gwmock.cli.adapter_orchestration.SignalAdapter.from_source_type",
-        lambda **_kwargs: FakeSignalAdapter(),
-    )
-    monkeypatch.setattr(
-        "gwmock.cli.adapter_orchestration.NoiseAdapter.from_backend",
-        lambda *args, **kwargs: FakeNoiseAdapter(),
-    )
-    monkeypatch.setattr(
-        "gwmock.mixin.time_series.TimeSeriesMixin._save_gwf_data",
-        lambda self, data, file_name, channel=None, **kwargs: (
-            Path(file_name).parent.mkdir(parents=True, exist_ok=True),
-            Path(file_name).write_text(channel or "STRAIN"),
-        )[-1],
-    )
+    monkeypatch.setattr("gwmock.mixin.time_series.TimeSeriesMixin._save_gwf_data", _write_signal_file)
 
     _simulate_impl(str(config_file), overwrite=True, metadata=True)
 
     assert (tmp_path / "output" / "signal" / "signal-0.gwf").exists()
     assert (tmp_path / "output" / "signal" / "signal-1.gwf").exists()
-    assert (tmp_path / "output" / "noise" / "noise-0_H1.npy").exists()
-    assert (tmp_path / "output" / "noise" / "noise-1_H1.npy").exists()
+    _assert_noise_outputs_exist(tmp_path / "output" / "noise")
     metadata = yaml.safe_load((tmp_path / "metadata" / "orchestration-0.metadata.yaml").read_text())
-    assert metadata["simulator_config"]["population"]["backend"] == "file"
+    assert (
+        metadata["simulator_config"]["population"]["backend"]
+        == "tests.cli.test_cli_orchestration:FakePopulationBackend"
+    )
     assert metadata["simulator_config"]["signal"]["detectors"] == ["H1"]
     assert metadata["simulator_metadata"]["orchestration"]["population"]["metadata"] == FakePopulationBackend.metadata
 
@@ -248,10 +281,7 @@ def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Pa
 
     monkeypatch.setattr(
         "gwmock.mixin.time_series.TimeSeriesMixin._save_gwf_data",
-        lambda self, data, file_name, channel=None, **kwargs: (
-            Path(file_name).parent.mkdir(parents=True, exist_ok=True),
-            Path(file_name).write_text(channel or "STRAIN"),
-        )[-1],
+        _write_signal_file,
     )
 
     _simulate_impl(str(config_file), overwrite=True, metadata=True)

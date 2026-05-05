@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from gwmock_signal import DetectorStrainStack, GWSimulator, Network, resolve_simulator_backend
+from gwmock_signal import DetectorStrainStack, Network, resolve_simulator_backend
 from gwmock_signal.projection import project_polarizations_to_network
 
 from gwmock.data.time_series.time_series import TimeSeries
@@ -27,6 +27,9 @@ def _callable_waveform_registry_key(func: Callable[..., Any]) -> str:
 
 def _register_callable_waveform(backend: Any, registry_key: str, factory: Callable[..., Any]) -> None:
     """Register *factory* under *registry_key* on the backend's internal ``WaveformFactory``."""
+    if hasattr(backend, "register_waveform_model"):
+        backend.register_waveform_model(registry_key, factory)
+        return
     try:
         waveform_factory = backend._waveform_factory
     except AttributeError as exc:
@@ -45,7 +48,7 @@ class SignalAdapter:
         self,
         *,
         source_type: str,
-        backend: GWSimulator,
+        backend: Any,
         detector_specs: Sequence[str],
     ) -> None:
         """Store the resolved backend and detector network."""
@@ -69,19 +72,48 @@ class SignalAdapter:
     ) -> SignalAdapter:
         """Resolve the public gwmock-signal backend for one source type."""
         backend_class = resolve_simulator_backend(source_type)
-        if waveform_model is None:
-            backend = backend_class(waveform_model=_DEFAULT_WAVEFORM_MODEL)
-        elif callable(waveform_model):
-            registry_key = _callable_waveform_registry_key(waveform_model)
-            backend = backend_class(waveform_model=registry_key)
-            _register_callable_waveform(backend, registry_key, waveform_model)
-        else:
-            backend = backend_class(waveform_model=waveform_model)
+        backend = cls.instantiate_backend(backend_class, waveform_model=waveform_model)
         return cls(
             source_type=source_type,
             backend=backend,
             detector_specs=detectors,
         )
+
+    @classmethod
+    def from_backend(
+        cls,
+        *,
+        source_type: str,
+        backend: Any,
+        detectors: Sequence[str],
+    ) -> SignalAdapter:
+        """Build an adapter from an already-instantiated backend."""
+        return cls(
+            source_type=source_type,
+            backend=backend,
+            detector_specs=detectors,
+        )
+
+    @staticmethod
+    def instantiate_backend(
+        backend_class: type[Any],
+        *,
+        waveform_model: str | Callable[..., Any] | None,
+    ) -> Any:
+        """Instantiate a signal backend class while preserving callable waveform support."""
+        if waveform_model is None:
+            try:
+                return backend_class(waveform_model=_DEFAULT_WAVEFORM_MODEL)
+            except TypeError:
+                return backend_class()
+
+        if callable(waveform_model):
+            registry_key = _callable_waveform_registry_key(waveform_model)
+            backend = backend_class(waveform_model=registry_key)
+            _register_callable_waveform(backend, registry_key, waveform_model)
+            return backend
+
+        return backend_class(waveform_model=waveform_model)
 
     @staticmethod
     def _normalize_detector_specs(detector_specs: Sequence[str]) -> tuple[str | Any, ...]:
@@ -114,27 +146,36 @@ class SignalAdapter:
         earth_rotation: bool = True,
     ) -> TimeSeries:
         """Generate and project one signal chunk via public gwmock-signal APIs."""
-        if not hasattr(self._backend, "generate_polarizations"):
-            raise TypeError(
-                "Resolved gwmock_signal backend does not expose generate_polarizations; "
-                "the current gwmock adapter only supports transient-style backends."
+        backend_parameters = {**(waveform_arguments or {}), **dict(parameters)}
+        if hasattr(self._backend, "simulate"):
+            strain_stack = self._backend.simulate(
+                backend_parameters,
+                self._network.detector_names,
+                sampling_frequency=sampling_frequency,
+                minimum_frequency=minimum_frequency,
+                earth_rotation=earth_rotation,
+            )
+        elif hasattr(self._backend, "generate_polarizations"):
+            polarizations = self._backend.generate_polarizations(  # type: ignore[attr-defined]
+                backend_parameters,
+                sampling_frequency=sampling_frequency,
+                minimum_frequency=minimum_frequency,
             )
 
-        backend_parameters = {**(waveform_arguments or {}), **dict(parameters)}
-        polarizations = self._backend.generate_polarizations(  # type: ignore[attr-defined]
-            backend_parameters,
-            sampling_frequency=sampling_frequency,
-            minimum_frequency=minimum_frequency,
-        )
-        projected = project_polarizations_to_network(
-            {"plus": polarizations[0], "cross": polarizations[1]},
-            self._network.detector_names,
-            right_ascension=backend_parameters["right_ascension"],
-            declination=backend_parameters["declination"],
-            polarization_angle=backend_parameters["polarization_angle"],
-            earth_rotation=earth_rotation,
-        )
-        strain_stack = DetectorStrainStack.from_mapping(self.detector_names, projected)
+            projected = project_polarizations_to_network(
+                {"plus": polarizations[0], "cross": polarizations[1]},
+                self._network.detector_names,
+                right_ascension=backend_parameters["right_ascension"],
+                declination=backend_parameters["declination"],
+                polarization_angle=backend_parameters["polarization_angle"],
+                earth_rotation=earth_rotation,
+            )
+            strain_stack = DetectorStrainStack.from_mapping(self.detector_names, projected)
+        else:
+            raise TypeError(
+                "Resolved gwmock_signal backend does not expose simulate(...) or generate_polarizations(...)."
+            )
+
         return TimeSeries(
             data=strain_stack.data,
             start_time=strain_stack.t0,
