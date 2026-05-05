@@ -294,6 +294,7 @@ def save_batch_metadata(
         batch_index=batch.batch_index,
         simulator_config=batch.simulator_config,
         globals_config=batch.globals_config,
+        simulator_metadata=simulator.metadata,
         pre_batch_state=state_to_save,
         source=batch.source,
         author=batch.author,

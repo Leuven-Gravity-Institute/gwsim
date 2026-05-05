@@ -75,6 +75,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         self,
         *,
         population_events: list[dict[str, Any]],
+        population_metadata: dict[str, Any],
         source_type: str,
         waveform_model: str | None,
         waveform_arguments: dict[str, Any],
@@ -89,6 +90,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         orchestration_config: OrchestrationConfig,
     ) -> None:
         self._population_events = tuple(population_events)
+        self._population_metadata = dict(population_metadata)
         self._source_type = source_type
         self.waveform_model = waveform_model
         self.waveform_arguments = waveform_arguments
@@ -146,6 +148,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
 
         return cls(
             population_events=population_events,
+            population_metadata=population_adapter.metadata,
             source_type=population_adapter.source_type,
             waveform_model=orchestration_config.signal.waveform_model,
             waveform_arguments=orchestration_config.signal.waveform_arguments,
@@ -186,6 +189,9 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                 "source_type": self._source_type,
                 "population_events_total": len(self._population_events),
                 "population_events_remaining": len(self._population_events) - int(self.population_index),
+                "population": {
+                    "metadata": self._population_metadata,
+                },
                 "signal": {
                     "waveform_model": self.waveform_model,
                     "waveform_arguments": self.waveform_arguments,

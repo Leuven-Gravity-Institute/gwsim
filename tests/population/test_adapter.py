@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+from typing import ClassVar
+
 import numpy as np
 import pytest
 from gwmock_pop import CBC_PARAMETER_NAMES, ExternalPopulationLoader, GWPopSimulator
@@ -36,13 +40,14 @@ class MockGWPopBackend:
 class MockExternalPopulationLoader:
     """Protocol-compatible file loader backend for adapter tests."""
 
-    parameter_names = (
+    parameter_names: ClassVar[tuple[str, ...]] = (
         "detector_frame_mass_1",
         "detector_frame_mass_2",
         "inclination",
         "coa_time",
     )
     source_type = "bns"
+    metadata: ClassVar[dict[str, str]] = {"resolved_path": str(Path(tempfile.gettempdir()) / "catalog.h5")}
 
     def simulate(self, n_samples: int, **kwargs):
         if n_samples != EXPECTED_SAMPLE_COUNT:
@@ -98,6 +103,7 @@ class TestPopulationAdapter:
         adapter = PopulationAdapter.from_backend(loader, n_samples=EXPECTED_SAMPLE_COUNT)
 
         assert adapter.source_type == "bns"
+        assert adapter.metadata == loader.metadata
         assert list(adapter.iter_event_parameters()) == [
             {
                 "detector_frame_mass_1": 1.4,

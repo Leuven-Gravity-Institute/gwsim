@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from urllib.parse import urlparse
 
 import h5py
 import numpy as np
 import pandas as pd
 import yaml
-
-from gwmock.utils.download import download_file
+from gwmock_pop import FilePopulationLoader
 
 logger = logging.getLogger("gwmock")
 
@@ -96,6 +94,8 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
 
         # Initialize the population data to None
         self._population_data = None
+        self._population_loader_metadata: dict = {}
+        self._population_loaded_by_gwmock_pop = False
 
         # Store the population file information
         self.population_file = population_file
@@ -108,29 +108,30 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
 
         # Get the default parameter mapper
         default_parameter_name_mapper = self._population_get_default_parameter_name_mapper()
+        self._population_custom_parameter_name_mapper = dict(population_parameter_name_mapper or {})
 
         # Merge default mapper with instance override
         self.population_parameter_name_mapper = {
             **default_parameter_name_mapper,
-            **(population_parameter_name_mapper or {}),
+            **self._population_custom_parameter_name_mapper,
         }
 
         self.population_sort_by = population_sort_by
 
-        # Apply the parameter name mapper after reading the population data
-        self.population_data = self._population_apply_parameter_name_mapper(
-            self.population_data, self.population_parameter_name_mapper
-        )
-
-        # Perform post-processing on the population data
-        self.population_data = self._population_post_process_population_data(self.population_data)
+        loaded_population = self.population_data
+        if not self._population_loaded_by_gwmock_pop:
+            loaded_population = self._population_apply_parameter_name_mapper(
+                loaded_population, self.population_parameter_name_mapper
+            )
+            loaded_population = self._population_post_process_population_data(loaded_population)
+        self.population_data = loaded_population
 
         # Sort the population data if requested
         if self.population_sort_by is not None and self.population_sort_by in self.population_data.columns:
             self.population_data = self.population_data.sort_values(by=self.population_sort_by).reset_index(drop=True)
 
     @property
-    def population_file(self) -> Path:
+    def population_file(self) -> str | Path:
         """Get the population file path.
 
         Returns:
@@ -145,17 +146,15 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
         Args:
             value: Path to the population file.
         """
-        # Check whether this is a URL or a local file path
-
-        self._population_file_is_url = urlparse(str(value)).scheme in ("http", "https")
-        if self._population_file_is_url:
-            self._population_file_url = str(value)
-        else:
-            self._population_file_url = None
-            self._population_file = Path(value)
-
-        if not self._population_file_is_url and not self._population_file.is_file():
-            raise FileNotFoundError(f"Population file {self._population_file} does not exist.")
+        self._population_requested_file = str(value)
+        candidate = Path(value)
+        if candidate.is_file():
+            self._population_file = candidate
+            return
+        if self._population_supports_gwmock_pop_loader():
+            self._population_file = str(value)
+            return
+        raise FileNotFoundError(f"Population file {candidate} does not exist.")
 
     @property
     def population_cache_dir(self) -> Path:
@@ -191,15 +190,8 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
             A pandas DataFrame containing the population data.
         """
         if self._population_data is None:
-            if self._population_file_is_url:
-                if self._population_file_url is not None:
-                    self._population_data = self._population_download_population_file(
-                        url=self._population_file_url,
-                        outdir=self.population_cache_dir,
-                        timeout=self.population_download_timeout,
-                    )
-                else:
-                    raise ValueError("Unexpected Error. Population file URL is not set.")
+            if self._population_supports_gwmock_pop_loader():
+                self._population_data = self._population_read_with_gwmock_pop_loader()
             else:
                 self._population_data = self._population_read_population_file(file_name=self._population_file)
         return self._population_data
@@ -213,27 +205,27 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
         """
         self._population_data = value
 
-    def _population_download_population_file(self, url: str, outdir: Path | str, timeout: int) -> pd.DataFrame:
-        """Download the population file from a URL and read it.
+    def _population_supports_gwmock_pop_loader(self) -> bool:
+        source_type = getattr(self, "source_type", None)
+        return isinstance(source_type, str) and bool(source_type.strip())
 
-        Args:
-            url: The URL to download the population file from.
-            outdir: The output directory to save the downloaded file.
-            timeout: Timeout in seconds for the download operation.
-
-        Returns:
-            A pandas DataFrame containing the population data.
-        """
-        self._population_file = download_file(
-            url=url,
-            outdir=outdir,
-            overwrite=False,
-            allow_existing=True,
-            dest_path_from_hashed_url=True,
-            timeout=timeout,
+    def _population_read_with_gwmock_pop_loader(self) -> pd.DataFrame:
+        """Load and validate the catalogue through gwmock-pop's file loader."""
+        loader = FilePopulationLoader(
+            source_type=self.source_type,
+            path=self._population_file,
+            column_map=self._population_custom_parameter_name_mapper or None,
+            cache_dir=self.population_cache_dir,
+            download_timeout=self.population_download_timeout,
         )
-
-        return self._population_read_population_file(file_name=self._population_file)
+        self._population_loaded_by_gwmock_pop = True
+        self._population_loader_metadata = loader.metadata
+        self._population_file = Path(loader.metadata["resolved_path"])
+        # The legacy mixin API needs the whole validated catalogue eagerly, while
+        # gwmock-pop only exposes batch sampling publicly. Reuse its validated
+        # in-memory catalogue here until these mixins are retired.
+        catalogue = loader._catalogue
+        return pd.DataFrame({name: np.asarray(catalogue[name]) for name in loader.parameter_names})
 
     def _population_read_population_file(self, file_name: str | Path, **kwargs) -> pd.DataFrame:
         """Read the population file based on its type.
@@ -365,6 +357,7 @@ class PopulationReaderMixin:  # pylint: disable=too-many-instance-attributes
                 "population_metadata": {
                     **getattr(self, "_population_metadata", {}),
                 },
+                "loader_metadata": dict(getattr(self, "_population_loader_metadata", {})),
             }
         }
         return metadata

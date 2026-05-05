@@ -82,22 +82,14 @@ class TestPopulationReaderMixin:
             assert metadata["population_reader"]["population_metadata"]["simulation"] == "test"
             assert metadata["population_reader"]["population_metadata"]["version"] == 1
 
-    def test_url_population_file(self, mock_h5py_data):
-        """Test initialization with a URL population file."""
-        data, attrs = mock_h5py_data
-        url = "https://example.com/population.h5"
-
-        with patch("gwmock.mixin.population_reader.download_file") as mock_download, patch("h5py.File") as mock_file:
-            mock_download.return_value = "/tmp/downloaded.h5"
-            mock_f = mock_file.return_value.__enter__.return_value
-            mock_f.items.return_value = [
-                (k, type("MockDataset", (), {"__getitem__": lambda self, idx, k=k: data[k]})()) for k in data
-            ]
-            mock_f.attrs.items.return_value = attrs.items()
-
-            simulator = MockPopulationSimulator(url, population_sort_by="tc", start_time=0, duration=100)
-            assert simulator.population_data is not None
-            mock_download.assert_called_once()
+    def test_remote_like_population_file_requires_source_type(self):
+        """The generic mixin no longer performs URL fetching on its own."""
+        with pytest.raises(
+            FileNotFoundError, match=r"Population file https:/example\.com/population\.h5 does not exist"
+        ):
+            MockPopulationSimulator(
+                "https://example.com/population.h5", population_sort_by="tc", start_time=0, duration=100
+            )
 
     def test_parameter_name_mapping(self, mock_h5py_data, tmp_path):
         """Test parameter name mapping."""

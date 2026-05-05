@@ -18,6 +18,7 @@ class PopulationAdapter:
         *,
         source_type: str,
         parameter_names: Sequence[str] | None = None,
+        metadata: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialize the population adapter.
 
@@ -29,6 +30,7 @@ class PopulationAdapter:
         self._population_mapping = {name: tuple(values) for name, values in population_mapping.items()}
         self._source_type = self._validate_source_type(source_type)
         self._parameter_names = tuple(parameter_names or self._population_mapping.keys())
+        self._metadata = dict(metadata or {})
         self._sample_count = self._validate_population_mapping(
             population_mapping=self._population_mapping,
             parameter_names=self._parameter_names,
@@ -51,11 +53,13 @@ class PopulationAdapter:
         parameter_names = tuple(backend.parameter_names)
         if not parameter_names:
             raise ValueError("backend.parameter_names must not be empty.")
+        backend_metadata = getattr(backend, "metadata", None)
 
         return cls(
             backend.simulate(n_samples=n_samples, **kwargs),
             source_type=backend.source_type,
             parameter_names=parameter_names,
+            metadata=backend_metadata if isinstance(backend_metadata, Mapping) else None,
         )
 
     @classmethod
@@ -87,6 +91,11 @@ class PopulationAdapter:
     def population_mapping(self) -> Mapping[str, Sequence[Any]]:
         """Return the validated population mapping."""
         return MappingProxyType(self._population_mapping)
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        """Return backend metadata preserved across the gwmock-pop boundary."""
+        return dict(self._metadata)
 
     def __len__(self) -> int:
         """Return the number of events available in the adapter."""

@@ -7,7 +7,7 @@
 [![PyPI Version](https://img.shields.io/pypi/v/gwmock)](https://pypi.org/project/gwmock/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/gwmock)](https://pypi.org/project/gwmock/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Leuven-Gravity-Institute/gwmock/blob/main/LICENSE)
-[![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![DOI](https://zenodo.org/badge/1115995501.svg)](https://doi.org/10.5281/zenodo.17925458)
 
 A Python package for generating Mock Data Challenge (MDC) datasets for the

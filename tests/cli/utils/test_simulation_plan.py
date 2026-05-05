@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import tempfile
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -280,6 +281,7 @@ class TestParseAndCreateMetadata:
         assert "pre_batch_state" not in metadata
         assert "simulator_config" in metadata
         assert "globals_config" in metadata
+        assert metadata["simulator_metadata"] == {}
         # Check new fields
         assert "author" in metadata
         assert "email" in metadata
@@ -306,10 +308,31 @@ class TestParseAndCreateMetadata:
         assert metadata["batch_index"] == batch_index
         assert metadata["source"] == "config"
         assert metadata["pre_batch_state"] == state
+        assert metadata["simulator_metadata"] == {}
         # Check new fields
         assert "author" in metadata
         assert "email" in metadata
         assert "timestamp" in metadata
+
+    def test_create_batch_metadata_with_simulator_metadata(
+        self,
+        globals_config: GlobalsConfig,
+        simulator_config: SimulatorConfig,
+    ):
+        """Simulator metadata should be embedded verbatim in the batch sidecar."""
+        simulator_metadata = {
+            "orchestration": {"population": {"metadata": {"resolved_path": Path(tempfile.gettempdir()) / "catalog.h5"}}}
+        }
+
+        metadata = create_batch_metadata(
+            simulator_name="orchestration",
+            batch_index=0,
+            simulator_config=simulator_config,
+            globals_config=globals_config,
+            simulator_metadata=simulator_metadata,
+        )
+
+        assert metadata["simulator_metadata"] == simulator_metadata
 
     def test_parse_batch_metadata_valid_file(self, tmp_path: Path):
         """Test parsing a valid metadata YAML file."""

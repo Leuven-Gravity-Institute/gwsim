@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
+from typing import ClassVar
 
 import h5py
 import numpy as np
@@ -28,7 +30,11 @@ EXPECTED_BATCHES = 2
 class FakePopulationBackend:
     """Minimal public-style population backend for orchestration tests."""
 
-    parameter_names = ("detector_frame_mass_1", "detector_frame_mass_2", "coa_time")
+    parameter_names: ClassVar[tuple[str, ...]] = ("detector_frame_mass_1", "detector_frame_mass_2", "coa_time")
+    metadata: ClassVar[dict[str, object]] = {
+        "fetch": {"scheme": "https"},
+        "resolved_path": str(Path(tempfile.gettempdir()) / "catalog.h5"),
+    }
 
     def __init__(self, path: str, source_type: str = "bbh") -> None:
         self.path = path
@@ -229,6 +235,7 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     metadata = yaml.safe_load((tmp_path / "metadata" / "orchestration-0.metadata.yaml").read_text())
     assert metadata["simulator_config"]["population"]["backend"] == "file"
     assert metadata["simulator_config"]["signal"]["detectors"] == ["H1"]
+    assert metadata["simulator_metadata"]["orchestration"]["population"]["metadata"] == FakePopulationBackend.metadata
 
 
 def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Path):
@@ -259,6 +266,12 @@ def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Pa
     metadata = yaml.safe_load(metadata_path.read_text())
     assert metadata["simulator_config"]["population"]["backend"] == "file"
     assert metadata["simulator_config"]["signal"]["waveform_model"] == "IMRPhenomD"
+    assert metadata["simulator_metadata"]["orchestration"]["population"]["metadata"]["original_path"] == str(
+        population_path
+    )
+    assert metadata["simulator_metadata"]["orchestration"]["population"]["metadata"]["resolved_path"] == str(
+        population_path
+    )
     assert metadata["versions"]["gwmock-pop"] >= "0.6.0"
     assert metadata["versions"]["gwmock-signal"] >= "0.5.0"
     assert metadata["versions"]["gwmock-noise"] >= "0.1.2"
