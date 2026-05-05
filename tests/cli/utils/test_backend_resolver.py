@@ -175,8 +175,11 @@ def test_resolve_module_class_literal():
     assert backend.__class__ is ModulePopulationBackend
 
 
-def test_resolve_legacy_dotted_path_warns_once():
+def test_resolve_legacy_dotted_path_warns_once(monkeypatch):
     """Legacy dotted import paths should warn once and continue to work."""
+    from gwmock.cli.utils import backend_resolver
+
+    monkeypatch.setattr(backend_resolver, "_LEGACY_PATH_WARNINGS", set())
     with pytest.warns(DeprecationWarning, match="use 'tests.cli.utils.test_backend_resolver:LegacyPopulationBackend'"):
         first = resolve_backend_class("population", "tests.cli.utils.test_backend_resolver.LegacyPopulationBackend")
     second = resolve_backend_class("population", "tests.cli.utils.test_backend_resolver.LegacyPopulationBackend")
