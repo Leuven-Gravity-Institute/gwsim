@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -45,7 +47,7 @@ class MockExternalPopulationLoader:
         "coa_time",
     )
     source_type = "bns"
-    metadata: ClassVar[dict[str, str]] = {"resolved_path": "/tmp/catalog.h5"}
+    metadata: ClassVar[dict[str, str]] = {"resolved_path": str(Path(tempfile.gettempdir()) / "catalog.h5")}
 
     def simulate(self, n_samples: int, **kwargs):
         if n_samples != EXPECTED_SAMPLE_COUNT:

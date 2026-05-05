@@ -119,7 +119,7 @@ class TestSignalAdapter:
 
     def test_from_source_type_callable_waveform_with_real_backend(self):
         """A callable should be registered and invoked on the public CBC backend."""
-        from gwpy.timeseries import TimeSeries  # noqa: PLC0415
+        from gwpy.timeseries import TimeSeries
 
         n = 32
         merged_calls: list[dict] = []
@@ -165,5 +165,5 @@ class TestSignalAdapter:
         backend = adapter._backend
         assert isinstance(backend.waveform_model, str)
         assert backend.waveform_model.startswith("__gwmock_custom__")
-        assert merged_calls[0]["reference_frequency"] == 50.0  # noqa: PLR2004
-        assert merged_calls[0]["detector_frame_mass_1"] == 30.0  # noqa: PLR2004
+        assert merged_calls[0]["reference_frequency"] == 50.0
+        assert merged_calls[0]["detector_frame_mass_1"] == 30.0

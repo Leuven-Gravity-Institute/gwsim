@@ -14,7 +14,7 @@ from gwmock.repository.zenodo import ZenodoClient
 @pytest.fixture
 def zenodo_client():
     """Fixture to create a ZenodoClient instance."""
-    return ZenodoClient(access_token="fake_token", sandbox=True)  # nosec B106
+    return ZenodoClient(access_token="fake_token", sandbox=True)  # noqa: S106
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ class TestZenodoClient:
     def test_init(self):
         """Test client initialization."""
         client = ZenodoClient("token", sandbox=True)
-        assert client.access_token == "token"
+        assert client.access_token == "token"  # noqa: S105
         assert client.sandbox is True
         assert client.base_url == "https://sandbox.zenodo.org/api/"
         assert client.headers == {"Authorization": "Bearer token"}

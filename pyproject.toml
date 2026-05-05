@@ -35,7 +35,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "bandit[toml]>=1.9.4",
   "pre-commit>=4.6.0",
   "pytest-cov>=7.1.0",
   "pytest-mock>=3.15.1",
@@ -77,12 +76,6 @@ include = [
   "/pyproject.toml",
   "/hatch_build.py",     # Include the build hook itself
 ]
-
-[tool.bandit]
-exclude_dirs = ["build", "dist", "tests", "scripts"]
-number = 4
-recursive = true
-targets = "src"
 
 [tool.coverage.run]
 branch = true
@@ -134,6 +127,7 @@ lint.extend-select = [
   "PL",  # Add pylint rules for fuller coverage
   "SIM", # Similarities
   "T10", # Debugger statements
+  "S",   # Security rules
 ]
 lint.ignore = [
   "E501", # Line length (handled by formatter)
@@ -148,6 +142,14 @@ exclude = ["docs/conf.py"]
 quote-style = "double"       # Use double quotes for strings
 indent-style = "space"       # Use spaces for indentation
 docstring-code-format = true # Format code in docstrings
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore specific rules in the tests directory
+"tests/*" = ["S101", "ARG001", "PLC0415", "PLR2004"]
+# S101: allow assert statements
+# ARG001: allow unused function arguments (common in fixtures)
+# PLC0415: allow import statements not at the top level
+# PLR2004: allow magic values in the unit tests
 
 [[tool.uv.index]]
 name = "testpypi"
