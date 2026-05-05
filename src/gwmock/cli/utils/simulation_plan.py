@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import datetime
 import getpass
+import hashlib
+import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,7 +13,8 @@ from typing import Any
 
 from gwmock.cli.utils.config import Config, GlobalsConfig, OrchestrationConfig, SimulatorConfig
 from gwmock.cli.utils.config_resolution import resolve_max_samples
-from gwmock.cli.utils.metadata import load_metadata_with_external_state
+from gwmock.cli.utils.hash import compute_file_hash
+from gwmock.cli.utils.metadata import SCHEMA_VERSION, MetadataRecord, load_metadata_with_external_state
 from gwmock.utils.log import get_dependency_versions
 
 logger = logging.getLogger("gwmock")
@@ -74,6 +77,12 @@ class SimulationBatch:
 
     email: str | None = None
     """Email of the author (from metadata)"""
+
+    config_payload: dict[str, Any] | None = None
+    """Resolved top-level config snapshot preserved in metadata."""
+
+    config_sha256: str | None = None
+    """SHA256 of the original config file when known."""
 
     def __post_init__(self):
         """Post-initialization checks.
@@ -150,7 +159,7 @@ def parse_batch_metadata(metadata_file: Path, metadata_dir: Path | None = None) 
     """Parse a batch metadata file.
 
     Args:
-        metadata_file: Path to BATCH-*.metadata.yaml file
+        metadata_file: Path to BATCH-*.metadata.json or legacy metadata YAML file
         metadata_dir: Directory containing external state files. If None, uses parent of metadata_file
 
     Returns:
@@ -158,20 +167,23 @@ def parse_batch_metadata(metadata_file: Path, metadata_dir: Path | None = None) 
 
     Raises:
         FileNotFoundError: If file doesn't exist
-        ValueError: If YAML is invalid
+        ValueError: If metadata is invalid
     """
     metadata = load_metadata_with_external_state(metadata_file, metadata_dir)
 
     if not isinstance(metadata, dict):
         raise ValueError("Metadata must be a dictionary")
 
+    if "schema_version" in metadata:
+        metadata = MetadataRecord.model_validate(metadata).model_dump(mode="python", by_alias=True, exclude_none=True)
+
     return metadata
 
 
-def create_batch_metadata(
+def create_batch_metadata(  # noqa: PLR0913
     simulator_name: str,
     batch_index: int,
-    simulator_config: SimulatorConfig,
+    simulator_config: SimulatorConfig | OrchestrationConfig,
     globals_config: GlobalsConfig,
     simulator_metadata: dict[str, Any] | None = None,
     pre_batch_state: dict[str, Any] | None = None,
@@ -179,13 +191,21 @@ def create_batch_metadata(
     author: str | None = None,
     email: str | None = None,
     timestamp: datetime.datetime | None = None,
+    *,
+    config_payload: dict[str, Any] | None = None,
+    config_sha256: str | None = None,
+    seed: int | None = None,
+    segment_seeds: list[int] | None = None,
+    population: dict[str, Any] | None = None,
+    signal: dict[str, Any] | None = None,
+    noise: dict[str, Any] | None = None,
+    outputs: list[dict[str, Any]] | None = None,
+    host: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create metadata for a simulation batch.
 
-    This metadata can be used to reproduce a specific batch. It includes:
-    1. Configuration: Simulator and global configs for reproducibility
-    2. State snapshot: Pre-batch state (RNG, etc.) for exact reproduction
-    3. Version information: gwmock and key dependency versions for traceability
+    This metadata can be used to reproduce a specific batch and validate the
+    versioned provenance schema written alongside it.
 
     Args:
         simulator_name: Name of the simulator
@@ -199,7 +219,7 @@ def create_batch_metadata(
         timestamp: Optional timestamp for when the batch was created
 
     Returns:
-        Metadata dictionary suitable for YAML serialization
+        Metadata dictionary suitable for JSON serialization
     """
     if author is None:
         author = getpass.getuser()
@@ -207,28 +227,69 @@ def create_batch_metadata(
     if timestamp is None:
         timestamp = datetime.datetime.now(datetime.UTC)
 
+    base_config = config_payload or {
+        "globals": globals_config.model_dump(by_alias=True, exclude_none=True),
+        "simulators": {
+            simulator_name: simulator_config.model_dump(by_alias=True, exclude_none=True),
+        },
+    }
+
+    derived_config_sha256 = config_sha256
+    if derived_config_sha256 is None:
+        derived_config_sha256 = hashlib.sha256(
+            json.dumps(base_config, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+
+    dependency_versions = get_dependency_versions()
+
     metadata: dict[str, Any] = {
+        "schema_version": SCHEMA_VERSION,
+        "gwmock_version": dependency_versions.get("gwmock"),
+        "subpackage_versions": {
+            "gwmock_signal": dependency_versions.get("gwmock-signal") or dependency_versions.get("gwmock_signal"),
+            "gwmock_noise": dependency_versions.get("gwmock-noise") or dependency_versions.get("gwmock_noise"),
+            "gwmock_pop": dependency_versions.get("gwmock-pop") or dependency_versions.get("gwmock_pop"),
+        },
+        "config": base_config,
+        "config_sha256": derived_config_sha256,
+        "seed": seed,
+        "segment_seeds": segment_seeds or [],
+        "population": population,
+        "signal": signal,
+        "noise": noise,
+        "outputs": outputs or [],
+        "host": host
+        or {
+            "platform": "unknown",
+            "python": "unknown",
+            "cpu": "unknown",
+            "git_sha": None,
+        },
+        # Compatibility fields kept while CLI reproduction still consumes them.
         "simulator_name": simulator_name,
         "batch_index": batch_index,
-        "simulator_config": simulator_config.model_dump(mode="python"),
-        "globals_config": globals_config.model_dump(mode="python"),
+        "simulator_config": simulator_config.model_dump(by_alias=True, exclude_none=True),
+        "globals_config": globals_config.model_dump(by_alias=True, exclude_none=True),
         "simulator_metadata": simulator_metadata or {},
         "author": author,
         "email": email,
         "timestamp": timestamp.isoformat(),
-        "versions": get_dependency_versions(),
+        "versions": dependency_versions,
+        "source": source,
     }
 
     if pre_batch_state is not None:
         metadata["pre_batch_state"] = pre_batch_state
 
-    metadata["source"] = source
-
     return metadata
 
 
 def create_plan_from_config(
-    config: Config, checkpoint_dir: Path, author: str | None = None, email: str | None = None
+    config: Config,
+    checkpoint_dir: Path,
+    author: str | None = None,
+    email: str | None = None,
+    config_file: Path | None = None,
 ) -> SimulationPlan:
     """Create a simulation plan from a configuration file.
 
@@ -243,6 +304,7 @@ def create_plan_from_config(
         checkpoint_dir: Directory for checkpoints
         author: Optional author name for metadata
         email: Optional author email for metadata
+        config_file: Original YAML config path when known
 
     Returns:
         SimulationPlan with all batches defined across all simulators
@@ -259,6 +321,8 @@ def create_plan_from_config(
         source_config=config,
         checkpoint_directory=checkpoint_dir,
     )
+    config_payload = config.model_dump(by_alias=True, exclude_none=True)
+    config_sha256 = compute_file_hash(config_file) if config_file is not None else None
 
     global_batch_index = 0
     orchestration_config = getattr(config, "orchestration", None)
@@ -276,6 +340,8 @@ def create_plan_from_config(
                 source="config",
                 author=author,
                 email=email,
+                config_payload=config_payload,
+                config_sha256=config_sha256,
             )
             plan.add_batch(batch)
             global_batch_index += 1
@@ -300,6 +366,8 @@ def create_plan_from_config(
                     source="config",
                     author=author,
                     email=email,
+                    config_payload=config_payload,
+                    config_sha256=config_sha256,
                 )
                 plan.add_batch(batch)
                 global_batch_index += 1
@@ -317,10 +385,10 @@ def create_plan_from_metadata_files(
     """Create a simulation plan from individual metadata files.
 
     This allows exact reproduction of specific batches by restoring their pre-batch state.
-    Metadata files should follow the naming pattern: SIMULATOR-BATCH_INDEX.metadata.yaml
+    Metadata files should follow the naming pattern: SIMULATOR-BATCH_INDEX.metadata.json
 
     Args:
-        metadata_files: List of paths to individual metadata YAML files
+        metadata_files: List of paths to individual metadata files
         checkpoint_dir: Directory for checkpoints
         author: Optional author name for metadata
         email: Optional author email for metadata
@@ -333,7 +401,7 @@ def create_plan_from_metadata_files(
         ValueError: If metadata files are malformed
 
     Example:
-        >>> files = [Path("signal-0.metadata.yaml"), Path("signal-1.metadata.yaml")]
+        >>> files = [Path("signal-0.metadata.json"), Path("signal-1.metadata.json")]
         >>> plan = create_plan_from_metadata_files(files, Path("checkpoints"))
         >>> # Reproduces specific batches with exact state snapshots
     """
@@ -345,10 +413,22 @@ def create_plan_from_metadata_files(
 
         metadata = parse_batch_metadata(metadata_file)
 
+        metadata_config = metadata.get("config")
+
         # Reconstruct configs from metadata
         try:
-            globals_config = GlobalsConfig(**metadata["globals_config"])
-            raw_simulator_config = metadata["simulator_config"]
+            if isinstance(metadata_config, dict) and metadata_config.get("orchestration") is not None:
+                globals_config = GlobalsConfig(**metadata_config["globals"])
+                raw_simulator_config = metadata_config["orchestration"]
+            elif isinstance(metadata_config, dict) and metadata_config.get("simulators") is not None:
+                globals_config = GlobalsConfig(**metadata_config["globals"])
+                simulators_config = metadata_config["simulators"]
+                if not isinstance(simulators_config, dict) or len(simulators_config) != 1:
+                    raise ValueError("expected exactly one simulator config in metadata.config.simulators")
+                raw_simulator_config = next(iter(simulators_config.values()))
+            else:
+                globals_config = GlobalsConfig(**metadata["globals_config"])
+                raw_simulator_config = metadata["simulator_config"]
             if "class" in raw_simulator_config or "class_" in raw_simulator_config:
                 simulator_config = SimulatorConfig(**raw_simulator_config)
             elif {"population", "signal", "noise"}.issubset(raw_simulator_config):
@@ -376,6 +456,8 @@ def create_plan_from_metadata_files(
             source="metadata_state" if pre_batch_state else "metadata_config",
             author=author,
             email=email,
+            config_payload=metadata_config if isinstance(metadata_config, dict) else None,
+            config_sha256=metadata.get("config_sha256"),
         )
         plan.add_batch(batch)
 
@@ -395,10 +477,10 @@ def create_plan_from_metadata(
     """Create a simulation plan from a directory of metadata files.
 
     This allows exact reproduction of specific batches by restoring their pre-batch state.
-    Metadata files should follow the naming pattern: SIMULATOR-BATCH_INDEX.metadata.yaml
+    Metadata files should follow the naming pattern: SIMULATOR-BATCH_INDEX.metadata.json
 
     Args:
-        metadata_dir: Directory containing metadata YAML files
+        metadata_dir: Directory containing metadata files
         checkpoint_dir: Directory for checkpoints
         author: Optional author name for metadata
         email: Optional author email for metadata
@@ -418,7 +500,7 @@ def create_plan_from_metadata(
         raise FileNotFoundError(f"Metadata directory not found: {metadata_dir}")
 
     # Find all metadata files in directory
-    metadata_files = list(metadata_dir.glob("*.metadata.yaml"))
+    metadata_files = list(metadata_dir.glob("*.metadata.json")) + list(metadata_dir.glob("*.metadata.yaml"))
 
     plan = create_plan_from_metadata_files(metadata_files, checkpoint_dir, author=author, email=email)
     logger.info(

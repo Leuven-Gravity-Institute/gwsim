@@ -262,7 +262,15 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     assert (tmp_path / "output" / "signal" / "signal-0.gwf").exists()
     assert (tmp_path / "output" / "signal" / "signal-1.gwf").exists()
     _assert_noise_outputs_exist(tmp_path / "output" / "noise")
-    metadata = yaml.safe_load((tmp_path / "metadata" / "orchestration-0.metadata.yaml").read_text())
+    metadata = yaml.safe_load((tmp_path / "metadata" / "orchestration-0.metadata.json").read_text())
+    assert metadata["schema_version"] == "1.0.0"
+    assert (
+        metadata["config"]["orchestration"]["population"]["backend"]
+        == "tests.cli.test_cli_orchestration:FakePopulationBackend"
+    )
+    assert metadata["population"]["source_type"] == "bbh"
+    assert metadata["signal"]["detector_network"] == ["H1"]
+    assert {output["kind"] for output in metadata["outputs"]} == {"signal", "noise"}
     assert (
         metadata["simulator_config"]["population"]["backend"]
         == "tests.cli.test_cli_orchestration:FakePopulationBackend"
@@ -288,14 +296,17 @@ def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Pa
 
     signal_path = tmp_path / "output" / "signal" / "signal-0.gwf"
     noise_path = tmp_path / "output" / "noise" / "noise-0_H1.npy"
-    metadata_path = tmp_path / "metadata" / "orchestration-0.metadata.yaml"
+    metadata_path = tmp_path / "metadata" / "orchestration-0.metadata.json"
 
     assert signal_path.read_text() == "H1:STRAIN"
     assert noise_path.exists()
     assert np.load(noise_path).shape == (256,)
     metadata = yaml.safe_load(metadata_path.read_text())
+    assert metadata["schema_version"] == "1.0.0"
+    assert metadata["config_sha256"]
+    assert metadata["outputs"][0]["sha256"]
     assert metadata["simulator_config"]["population"]["backend"] == "file"
-    assert metadata["simulator_config"]["signal"]["waveform_model"] == "IMRPhenomD"
+    assert metadata["signal"]["waveform_model"] == "IMRPhenomD"
     assert metadata["simulator_metadata"]["orchestration"]["population"]["metadata"]["original_path"] == str(
         population_path
     )

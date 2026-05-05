@@ -26,7 +26,7 @@ def validate_command(
     ] = None,
     metadata_pattern: Annotated[
         str | None, typer.Option("--metadata-pattern", help="Metadata file pattern to match")
-    ] = "*metadata.yaml",
+    ] = "*metadata.*",
 ) -> None:
     """Validate output files against metadata hashes and other checks.
 
@@ -40,7 +40,7 @@ def validate_command(
     The command automatically detects whether provided paths are:
 
     - Output files (.gwf, etc.) - will find corresponding metadata
-    - Metadata files (.metadata.yaml) - will validate their output files
+    - Metadata files (.metadata.json / legacy .metadata.yaml) - will validate their output files
     - Directories - will scan for both types of files
 
     Examples:
@@ -74,11 +74,11 @@ def validate_command(
     import fnmatch
     import logging
 
-    import yaml
     from rich.console import Console
     from rich.table import Table
 
     from gwmock.cli.utils.hash import compute_file_hash
+    from gwmock.cli.utils.metadata import load_metadata_with_external_state
 
     logger = logging.getLogger("gwmock")
 
@@ -107,7 +107,7 @@ def validate_command(
         if path.is_dir():
             metadata_directories.append(path)
         elif path.is_file():
-            if path.suffix == ".yaml" and "metadata" in path.name:
+            if path.name.endswith(".metadata.json") or path.name.endswith(".metadata.yaml"):
                 metadata_files.append(path)
             else:
                 console.print(f"[yellow]Warning:[/yellow] Ignoring non-metadata file: {path}")
@@ -121,7 +121,7 @@ def validate_command(
                 output_files.append(file_path)
 
     for directory in metadata_directories:
-        for file_path in directory.rglob("*.yaml"):
+        for file_path in directory.rglob("*"):
             if "metadata" in file_path.name and file_path.is_file():
                 metadata_files.append(file_path)
 
@@ -138,15 +138,19 @@ def validate_command(
     # First, extract output files from provided metadata files
     for metadata_file in metadata_files:
         try:
-            with metadata_file.open("r") as f:
-                metadata = yaml.safe_load(f)
+            metadata = load_metadata_with_external_state(metadata_file)
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Error loading metadata %s: %s", metadata_file, e)
             continue
 
-        output_files_in_meta = metadata.get("output_files", [])
-        globals_config = metadata.get("globals_config", {})
-        output_dir = Path(globals_config.get("output_directory", "."))
+        outputs = metadata.get("outputs", [])
+        output_files_in_meta = [Path(output["path"]).name for output in outputs] or metadata.get("output_files", [])
+        config = metadata.get("config", {})
+        globals_config = config.get("globals", metadata.get("globals_config", {}))
+        if outputs:
+            output_dir = Path(globals_config.get("working-directory") or globals_config.get("working_directory") or ".")
+        else:
+            output_dir = Path(globals_config.get("output_directory", "."))
 
         for filename in output_files_in_meta:
             # Apply pattern filtering
@@ -165,11 +169,11 @@ def validate_command(
             # First, check if any already-identified metadata files contain this output file
             for metadata_file in metadata_files:
                 try:
-                    with metadata_file.open("r") as f:
-                        meta_data = yaml.safe_load(f)
-                        if output_file.name in meta_data.get("output_files", []):
-                            potential_metadata = metadata_file
-                            break
+                    meta_data = load_metadata_with_external_state(metadata_file)
+                    output_names = [Path(output["path"]).name for output in meta_data.get("outputs", [])]
+                    if output_file.name in output_names or output_file.name in meta_data.get("output_files", []):
+                        potential_metadata = metadata_file
+                        break
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     logger.error("Error reading metadata file %s: %s", metadata_file, e)
                     continue
@@ -181,16 +185,20 @@ def validate_command(
                 metadata_dir = search_dir / "metadata"
                 if metadata_dir.exists():
                     # Look for metadata files that might match
-                    for meta_file in metadata_dir.glob("*.metadata.yaml"):
-                        with meta_file.open("r") as f:
-                            try:
-                                meta_data = yaml.safe_load(f)
-                                if output_file.name in meta_data.get("output_files", []):
-                                    potential_metadata = meta_file
-                                    break
-                            except Exception as e:  # pylint: disable=broad-exception-caught
-                                logger.error("Error reading metadata file %s: %s", meta_file, e)
-                                continue
+                    for meta_file in list(metadata_dir.glob("*.metadata.json")) + list(
+                        metadata_dir.glob("*.metadata.yaml")
+                    ):
+                        try:
+                            meta_data = load_metadata_with_external_state(meta_file)
+                            output_names = [Path(output["path"]).name for output in meta_data.get("outputs", [])]
+                            if output_file.name in output_names or output_file.name in meta_data.get(
+                                "output_files", []
+                            ):
+                                potential_metadata = meta_file
+                                break
+                        except Exception as e:  # pylint: disable=broad-exception-caught
+                            logger.error("Error reading metadata file %s: %s", meta_file, e)
+                            continue
 
             if potential_metadata:
                 output_to_metadata[output_file] = potential_metadata
@@ -220,15 +228,18 @@ def validate_command(
             failed_files += 1
             continue
         try:
-            with metadata_file.open("r") as f:
-                metadata: dict = yaml.safe_load(f)
+            metadata: dict = load_metadata_with_external_state(metadata_file)
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Error loading metadata %s: %s", metadata_file, e)
             table.add_row(str(metadata_file.name), output_file.name, "N/A", "[red]Error loading metadata[/red]")
             continue
 
         file_hashes = metadata.get("file_hashes", {})
-        expected_hash = file_hashes.get(output_file.name)
+        if file_hashes:
+            expected_hash = file_hashes.get(output_file.name)
+        else:
+            output_records = {Path(output["path"]).name: output for output in metadata.get("outputs", [])}
+            expected_hash = output_records.get(output_file.name, {}).get("sha256")
 
         if not output_file.exists():
             table.add_row(str(metadata_file.name), output_file.name, "N/A", "[red]File not found[/red]")

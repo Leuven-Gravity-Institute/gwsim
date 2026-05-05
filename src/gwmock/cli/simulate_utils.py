@@ -7,7 +7,10 @@ from __future__ import annotations
 import atexit
 import copy
 import logging
+import platform
+import shutil
 import signal
+import subprocess
 import time
 from pathlib import Path
 from typing import Any, cast
@@ -21,7 +24,7 @@ from gwmock.cli.adapter_orchestration import AdapterOrchestrationResult, Adapter
 from gwmock.cli.utils.checkpoint import CheckpointManager
 from gwmock.cli.utils.config import OrchestrationConfig, SimulatorConfig, resolve_class_path
 from gwmock.cli.utils.hash import compute_file_hash
-from gwmock.cli.utils.metadata import save_metadata_with_external_state
+from gwmock.cli.utils.metadata import save_metadata_record
 from gwmock.cli.utils.simulation_plan import (
     SimulationBatch,
     SimulationPlan,
@@ -33,6 +36,273 @@ from gwmock.simulator.base import Simulator
 
 logger = logging.getLogger("gwmock")
 logger.setLevel(logging.DEBUG)
+
+
+def _backend_path_from_object(obj: Any) -> str:
+    """Return a stable ``module:qualname`` identifier for an object or class."""
+    cls = obj if isinstance(obj, type) else type(obj)
+    return f"{cls.__module__}:{cls.__qualname__}"
+
+
+def _flatten_to_strings(value: Any) -> list[str]:
+    """Flatten template-expanded values into a simple ordered list of strings."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, np.ndarray):
+        return [str(item) for item in value.flatten().tolist()]
+    if isinstance(value, (list, tuple)):
+        flattened: list[str] = []
+        for item in value:
+            flattened.extend(_flatten_to_strings(item))
+        return flattened
+    return [str(value)]
+
+
+def _to_path_string(path: Path, working_directory: str | None) -> str:
+    """Prefer working-directory-relative paths for portable metadata."""
+    if working_directory:
+        base = Path(working_directory)
+        try:
+            return str(path.relative_to(base))
+        except ValueError:
+            return str(path)
+    return str(path)
+
+
+def _to_plain_number(value: Any) -> float | int | None:
+    """Convert quantities and numpy scalars to native numbers."""
+    if value is None:
+        return None
+    if hasattr(value, "value"):
+        value = value.value
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, (float, np.floating)):
+        return int(value) if float(value).is_integer() else float(value)
+    return value
+
+
+def _get_host_metadata() -> dict[str, Any]:
+    """Collect stable host metadata for provenance reporting."""
+    git_sha = None
+    try:
+        git_executable = shutil.which("git")
+        if git_executable is None:
+            raise FileNotFoundError
+        git_sha = (
+            subprocess.run(  # noqa: S603
+                [git_executable, "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            or None
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        git_sha = None
+
+    return {
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+        "cpu": platform.processor() or platform.machine() or "unknown",
+        "git_sha": git_sha,
+    }
+
+
+def _build_config_payload(batch: SimulationBatch, simulator: Simulator) -> dict[str, Any]:
+    """Build the resolved config snapshot stored in metadata."""
+    base_payload = (
+        copy.deepcopy(batch.config_payload)
+        if batch.config_payload is not None
+        else {
+            "globals": batch.globals_config.model_dump(by_alias=True, exclude_none=True),
+        }
+    )
+
+    if isinstance(batch.simulator_config, OrchestrationConfig):
+        base_payload["orchestration"] = batch.simulator_config.model_dump(by_alias=True, exclude_none=True)
+    else:
+        simulators = base_payload.setdefault("simulators", {})
+        simulators[batch.simulator_name] = batch.simulator_config.model_dump(by_alias=True, exclude_none=True)
+
+    return cast(dict[str, Any], expand_template_variables(base_payload, simulator))
+
+
+def _resolve_seed(simulator: Simulator, batch: SimulationBatch) -> int | None:
+    """Resolve the top-level seed recorded for this batch."""
+    if isinstance(simulator, AdapterOrchestrator):
+        seed = simulator.noise_arguments.get("seed")
+        return int(seed) if seed is not None else None
+
+    seed = getattr(simulator, "seed", None)
+    if seed is not None:
+        return int(seed)
+
+    global_seed = batch.globals_config.simulator_arguments.get("seed")
+    if global_seed is not None:
+        return int(global_seed)
+
+    local_seed = getattr(batch.simulator_config, "arguments", {}).get("seed")
+    return int(local_seed) if local_seed is not None else None
+
+
+def _resolve_segment_seeds(simulator: Simulator, batch: SimulationBatch, seed: int | None) -> list[int]:
+    """Resolve per-segment seeds for this batch."""
+    if seed is None:
+        return []
+    if isinstance(simulator, AdapterOrchestrator):
+        return [seed + int(simulator.counter)]
+    return [seed + batch.batch_index]
+
+
+def _build_population_section(simulator: Simulator, batch: SimulationBatch) -> dict[str, Any] | None:
+    """Build the population section for the metadata schema."""
+    simulator_metadata = simulator.metadata
+    if isinstance(simulator, AdapterOrchestrator):
+        return {
+            "backend": batch.simulator_config.population.backend,
+            "source_type": simulator_metadata["orchestration"]["source_type"],
+            "n_events": len(simulator._population_events),
+            "parameter_names": list(simulator._population_events[0].keys()) if simulator._population_events else [],
+            "metadata": simulator_metadata["orchestration"]["population"]["metadata"],
+        }
+
+    signal_metadata = simulator_metadata.get("signal", {}).get("arguments", {})
+    source_type = signal_metadata.get("source_type")
+    return {
+        "backend": resolve_class_path(batch.simulator_config.class_, batch.simulator_name),
+        "source_type": source_type,
+        "n_events": None,
+        "parameter_names": [],
+        "metadata": {},
+    }
+
+
+def _build_signal_section(simulator: Simulator, batch: SimulationBatch) -> dict[str, Any] | None:
+    """Build the signal section for the metadata schema."""
+    simulator_metadata = simulator.metadata
+    if isinstance(simulator, AdapterOrchestrator):
+        return {
+            "backend": _backend_path_from_object(simulator.signal_adapter._backend),
+            "waveform_model": simulator.waveform_model,
+            "detector_network": list(simulator.detectors),
+            "metadata": simulator_metadata["orchestration"]["signal"],
+        }
+
+    signal_metadata = simulator_metadata.get("signal", {}).get("arguments", {})
+    detectors = signal_metadata.get("detectors", getattr(simulator, "detectors", []))
+    return {
+        "backend": resolve_class_path(batch.simulator_config.class_, batch.simulator_name),
+        "waveform_model": signal_metadata.get("waveform_model"),
+        "detector_network": [str(detector) for detector in detectors],
+        "metadata": simulator_metadata,
+    }
+
+
+def _build_noise_section(simulator: Simulator, batch: SimulationBatch) -> dict[str, Any] | None:
+    """Build the noise section for the metadata schema."""
+    simulator_metadata = simulator.metadata
+    if isinstance(simulator, AdapterOrchestrator):
+        psd_value = simulator.noise_arguments.get("psd_file")
+        if psd_value is None and simulator.noise_arguments.get("psd_files"):
+            psd_value = "multiple"
+        return {
+            "backend": _backend_path_from_object(simulator.noise_adapter.backend),
+            "psd": None if psd_value is None else str(psd_value),
+            "metadata": simulator_metadata["orchestration"]["noise"],
+        }
+
+    noise_metadata = simulator_metadata.get("colored_noise", {}).get("arguments", {})
+    return {
+        "backend": resolve_class_path(batch.simulator_config.class_, batch.simulator_name),
+        "psd": noise_metadata.get("psd_file"),
+        "metadata": simulator_metadata,
+    }
+
+
+def _build_output_records(
+    simulator: Simulator,
+    batch: SimulationBatch,
+    batch_data: object,
+    output_files: list[Path],
+) -> list[dict[str, Any]]:
+    """Build output descriptors for the versioned metadata schema."""
+    working_directory = batch.globals_config.working_directory
+    output_records: list[dict[str, Any]] = []
+
+    if isinstance(batch_data, AdapterOrchestrationResult):
+        signal_files = _resolve_output_paths(
+            file_name_template=batch.simulator_config.signal.output.file_name,
+            simulator=simulator,
+            output_directory=cast(AdapterOrchestrator, simulator).signal_output_directory(),
+        )
+        signal_channels = _flatten_to_strings(
+            expand_template_variables(batch.simulator_config.signal.output.arguments.get("channel"), simulator)
+        )
+        for index, output_file in enumerate(signal_files):
+            output_records.append(
+                {
+                    "kind": "signal",
+                    "path": _to_path_string(output_file, working_directory),
+                    "channels": signal_channels[index : index + 1] if signal_channels else [],
+                    "t0": _to_plain_number(batch_data.signal_segment.start_time),
+                    "duration": _to_plain_number(batch_data.signal_segment.duration),
+                    "sha256": compute_file_hash(output_file),
+                }
+            )
+
+        channel_prefix = str(
+            expand_template_variables(batch.simulator_config.noise.output.arguments or {}, simulator).get(
+                "channel_prefix",
+                "MOCK",
+            )
+        )
+        for detector, output_path in batch_data.noise_result.output_paths.items():
+            output_records.append(
+                {
+                    "kind": "noise",
+                    "path": _to_path_string(output_path, working_directory),
+                    "channels": [f"{detector}:{channel_prefix}"],
+                    "t0": _to_plain_number(simulator.start_time),
+                    "duration": _to_plain_number(simulator.duration),
+                    "sha256": compute_file_hash(output_path),
+                }
+            )
+        return output_records
+
+    if isinstance(batch_data, SimulationResult):
+        channel_prefix = str(getattr(simulator, "_active_channel_prefix", "MOCK"))
+        for detector, output_path in batch_data.output_paths.items():
+            output_records.append(
+                {
+                    "kind": batch.simulator_name,
+                    "path": _to_path_string(output_path, working_directory),
+                    "channels": [f"{detector}:{channel_prefix}"],
+                    "t0": _to_plain_number(getattr(simulator, "start_time", None)),
+                    "duration": _to_plain_number(getattr(simulator, "duration", None)),
+                    "sha256": compute_file_hash(output_path),
+                }
+            )
+        return output_records
+
+    expanded_arguments = expand_template_variables(batch.simulator_config.output.arguments or {}, simulator)
+    channels = _flatten_to_strings(expanded_arguments.get("channel"))
+    for index, output_file in enumerate(output_files):
+        output_records.append(
+            {
+                "kind": batch.simulator_name,
+                "path": _to_path_string(output_file, working_directory),
+                "channels": channels[index : index + 1] if channels else [],
+                "t0": _to_plain_number(getattr(batch_data, "start_time", getattr(simulator, "start_time", None))),
+                "duration": _to_plain_number(getattr(batch_data, "duration", getattr(simulator, "duration", None))),
+                "sha256": compute_file_hash(output_file),
+            }
+        )
+    return output_records
 
 
 def retry_with_backoff(
@@ -265,6 +535,7 @@ def save_batch_metadata(
     simulator: Simulator,
     batch: SimulationBatch,
     metadata_directory: Path,
+    batch_data: object,
     output_files: list[Path],
     pre_batch_state: dict[str, Any] | None = None,
 ) -> None:
@@ -280,6 +551,7 @@ def save_batch_metadata(
         simulator: Simulator instance
         batch: SimulationBatch
         metadata_directory: Directory to save metadata
+        batch_data: Generated batch artifact used to derive output provenance
         output_files: List of Path objects for all output files generated by this batch
         pre_batch_state: State of simulator before batch generation (for reproducibility).
                         If None, uses current simulator state.
@@ -289,6 +561,7 @@ def save_batch_metadata(
     # Use provided pre_batch_state or current simulator state
     state_to_save = pre_batch_state if pre_batch_state is not None else simulator.state
 
+    seed = _resolve_seed(simulator, batch)
     metadata = create_batch_metadata(
         simulator_name=batch.simulator_name,
         batch_index=batch.batch_index,
@@ -299,6 +572,15 @@ def save_batch_metadata(
         source=batch.source,
         author=batch.author,
         email=batch.email,
+        config_payload=_build_config_payload(batch, simulator),
+        config_sha256=batch.config_sha256,
+        seed=seed,
+        segment_seeds=_resolve_segment_seeds(simulator, batch, seed),
+        population=_build_population_section(simulator, batch),
+        signal=_build_signal_section(simulator, batch),
+        noise=_build_noise_section(simulator, batch),
+        outputs=_build_output_records(simulator, batch, batch_data, output_files),
+        host=_get_host_metadata(),
     )
 
     # Add output files to metadata for easy discovery
@@ -318,11 +600,11 @@ def save_batch_metadata(
 
     metadata["file_hashes"] = file_hashes
 
-    metadata_file_name = f"{batch.simulator_name}-{batch.batch_index}.metadata.yaml"
+    metadata_file_name = f"{batch.simulator_name}-{batch.batch_index}.metadata.json"
     metadata_file = metadata_directory / metadata_file_name
     logger.debug("Saving batch metadata to %s with %d output files", metadata_file, len(output_files))
 
-    save_metadata_with_external_state(metadata=metadata, metadata_file=metadata_file)
+    save_metadata_record(metadata=metadata, metadata_file=metadata_file)
 
     # Update the metadata index for quick lookup
     update_metadata_index(metadata_directory, output_files, metadata_file_name)
@@ -649,6 +931,7 @@ def execute_plan(  # noqa: PLR0915
                             _simulator,
                             _batch,
                             metadata_directory,
+                            batch_data,
                             output_files,
                             pre_batch_state=_pre_batch_state,
                         )
