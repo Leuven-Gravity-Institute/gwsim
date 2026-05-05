@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -113,9 +114,10 @@ class TestCBCPopulationReaderMixin:
 
         with patch("gwmock.mixin.population_reader.FilePopulationLoader") as mock_loader:
             mock_loader.return_value.parameter_names = ["coa_time", "detector_frame_mass_1", "detector_frame_mass_2"]
+            tmp_file_path = Path(tempfile.gettempdir()) / "downloaded_cbc.h5"
             mock_loader.return_value.metadata = {
                 "original_path": url,
-                "resolved_path": "/tmp/downloaded_cbc.h5",
+                "resolved_path": tmp_file_path,
                 "source_type": "bbh",
                 "fetch": {"scheme": "https"},
             }
@@ -128,7 +130,7 @@ class TestCBCPopulationReaderMixin:
             simulator = MockCBCSimulator(url, start_time=0, duration=100)
 
             assert simulator.population_data is not None
-            assert simulator.population_file == Path("/tmp/downloaded_cbc.h5")
+            assert simulator.population_file == tmp_file_path
             mock_loader.assert_called_once_with(
                 source_type="bbh",
                 path=url,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import tempfile
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -319,7 +320,9 @@ class TestParseAndCreateMetadata:
         simulator_config: SimulatorConfig,
     ):
         """Simulator metadata should be embedded verbatim in the batch sidecar."""
-        simulator_metadata = {"orchestration": {"population": {"metadata": {"resolved_path": "/tmp/catalog.h5"}}}}
+        simulator_metadata = {
+            "orchestration": {"population": {"metadata": {"resolved_path": Path(tempfile.gettempdir()) / "catalog.h5"}}}
+        }
 
         metadata = create_batch_metadata(
             simulator_name="orchestration",

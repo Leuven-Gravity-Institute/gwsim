@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from typing import ClassVar
 
@@ -30,7 +31,10 @@ class FakePopulationBackend:
     """Minimal public-style population backend for orchestration tests."""
 
     parameter_names: ClassVar[tuple[str, ...]] = ("detector_frame_mass_1", "detector_frame_mass_2", "coa_time")
-    metadata: ClassVar[dict[str, object]] = {"fetch": {"scheme": "https"}, "resolved_path": "/tmp/catalog.h5"}
+    metadata: ClassVar[dict[str, object]] = {
+        "fetch": {"scheme": "https"},
+        "resolved_path": str(Path(tempfile.gettempdir()) / "catalog.h5"),
+    }
 
     def __init__(self, path: str, source_type: str = "bbh") -> None:
         self.path = path
