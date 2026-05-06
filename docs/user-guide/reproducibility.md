@@ -20,7 +20,7 @@ Consumers must reject unknown major versions.
     "config": {},
     "config_sha256": "...",
     "seed": 42,
-    "segment_seeds": [42],
+    "segment_seeds": [123456789, 987654321],
     "population": {
         "backend": "module:Class",
         "source_type": "bbh",
@@ -58,9 +58,10 @@ Consumers must reject unknown major versions.
 }
 ```
 
-`config` stores the resolved configuration snapshot for that run. The subpackage
-`metadata` objects are preserved as JSON objects without gwmock rewriting their
-internal structure.
+`config` stores the resolved configuration snapshot for that run.
+`segment_seeds` stores the deterministic per-segment seeds derived from the
+top-level `seed`. The subpackage `metadata` objects are preserved as JSON
+objects without gwmock rewriting their internal structure.
 
 ## Reproducing a run
 

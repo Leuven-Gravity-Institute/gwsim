@@ -23,6 +23,7 @@ from gwmock.cli.utils.config import (
     SimulatorOutputConfig,
 )
 from gwmock.cli.utils.simulation_plan import create_plan_from_config
+from gwmock.simulator.seeds import derive_seed
 
 EXPECTED_BATCHES = 2
 
@@ -271,12 +272,16 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     assert metadata["population"]["source_type"] == "bbh"
     assert metadata["signal"]["detector_network"] == ["H1"]
     assert {output["kind"] for output in metadata["outputs"]} == {"signal", "noise"}
+    assert metadata["segment_seeds"] == [derive_seed(7, "signal", 0), derive_seed(7, "noise", 0)]
     assert (
         metadata["simulator_config"]["population"]["backend"]
         == "tests.cli.test_cli_orchestration:FakePopulationBackend"
     )
     assert metadata["simulator_config"]["signal"]["detectors"] == ["H1"]
     assert metadata["simulator_metadata"]["orchestration"]["population"]["metadata"] == FakePopulationBackend.metadata
+    assert metadata["simulator_metadata"]["orchestration"]["population"]["seed"] == derive_seed(7, "population")
+    assert metadata["simulator_metadata"]["orchestration"]["signal"]["segment_seed"] == derive_seed(7, "signal", 0)
+    assert metadata["simulator_metadata"]["orchestration"]["noise"]["segment_seed"] == derive_seed(7, "noise", 0)
 
 
 def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Path):
