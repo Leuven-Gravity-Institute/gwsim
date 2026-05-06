@@ -15,6 +15,25 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 logger = logging.getLogger("gwmock")
 
+_REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS = frozenset(
+    {
+        "SignalSimulator",
+        "gwmock.signal.SignalSimulator",
+        "gwmock.signal.base.SignalSimulator",
+        "gwmock.signal:SignalSimulator",
+        "gwmock.signal.base:SignalSimulator",
+    }
+)
+
+
+def _raise_removed_signal_simulator_error(class_spec: str) -> None:
+    raise ValueError(
+        f"Legacy 'simulators.signal.class: {class_spec}' is no longer supported because "
+        "'gwmock.signal.SignalSimulator' has been removed. Migrate this config to the adapter-backed "
+        "'orchestration' schema using 'orchestration.population', 'orchestration.signal', and "
+        "'orchestration.noise'."
+    )
+
 
 class SimulatorOutputConfig(BaseModel):
     """Configuration for simulator output handling."""
@@ -243,6 +262,10 @@ class Config(BaseModel):
         has_orchestration = self.orchestration is not None
         if has_legacy == has_orchestration:
             raise ValueError("Configuration must define exactly one of 'simulators' or 'orchestration'.")
+        if has_legacy and self.simulators is not None:
+            signal_config = self.simulators.get("signal")
+            if signal_config is not None and signal_config.class_.strip() in _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS:
+                _raise_removed_signal_simulator_error(signal_config.class_.strip())
         return self
 
 
@@ -367,6 +390,8 @@ def validate_config(config: dict) -> None:  # noqa: PLR0912
             class_spec = sim_config["class"]
             if not isinstance(class_spec, str) or not class_spec.strip():
                 raise ValueError(f"Simulator '{name}' 'class' must be a non-empty string")
+            if name == "signal" and class_spec.strip() in _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS:
+                _raise_removed_signal_simulator_error(class_spec.strip())
 
             if "arguments" in sim_config and not isinstance(sim_config["arguments"], dict):
                 raise ValueError(f"Simulator '{name}' 'arguments' must be a dictionary")
@@ -407,6 +432,8 @@ def resolve_class_path(class_spec: str, section_name: str | None) -> str:
         resolve_class_path("WhiteNoise", "noise") -> "gwmock.noise.WhiteNoise"
         resolve_class_path("numpy.random.Generator", "noise") -> "numpy.random.Generator"
     """
+    if section_name == "signal" and class_spec.strip() in _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS:
+        _raise_removed_signal_simulator_error(class_spec.strip())
     if "." not in class_spec and section_name:
         # Just a class name - use section_name as submodule, class imported in __init__.py
         return f"gwmock.{section_name}.{class_spec}"

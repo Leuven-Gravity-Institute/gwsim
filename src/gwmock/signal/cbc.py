@@ -4,15 +4,21 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
+from gwmock.data.time_series.time_series_list import TimeSeriesList
 from gwmock.mixin.cbc_population_reader import CBCPopulationReaderMixin
-from gwmock.signal.base import SignalSimulator
+from gwmock.mixin.population_reader import PopulationReaderMixin
+from gwmock.mixin.time_series import TimeSeriesMixin
+from gwmock.signal.adapter import SignalAdapter
+from gwmock.simulator.base import Simulator
+
+DEFAULT_SIGNAL_SIMULATOR_DETECTORS: tuple[str, ...] = ("H1", "L1", "V1")
 
 
-class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: disable=too-many-ancestors
+class CBCSignalSimulator(CBCPopulationReaderMixin, TimeSeriesMixin, Simulator):  # pylint: disable=too-many-ancestors
     """CBC Signal Simulator class."""
 
     def __init__(  # noqa: PLR0913
@@ -56,6 +62,24 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
             earth_rotation: Whether to use time-dependent detector projection in gwmock-signal.
             **kwargs: Additional arguments absorbed by subclasses and mixins.
         """
+        if waveform_model is None:
+            waveform_model = "IMRPhenomXPHM"
+        if not (isinstance(waveform_model, str) or callable(waveform_model)):
+            raise TypeError("waveform_model must be a str, a callable waveform generator, or None.")
+
+        self.waveform_model = waveform_model
+        self.waveform_arguments = waveform_arguments or {}
+        self.minimum_frequency = minimum_frequency
+        self.source_type = source_type
+        self.earth_rotation = earth_rotation
+        detectors = list(DEFAULT_SIGNAL_SIMULATOR_DETECTORS) if not detectors else list(detectors)
+        self.signal_adapter = SignalAdapter.from_source_type(
+            source_type=source_type,
+            waveform_model=waveform_model,
+            detectors=detectors,
+        )
+        self.detectors = list(self.signal_adapter.detector_names)
+
         super().__init__(
             population_file=population_file,
             population_parameter_name_mapper=population_parameter_name_mapper,
@@ -74,3 +98,58 @@ class CBCSignalSimulator(CBCPopulationReaderMixin, SignalSimulator):  # pylint: 
             earth_rotation=earth_rotation,
             **kwargs,
         )
+
+    def _simulate(self, *args, **kwargs) -> TimeSeriesList:
+        """Simulate signals for the current segment."""
+        output = []
+
+        while True:
+            parameters = self.get_next_injection_parameters()
+            if parameters is None:
+                break
+
+            strain = self.signal_adapter.simulate(
+                parameters,
+                sampling_frequency=float(self.sampling_frequency.value),
+                minimum_frequency=self.minimum_frequency,
+                waveform_arguments=self.waveform_arguments,
+                earth_rotation=self.earth_rotation,
+            )
+            strain.metadata.update({"injection_parameters": parameters})
+            output.append(strain)
+
+            if strain.start_time >= self.end_time:
+                break
+        return TimeSeriesList(output)
+
+    @property
+    def metadata(self) -> dict:
+        """Get the metadata of the simulator."""
+        wm_meta: str
+        if isinstance(self.waveform_model, str):
+            wm_meta = self.waveform_model
+        else:
+            qual = getattr(self.waveform_model, "__qualname__", repr(self.waveform_model))
+            mod = getattr(self.waveform_model, "__module__", "")
+            wm_meta = f"{mod}.{qual}" if mod else qual
+
+        return {
+            **Simulator.metadata.fget(self),
+            **TimeSeriesMixin.metadata.fget(self),
+            **PopulationReaderMixin.metadata.fget(self),
+            "signal": {
+                "arguments": {
+                    "waveform_model": wm_meta,
+                    "waveform_arguments": self.waveform_arguments,
+                    "minimum_frequency": self.minimum_frequency,
+                    "source_type": self.source_type,
+                    "earth_rotation": self.earth_rotation,
+                    "detectors": self.detectors,
+                }
+            },
+        }
+
+    def update_state(self) -> None:
+        """Advance to the next segment."""
+        self.counter = cast(int, self.counter) + 1
+        self.start_time += self.duration
