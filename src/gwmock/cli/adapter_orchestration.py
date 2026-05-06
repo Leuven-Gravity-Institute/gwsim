@@ -18,7 +18,7 @@ from gwmock.data.time_series.time_series import TimeSeries
 from gwmock.data.time_series.time_series_list import TimeSeriesList
 from gwmock.mixin.time_series import TimeSeriesMixin
 from gwmock.noise import NoiseAdapter
-from gwmock.population import PopulationAdapter
+from gwmock.population import PopulationAdapter, instantiate_population_backend
 from gwmock.signal import SignalAdapter
 from gwmock.simulator.base import Simulator
 from gwmock.simulator.seeds import derive_seed
@@ -177,8 +177,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         if population_config.source_type is not None:
             backend_arguments.setdefault("source_type", population_config.source_type)
 
-        return instantiate_backend(
-            "population",
+        return instantiate_population_backend(
             population_config.backend,
             init_kwargs=backend_arguments,
         )
