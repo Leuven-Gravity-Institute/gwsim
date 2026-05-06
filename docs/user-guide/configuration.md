@@ -157,7 +157,7 @@ List of simulators to run, each with configuration:
 ```yaml
 simulators:
     noise:
-        class:
+        class: gwmock_noise.ColoredNoiseSimulator
         arguments:
         output:
             file_name:
@@ -171,11 +171,11 @@ simulators:
 - `output.file_name`: Template for output file naming (supports Jinja2 syntax)
 - `output.arguments`: Channel naming and other output metadata
 
-Available `noise` simulators includes:
-
-- [`BaseNoise`](/reference/gwmock/noise/base/#gwmock.noise.base.NoiseSimulator)
-- [`ColoredNoiseSimulator`](/reference/gwmock/noise/colored_noise/?h=colorednoise#gwmock.noise.colored_noise.ColoredNoiseSimulator)
-- [`CorrelatedNoiseSimulator`](/reference/gwmock/noise/correlated_noise/?h=correlatednoise#gwmock.noise.correlated_noise.CorrelatedNoiseSimulator)
+In-tree noise simulator classes have been removed from `gwmock`. For legacy
+`simulators.noise.class` configs, point `class` at a public `gwmock_noise.*`
+implementation such as `gwmock_noise.ColoredNoiseSimulator` or
+`gwmock_noise.CorrelatedNoiseSimulator`. For new configurations, prefer the
+adapter-backed `orchestration.noise` flow.
 
 Legacy `signal` simulator classes have been removed. Configure
 gravitational-wave signals under `orchestration.signal` instead.
@@ -192,6 +192,7 @@ and channel names:
 ```yaml
 simulators:
     noise:
+        class: gwmock_noise.ColoredNoiseSimulator
         arguments:
             detectors:
                 - E1_Triangle_EMR

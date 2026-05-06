@@ -90,8 +90,9 @@ Key configuration sections:
 | `orchestration.signal`     | Public `gwmock-signal` routing inputs, detector network, and signal output settings                   |
 | `orchestration.noise`      | Public `gwmock-noise` adapter arguments and noise output settings                                     |
 
-The legacy `simulators.*.class` configuration remains available for
-compatibility and metadata reproduction, but it is deprecated for fresh runs;
+The legacy `simulators.*.class` configuration remains available for selected
+compatibility cases, but in-tree signal and noise simulator classes have been
+removed; noise configs must now point at public `gwmock_noise.*` classes, and
 new configs should prefer the adapter-backed `orchestration` flow. See
 `examples/default_config/config.yaml` and
 `examples/signal/bbh/et_triangle_sardinia/config.yaml` for concrete examples.

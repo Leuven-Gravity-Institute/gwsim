@@ -347,7 +347,7 @@ globals:
 
 simulators:
     noise:
-        class: CorrelatedNoiseSimulator
+        class: gwmock_noise.CorrelatedNoiseSimulator
         arguments:
             psd_file: ET_10_full_cryo_psd.txt
             csd_file: path_to_csd_file.txt
