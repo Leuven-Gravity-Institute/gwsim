@@ -19,7 +19,7 @@ class FakeBackend:
     def __init__(self, *, waveform_model: str) -> None:
         self.waveform_model = waveform_model
         self.required_params = frozenset({"coa_time"})
-        self.simulate_calls: list[tuple[dict, tuple[str, ...], float, float]] = []
+        self.simulate_calls: list[dict[str, object]] = []
 
     def register_waveform_model(self, name: str, factory) -> None:
         self.waveform_model = name
@@ -28,7 +28,7 @@ class FakeBackend:
     def simulate(
         self,
         params: dict,
-        detector_names: tuple[str, ...],
+        detector_names,
         background=None,
         *,
         sampling_frequency: float,
@@ -37,15 +37,25 @@ class FakeBackend:
         interpolate_if_offset: bool = True,
     ) -> DetectorStrainStack:
         """Record the call and return simple per-detector strains."""
-        _ = background, earth_rotation, interpolate_if_offset
-        self.simulate_calls.append((params, detector_names, sampling_frequency, minimum_frequency))
-        return DetectorStrainStack.from_mapping(
-            detector_names,
+        names = tuple(detector if isinstance(detector, str) else detector.name for detector in detector_names)
+        self.simulate_calls.append(
             {
-                detector: GWpyTimeSeries(
+                "params": params,
+                "detector_names": tuple(detector_names),
+                "background": background,
+                "sampling_frequency": sampling_frequency,
+                "minimum_frequency": minimum_frequency,
+                "earth_rotation": earth_rotation,
+                "interpolate_if_offset": interpolate_if_offset,
+            }
+        )
+        return DetectorStrainStack.from_mapping(
+            names,
+            {
+                name: GWpyTimeSeries(
                     [10.0 + index, 20.0 + index, 30.0 + index, 40.0 + index], t0=8.0, sample_rate=sampling_frequency
                 )
-                for index, detector in enumerate(detector_names)
+                for index, name in enumerate(names)
             },
         )
 
@@ -61,10 +71,10 @@ class TestSignalAdapter:
     """Test the gwmock-side signal adapter."""
 
     def test_from_source_type_merges_fixed_waveform_arguments(self):
-        """The adapter should resolve the backend via source_type and merge fixed waveform args into params."""
+        """The adapter should merge waveform args and call the public backend ``simulate``."""
         reference_frequency = 50.0
         detector_frame_mass_1 = 30.0
-        projected = {
+        expected = {
             "H1": [10.0, 20.0, 30.0, 40.0],
             "L1": [11.0, 21.0, 31.0, 41.0],
         }
@@ -96,24 +106,32 @@ class TestSignalAdapter:
 
         backend = adapter._backend
         assert adapter.detector_names == ("H1", "L1")
-        assert backend.simulate_calls[0][0]["reference_frequency"] == reference_frequency
-        assert backend.simulate_calls[0][0]["detector_frame_mass_1"] == detector_frame_mass_1
+        assert backend.simulate_calls[0]["params"]["reference_frequency"] == reference_frequency
+        assert backend.simulate_calls[0]["params"]["detector_frame_mass_1"] == detector_frame_mass_1
+        assert backend.simulate_calls[0]["detector_names"] == ("H1", "L1")
+        assert backend.simulate_calls[0]["background"] is None
+        assert backend.simulate_calls[0]["sampling_frequency"] == 4.0
+        assert backend.simulate_calls[0]["minimum_frequency"] == 5.0
+        assert backend.simulate_calls[0]["earth_rotation"] is True
         assert strain.shape == (2, 4)
-        np.testing.assert_allclose(strain[0].value, projected["H1"])
+        np.testing.assert_allclose(strain[0].value, expected["H1"])
 
-    def test_from_source_type_converts_detector_config_files(self, tmp_path):
-        """Detector config paths should be converted into public gwmock_signal detector specs."""
+    def test_from_source_type_loads_detector_config_files_via_network_from_file(self, tmp_path):
+        """Detector config paths should be loaded through ``Network.from_file``."""
         config_path = tmp_path / "custom.interferometer"
         config_path.write_text("# dummy\n")
         sentinel_detector = SimpleNamespace(name="custom")
 
         with (
             patch("gwmock.signal.adapter.resolve_simulator_backend", return_value=FakeBackend),
-            patch("gwmock.signal.adapter.interferometer_config_to_custom_detector", return_value=sentinel_detector),
+            patch(
+                "gwmock.signal.adapter.Network.from_file",
+                return_value=SimpleNamespace(detector_names=(sentinel_detector,)),
+            ) as mock_from_file,
             patch(
                 "gwmock.signal.adapter.Network.from_detectors",
                 return_value=SimpleNamespace(detector_names=(sentinel_detector,)),
-            ) as mock_network,
+            ) as mock_from_detectors,
         ):
             adapter = SignalAdapter.from_source_type(
                 source_type="bbh",
@@ -122,17 +140,43 @@ class TestSignalAdapter:
             )
 
         assert adapter.detector_names == ("custom",)
-        mock_network.assert_called_once_with((sentinel_detector,))
+        mock_from_file.assert_called_once_with(config_path)
+        mock_from_detectors.assert_called_once_with((sentinel_detector,))
 
-    def test_from_source_type_callable_requires_waveform_factory(self):
-        """Backends without ``_waveform_factory`` cannot host a callable ``waveform_model``."""
+    def test_from_source_type_resolves_named_networks_via_public_network_api(self):
+        """Named detector presets should be resolved through ``Network.from_name``."""
+        sentinel_detector = SimpleNamespace(name="ET1_SARD")
+
+        with (
+            patch("gwmock.signal.adapter.resolve_simulator_backend", return_value=FakeBackend),
+            patch(
+                "gwmock.signal.adapter.Network.from_name",
+                return_value=SimpleNamespace(detector_names=(sentinel_detector,)),
+            ) as mock_from_name,
+            patch(
+                "gwmock.signal.adapter.Network.from_detectors",
+                return_value=SimpleNamespace(detector_names=(sentinel_detector,)),
+            ) as mock_from_detectors,
+        ):
+            adapter = SignalAdapter.from_source_type(
+                source_type="bbh",
+                waveform_model="IMRPhenomD",
+                detectors=["ET-Triangle-Sardinia"],
+            )
+
+        assert adapter.detector_names == ("ET1_SARD",)
+        mock_from_name.assert_called_once_with("ET-Triangle-Sardinia")
+        mock_from_detectors.assert_called_once_with((sentinel_detector,))
+
+    def test_from_source_type_callable_requires_public_waveform_registration(self):
+        """Backends without ``register_waveform_model`` cannot host a callable ``waveform_model``."""
 
         def _dummy(**_kwargs):
             return {"plus": None, "cross": None}
 
         with (
             patch("gwmock.signal.adapter.resolve_simulator_backend", return_value=NoRegistrationBackend),
-            pytest.raises(TypeError, match="Callable waveform_model"),
+            pytest.raises(AttributeError, match="register_waveform_model"),
         ):
             SignalAdapter.from_source_type(
                 source_type="bbh",

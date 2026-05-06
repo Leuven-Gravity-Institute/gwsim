@@ -6,14 +6,10 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from gwmock_signal import DetectorStrainStack, Network, resolve_simulator_backend
-from gwmock_signal.projection import project_polarizations_to_network
+from gwmock_signal import Network, resolve_simulator_backend
 
 from gwmock.data.time_series.time_series import TimeSeries
-from gwmock.detector.utils import (
-    DEFAULT_DETECTOR_BASE_PATH,
-    interferometer_config_to_custom_detector,
-)
+from gwmock.detector.utils import DEFAULT_DETECTOR_BASE_PATH
 
 _DEFAULT_WAVEFORM_MODEL = "IMRPhenomXPHM"
 
@@ -26,19 +22,21 @@ def _callable_waveform_registry_key(func: Callable[..., Any]) -> str:
 
 
 def _register_callable_waveform(backend: Any, registry_key: str, factory: Callable[..., Any]) -> None:
-    """Register *factory* under *registry_key* on the backend's internal ``WaveformFactory``."""
-    if hasattr(backend, "register_waveform_model"):
-        backend.register_waveform_model(registry_key, factory)
-        return
-    try:
-        waveform_factory = backend._waveform_factory
-    except AttributeError as exc:
-        msg = (
-            "Callable waveform_model is only supported when the resolved gwmock_signal "
-            "backend exposes _waveform_factory (e.g. CBCSimulator)."
-        )
-        raise TypeError(msg) from exc
-    waveform_factory.register_model(registry_key, factory)
+    """Register *factory* under *registry_key* through the public backend API."""
+    backend.register_waveform_model(registry_key, factory)
+
+
+def _resolve_detector_path(detector_spec: str) -> Path | None:
+    """Resolve a detector spec to an on-disk network file when one exists."""
+    detector_path = Path(detector_spec)
+    if detector_path.is_file():
+        return detector_path
+
+    bundled_path = DEFAULT_DETECTOR_BASE_PATH / detector_path
+    if bundled_path.is_file():
+        return bundled_path
+
+    return None
 
 
 class SignalAdapter:
@@ -57,7 +55,7 @@ class SignalAdapter:
 
         self._source_type = source_type
         self._backend = backend
-        self._network = Network.from_detectors(self._normalize_detector_specs(detector_specs))
+        self._network = self._resolve_detector_network(detector_specs)
         self._detector_names = tuple(
             detector if isinstance(detector, str) else detector.name for detector in self._network.detector_names
         )
@@ -116,15 +114,20 @@ class SignalAdapter:
         return backend_class(waveform_model=waveform_model)
 
     @staticmethod
-    def _normalize_detector_specs(detector_specs: Sequence[str]) -> tuple[str | Any, ...]:
-        normalized_specs: list[str | Any] = []
+    def _resolve_detector_network(detector_specs: Sequence[str]) -> Network:
+        resolved_detectors: list[str | Any] = []
         for detector_spec in detector_specs:
-            detector_path = Path(detector_spec)
-            if detector_path.is_file() or (DEFAULT_DETECTOR_BASE_PATH / detector_path).is_file():
-                normalized_specs.append(interferometer_config_to_custom_detector(detector_spec))
-            else:
-                normalized_specs.append(str(detector_spec))
-        return tuple(normalized_specs)
+            detector_path = _resolve_detector_path(str(detector_spec))
+            if detector_path is not None:
+                resolved_detectors.extend(Network.from_file(detector_path).detector_names)
+                continue
+
+            try:
+                resolved_detectors.extend(Network.from_name(str(detector_spec)).detector_names)
+            except ValueError:
+                resolved_detectors.append(str(detector_spec))
+
+        return Network.from_detectors(tuple(resolved_detectors))
 
     @property
     def source_type(self) -> str:
@@ -145,36 +148,16 @@ class SignalAdapter:
         waveform_arguments: Mapping[str, Any] | None = None,
         earth_rotation: bool = True,
     ) -> TimeSeries:
-        """Generate and project one signal chunk via public gwmock-signal APIs."""
+        """Generate one signal chunk via the public gwmock-signal ``simulate`` API."""
         backend_parameters = {**(waveform_arguments or {}), **dict(parameters)}
-        if hasattr(self._backend, "simulate"):
-            strain_stack = self._backend.simulate(
-                backend_parameters,
-                self._network.detector_names,
-                sampling_frequency=sampling_frequency,
-                minimum_frequency=minimum_frequency,
-                earth_rotation=earth_rotation,
-            )
-        elif hasattr(self._backend, "generate_polarizations"):
-            polarizations = self._backend.generate_polarizations(  # type: ignore[attr-defined]
-                backend_parameters,
-                sampling_frequency=sampling_frequency,
-                minimum_frequency=minimum_frequency,
-            )
-
-            projected = project_polarizations_to_network(
-                {"plus": polarizations[0], "cross": polarizations[1]},
-                self._network.detector_names,
-                right_ascension=backend_parameters["right_ascension"],
-                declination=backend_parameters["declination"],
-                polarization_angle=backend_parameters["polarization_angle"],
-                earth_rotation=earth_rotation,
-            )
-            strain_stack = DetectorStrainStack.from_mapping(self.detector_names, projected)
-        else:
-            raise TypeError(
-                "Resolved gwmock_signal backend does not expose simulate(...) or generate_polarizations(...)."
-            )
+        strain_stack = self._backend.simulate(
+            backend_parameters,
+            self._network.detector_names,
+            background=None,
+            sampling_frequency=sampling_frequency,
+            minimum_frequency=minimum_frequency,
+            earth_rotation=earth_rotation,
+        )
 
         return TimeSeries(
             data=strain_stack.data,
