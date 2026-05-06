@@ -304,6 +304,9 @@ class Config(BaseModel):
             signal_config = self.simulators.get("signal")
             if signal_config is not None and signal_config.class_.strip() in _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS:
                 _raise_removed_signal_simulator_error(signal_config.class_.strip())
+            noise_config = self.simulators.get("noise")
+            if noise_config is not None and noise_config.class_.strip() in _REMOVED_NOISE_SIMULATOR_CLASS_SPECS:
+                _raise_removed_noise_simulator_error(noise_config.class_.strip())
         return self
 
 
@@ -430,6 +433,8 @@ def validate_config(config: dict) -> None:  # noqa: PLR0912
                 raise ValueError(f"Simulator '{name}' 'class' must be a non-empty string")
             if name == "signal" and class_spec.strip() in _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS:
                 _raise_removed_signal_simulator_error(class_spec.strip())
+            if name == "noise" and class_spec.strip() in _REMOVED_NOISE_SIMULATOR_CLASS_SPECS:
+                _raise_removed_noise_simulator_error(class_spec.strip())
 
             if "arguments" in sim_config and not isinstance(sim_config["arguments"], dict):
                 raise ValueError(f"Simulator '{name}' 'arguments' must be a dictionary")
