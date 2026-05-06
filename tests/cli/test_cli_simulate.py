@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import tempfile
 import time
+from importlib import metadata as stdlib_metadata
 from pathlib import Path
+from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,6 +17,7 @@ from gwmock.cli.simulate import (
     _simulate_impl,
 )
 from gwmock.cli.simulate_utils import (
+    _get_host_metadata,
     execute_plan,
     instantiate_simulator,
     process_batch,
@@ -309,7 +312,7 @@ class TestUpdateMetadataIndex:
                 Path(tmpdir) / "L1-1234567890-1024.gwf",
             ]
 
-            update_metadata_index(metadata_dir, output_files, "signal-0.metadata.yaml")
+            update_metadata_index(metadata_dir, output_files, "signal-0.metadata.json")
 
             index_file = metadata_dir / "index.yaml"
             assert index_file.exists()
@@ -319,8 +322,8 @@ class TestUpdateMetadataIndex:
 
             assert "H1-1234567890-1024.gwf" in index
             assert "L1-1234567890-1024.gwf" in index
-            assert index["H1-1234567890-1024.gwf"] == "signal-0.metadata.yaml"
-            assert index["L1-1234567890-1024.gwf"] == "signal-0.metadata.yaml"
+            assert index["H1-1234567890-1024.gwf"] == "signal-0.metadata.json"
+            assert index["L1-1234567890-1024.gwf"] == "signal-0.metadata.json"
 
     def test_update_existing_index(self):
         """Test updating an existing metadata index."""
@@ -329,11 +332,11 @@ class TestUpdateMetadataIndex:
 
             # Create initial index
             output_files_1 = [Path(tmpdir) / "H1-batch0.gwf"]
-            update_metadata_index(metadata_dir, output_files_1, "signal-0.metadata.yaml")
+            update_metadata_index(metadata_dir, output_files_1, "signal-0.metadata.json")
 
             # Update with more files
             output_files_2 = [Path(tmpdir) / "L1-batch1.gwf"]
-            update_metadata_index(metadata_dir, output_files_2, "signal-1.metadata.yaml")
+            update_metadata_index(metadata_dir, output_files_2, "signal-1.metadata.json")
 
             # Verify both entries exist
             index_file = metadata_dir / "index.yaml"
@@ -341,8 +344,8 @@ class TestUpdateMetadataIndex:
                 index = yaml.safe_load(f)
 
             assert len(index) == NUM_FILES_2
-            assert index["H1-batch0.gwf"] == "signal-0.metadata.yaml"
-            assert index["L1-batch1.gwf"] == "signal-1.metadata.yaml"
+            assert index["H1-batch0.gwf"] == "signal-0.metadata.json"
+            assert index["L1-batch1.gwf"] == "signal-1.metadata.json"
 
     def test_index_enables_quick_lookup(self):
         """Test that the index enables quick metadata lookup."""
@@ -355,14 +358,14 @@ class TestUpdateMetadataIndex:
                 Path(tmpdir) / "L1-0.gwf",
                 Path(tmpdir) / "V1-0.gwf",
             ]
-            update_metadata_index(metadata_dir, output_files_batch0, "detector-0.metadata.yaml")
+            update_metadata_index(metadata_dir, output_files_batch0, "detector-0.metadata.json")
 
             output_files_batch1 = [
                 Path(tmpdir) / "H1-1.gwf",
                 Path(tmpdir) / "L1-1.gwf",
                 Path(tmpdir) / "V1-1.gwf",
             ]
-            update_metadata_index(metadata_dir, output_files_batch1, "detector-1.metadata.yaml")
+            update_metadata_index(metadata_dir, output_files_batch1, "detector-1.metadata.json")
 
             # Load index and verify quick lookup
             index_file = metadata_dir / "index.yaml"
@@ -370,9 +373,9 @@ class TestUpdateMetadataIndex:
                 index = yaml.safe_load(f)
 
             # Should be able to find metadata for any data file in O(1)
-            assert index["H1-0.gwf"] == "detector-0.metadata.yaml"
-            assert index["L1-1.gwf"] == "detector-1.metadata.yaml"
-            assert index["V1-0.gwf"] == "detector-0.metadata.yaml"
+            assert index["H1-0.gwf"] == "detector-0.metadata.json"
+            assert index["L1-1.gwf"] == "detector-1.metadata.json"
+            assert index["V1-0.gwf"] == "detector-0.metadata.json"
 
 
 class TestSaveBatchMetadata:
@@ -396,9 +399,10 @@ class TestSaveBatchMetadata:
 
             metadata_dir = Path(tmpdir)
             output_files = [Path(tmpdir) / "output.json"]
-            save_batch_metadata(sim, batch, metadata_dir, output_files)
+            output_files[0].write_text("{}")
+            save_batch_metadata(sim, batch, metadata_dir, batch_data=0, output_files=output_files)
 
-            metadata_file = metadata_dir / "mock-0.metadata.yaml"
+            metadata_file = metadata_dir / "mock-0.metadata.json"
             assert metadata_file.exists()
 
     def test_save_batch_metadata_contains_state_and_files(self):
@@ -423,9 +427,11 @@ class TestSaveBatchMetadata:
                 Path(tmpdir) / "L1-1234567890-1024.gwf",
                 Path(tmpdir) / "V1-1234567890-1024.gwf",
             ]
-            save_batch_metadata(sim, batch, metadata_dir, output_files)
+            for output_file in output_files:
+                output_file.write_text("test")
+            save_batch_metadata(sim, batch, metadata_dir, batch_data=0, output_files=output_files)
 
-            metadata_file = metadata_dir / "test-0.metadata.yaml"
+            metadata_file = metadata_dir / "test-0.metadata.json"
             with metadata_file.open() as f:
                 metadata = yaml.safe_load(f)
 
@@ -459,7 +465,9 @@ class TestSaveBatchMetadata:
                 Path(tmpdir) / "H1-1234567890-1024.gwf",
                 Path(tmpdir) / "L1-1234567890-1024.gwf",
             ]
-            save_batch_metadata(sim, batch, metadata_dir, output_files)
+            for output_file in output_files:
+                output_file.write_text("test")
+            save_batch_metadata(sim, batch, metadata_dir, batch_data=0, output_files=output_files)
 
             # Verify index was created and contains entries
             index_file = metadata_dir / "index.yaml"
@@ -468,8 +476,8 @@ class TestSaveBatchMetadata:
             with index_file.open() as f:
                 index = yaml.safe_load(f)
 
-            assert index["H1-1234567890-1024.gwf"] == "test-0.metadata.yaml"
-            assert index["L1-1234567890-1024.gwf"] == "test-0.metadata.yaml"
+            assert index["H1-1234567890-1024.gwf"] == "test-0.metadata.json"
+            assert index["L1-1234567890-1024.gwf"] == "test-0.metadata.json"
 
 
 class TestRetryWithBackoff:
@@ -740,7 +748,7 @@ class TestExecutePlan:
             # Verify output file exists
             assert (output_dir / "data.json").exists()
             # Verify metadata file exists
-            assert (metadata_dir / "mock-0.metadata.yaml").exists()
+            assert (metadata_dir / "mock-0.metadata.json").exists()
 
     def test_execute_plan_multiple_batches_same_simulator(self):
         """Test executing multiple batches for same simulator."""
@@ -770,7 +778,7 @@ class TestExecutePlan:
 
             # Verify all metadata files exist
             for i in range(3):
-                assert (metadata_dir / f"mock-{i}.metadata.yaml").exists()
+                assert (metadata_dir / f"mock-{i}.metadata.json").exists()
 
     def test_execute_plan_maintains_simulator_state(self):
         """Test that simulator state persists across batches.
@@ -799,8 +807,8 @@ class TestExecutePlan:
             execute_plan(plan, output_dir, metadata_dir, overwrite=True)
 
             # Load metadata files and check counter progression
-            metadata_0 = yaml.safe_load((metadata_dir / "mock-0.metadata.yaml").open())
-            metadata_1 = yaml.safe_load((metadata_dir / "mock-1.metadata.yaml").open())
+            metadata_0 = yaml.safe_load((metadata_dir / "mock-0.metadata.json").open())
+            metadata_1 = yaml.safe_load((metadata_dir / "mock-1.metadata.json").open())
 
             # Batch 1 should have higher counter than batch 0
             counter_0 = metadata_0["pre_batch_state"]["counter"]
@@ -897,8 +905,8 @@ class TestSimulateCommandIntegration:
             metadata_dir = tmpdir_path / "metadata"
 
             assert (output_dir / "data.json").exists(), f"Output file not found at {output_dir / 'data.json'}"
-            assert (metadata_dir / "mock-0.metadata.yaml").exists(), (
-                f"Metadata file not found at {metadata_dir / 'mock-0.metadata.yaml'}"
+            assert (metadata_dir / "mock-0.metadata.json").exists(), (
+                f"Metadata file not found at {metadata_dir / 'mock-0.metadata.json'}"
             )
             assert (metadata_dir / "index.yaml").exists(), f"Index file not found at {metadata_dir / 'index.yaml'}"
 
@@ -981,7 +989,7 @@ class TestSimulateCommandIntegration:
             assert metadata_dir.exists(), "Metadata directory not created"
 
             # Check for all 3 batch metadata files
-            metadata_files = list(metadata_dir.glob("mock-*.metadata.yaml"))
+            metadata_files = list(metadata_dir.glob("mock-*.metadata.json"))
             assert len(metadata_files) == NUM_FILES_3, (
                 f"Expected 3 batch metadata files (max-samples: 3), but found {len(metadata_files)}: {metadata_files}"
             )
@@ -1036,13 +1044,13 @@ class TestSimulateCommandIntegration:
 
             # Verify initial metadata was created
             metadata_dir = tmpdir_path / "metadata"
-            initial_metadata_files = sorted(metadata_dir.glob("mock-*.metadata.yaml"))
+            initial_metadata_files = sorted(metadata_dir.glob("mock-*.metadata.json"))
             assert len(initial_metadata_files) == NUM_FILES_3, (
                 f"Expected 3 metadata files from initial run, but found {len(initial_metadata_files)}"
             )
 
             # Load metadata for batch 1 (the middle batch)
-            batch_1_metadata_file = metadata_dir / "mock-1.metadata.yaml"
+            batch_1_metadata_file = metadata_dir / "mock-1.metadata.json"
             batch_1_metadata = parse_batch_metadata(batch_1_metadata_file)
 
             # Verify metadata has pre-batch state
@@ -1079,7 +1087,7 @@ class TestSimulateCommandIntegration:
             assert reproduced_batch_1_file.exists(), "Batch 1 output file should exist after reproduction"
 
             # Load the reproduced batch 1 metadata to check the pre_batch_state
-            reproduced_batch_1_metadata_file = metadata_dir / "mock-1.metadata.yaml"
+            reproduced_batch_1_metadata_file = metadata_dir / "mock-1.metadata.json"
             reproduced_batch_1_metadata = parse_batch_metadata(reproduced_batch_1_metadata_file)
             reproduced_pre_batch_state = reproduced_batch_1_metadata.get("pre_batch_state", {})
             reproduced_counter = reproduced_pre_batch_state.get("counter")
@@ -1142,7 +1150,7 @@ class TestSimulateCommandIntegration:
 
             # ===== STEP 2: Verify metadata for batch 1 =====
             metadata_dir = tmpdir_path / "metadata"
-            batch_1_metadata_file = metadata_dir / "mock-1.metadata.yaml"
+            batch_1_metadata_file = metadata_dir / "mock-1.metadata.json"
             assert batch_1_metadata_file.exists(), "Batch 1 metadata file not created"
 
             # Load batch 1's metadata
@@ -1195,7 +1203,7 @@ class TestSimulateCommandIntegration:
 
             # ===== STEP 5: Verify multiple batches can be reproduced independently =====
             # Test batch 2 (third batch) as well
-            batch_2_metadata_file = metadata_dir / "mock-2.metadata.yaml"
+            batch_2_metadata_file = metadata_dir / "mock-2.metadata.json"
             assert batch_2_metadata_file.exists(), "Batch 2 metadata file not created"
 
             metadata_batch2 = parse_batch_metadata(batch_2_metadata_file)
@@ -1507,3 +1515,34 @@ class TestSimulateCommandCheckpoint:
                 list(checkpoint_dir.glob("simulation.checkpoint.json*")) if checkpoint_dir.exists() else []
             )
             assert len(checkpoint_files) == 0, "Checkpoint should be cleaned up after successful completion"
+
+
+class TestHostMetadata:
+    """Tests for distribution-backed host provenance metadata."""
+
+    def test_get_host_metadata_reads_git_sha_from_direct_url_json(self):
+        """Host metadata should use the gwmock distribution Direct URL commit ID."""
+
+        class _DistributionStub:
+            metadata: ClassVar[dict[str, Any]] = {}
+
+            @staticmethod
+            def read_text(path: str) -> str | None:
+                if path == "direct_url.json":
+                    return '{"url":"https://example.invalid/repo","vcs_info":{"vcs":"git","commit_id":"abc123def"}}'
+                return None
+
+        with patch("gwmock.cli.simulate_utils.importlib_metadata.distribution", return_value=_DistributionStub()):
+            host = _get_host_metadata()
+
+        assert host["git_sha"] == "abc123def"
+
+    def test_get_host_metadata_sets_git_sha_none_when_distribution_missing(self):
+        """Missing package metadata should not raise and should return git_sha=None."""
+        with patch(
+            "gwmock.cli.simulate_utils.importlib_metadata.distribution",
+            side_effect=stdlib_metadata.PackageNotFoundError,
+        ):
+            host = _get_host_metadata()
+
+        assert host["git_sha"] is None

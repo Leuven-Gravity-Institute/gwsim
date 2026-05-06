@@ -72,7 +72,8 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
             # Single argument: could be YAML config or metadata file
             single_path = Path(config_file_names_list[0])
             is_metadata = (
-                single_path.suffix == ".metadata.yaml"
+                single_path.name.endswith(".metadata.json")
+                or single_path.name.endswith(".metadata.yaml")
                 or (single_path.is_file() and "metadata" in single_path.name)
                 or single_path.is_dir()  # Directory assumed to be metadata dir
             )
@@ -89,7 +90,9 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
             # If single directory, load all metadata files from it
             if len(metadata_paths) == 1 and metadata_paths[0].is_dir():
                 metadata_dir_path = metadata_paths[0]
-                metadata_files = list(metadata_dir_path.glob("*.metadata.yaml"))
+                metadata_files = list(metadata_dir_path.glob("*.metadata.json")) + list(
+                    metadata_dir_path.glob("*.metadata.yaml")
+                )
                 if not metadata_files:
                     raise ValueError(f"No metadata files found in directory: {metadata_dir_path}")
                 logger.info("Found %d metadata files in directory: %s", len(metadata_files), metadata_dir_path)
@@ -109,7 +112,7 @@ def _simulate_impl(  # pylint: disable=too-many-locals, too-many-branches, too-m
             config = load_config(file_name=config_path)
             logger.debug("Configuration loaded successfully from %s", config_file_names_list[0])
 
-            plan = create_plan_from_config(config, checkpoint_dir, author=author, email=email)
+            plan = create_plan_from_config(config, checkpoint_dir, author=author, email=email, config_file=config_path)
             logger.info("Created simulation plan with %d batches", plan.total_batches)
 
         # ===== Determine output directories (same logic for both modes) =====
