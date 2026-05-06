@@ -10,7 +10,7 @@ import yaml
 
 from gwmock.cli.simulate import _simulate_impl
 from gwmock.cli.utils.hash import compute_file_hash
-from gwmock.cli.utils.metadata import load_metadata_record
+from gwmock.cli.utils.metadata import SubpackageVersions, load_metadata_record
 
 
 def _write_mock_config(tmp_path: Path) -> Path:
@@ -78,3 +78,16 @@ def test_metadata_record_is_stable_for_same_config_and_seed(tmp_path: Path) -> N
     second = json.loads((tmp_path / "metadata" / "mock-0.metadata.json").read_text())
 
     assert _strip_nondeterministic_fields(first) == _strip_nondeterministic_fields(second)
+
+
+def test_subpackage_versions_accepts_partial_dict() -> None:
+    """Omitted subpackage keys should validate as optional (Pydantic v2)."""
+    empty = SubpackageVersions.model_validate({})
+    assert empty.gwmock_signal is None
+    assert empty.gwmock_noise is None
+    assert empty.gwmock_pop is None
+
+    partial = SubpackageVersions.model_validate({"gwmock_signal": "0.1.0"})
+    assert partial.gwmock_signal == "0.1.0"
+    assert partial.gwmock_noise is None
+    assert partial.gwmock_pop is None

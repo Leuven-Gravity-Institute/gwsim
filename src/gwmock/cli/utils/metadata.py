@@ -18,9 +18,9 @@ _SCHEMA_VERSION_PATTERN = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)
 class SubpackageVersions(BaseModel):
     """Pinned public subpackage versions used to generate a run."""
 
-    gwmock_signal: str | None = Field(alias="gwmock_signal")
-    gwmock_noise: str | None = Field(alias="gwmock_noise")
-    gwmock_pop: str | None = Field(alias="gwmock_pop")
+    gwmock_signal: str | None = None
+    gwmock_noise: str | None = None
+    gwmock_pop: str | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
