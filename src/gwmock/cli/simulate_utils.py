@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import atexit
 import copy
+import json
 import logging
 import platform
-import shutil
 import signal
-import subprocess
 import time
+from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import Any, cast
 
@@ -88,29 +88,47 @@ def _to_plain_number(value: Any) -> float | int | None:
 
 def _get_host_metadata() -> dict[str, Any]:
     """Collect stable host metadata for provenance reporting."""
-    git_sha = None
-    try:
-        git_executable = shutil.which("git")
-        if git_executable is None:
-            raise FileNotFoundError
-        git_sha = (
-            subprocess.run(  # noqa: S603
-                [git_executable, "rev-parse", "HEAD"],
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-            or None
-        )
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        git_sha = None
-
+    git_sha = _get_distribution_git_sha()
     return {
         "platform": platform.platform(),
         "python": platform.python_version(),
         "cpu": platform.processor() or platform.machine() or "unknown",
         "git_sha": git_sha,
     }
+
+
+def _get_distribution_git_sha() -> str | None:
+    """Return the gwmock distribution VCS commit hash when explicitly available."""
+    try:
+        distribution = importlib_metadata.distribution("gwmock")
+    except importlib_metadata.PackageNotFoundError:
+        return None
+    except Exception:
+        return None
+
+    for source in (distribution.read_text("direct_url.json"), distribution.metadata.get("Direct-URL")):
+        git_sha = _extract_git_sha_from_direct_url(source)
+        if git_sha is not None:
+            return git_sha
+    return None
+
+
+def _extract_git_sha_from_direct_url(direct_url: str | None) -> str | None:
+    """Parse a commit hash from PEP 610 Direct URL metadata content."""
+    if not direct_url:
+        return None
+    try:
+        payload = json.loads(direct_url)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    vcs_info = payload.get("vcs_info")
+    if not isinstance(vcs_info, dict):
+        return None
+    commit_id = vcs_info.get("commit_id")
+    if isinstance(commit_id, str):
+        commit_id = commit_id.strip()
+        return commit_id or None
+    return None
 
 
 def _build_config_payload(batch: SimulationBatch, simulator: Simulator) -> dict[str, Any]:

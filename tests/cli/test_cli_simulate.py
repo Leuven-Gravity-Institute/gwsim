@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import tempfile
 import time
+from importlib import metadata as stdlib_metadata
 from pathlib import Path
+from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,6 +17,7 @@ from gwmock.cli.simulate import (
     _simulate_impl,
 )
 from gwmock.cli.simulate_utils import (
+    _get_host_metadata,
     execute_plan,
     instantiate_simulator,
     process_batch,
@@ -1512,3 +1515,34 @@ class TestSimulateCommandCheckpoint:
                 list(checkpoint_dir.glob("simulation.checkpoint.json*")) if checkpoint_dir.exists() else []
             )
             assert len(checkpoint_files) == 0, "Checkpoint should be cleaned up after successful completion"
+
+
+class TestHostMetadata:
+    """Tests for distribution-backed host provenance metadata."""
+
+    def test_get_host_metadata_reads_git_sha_from_direct_url_json(self):
+        """Host metadata should use the gwmock distribution Direct URL commit ID."""
+
+        class _DistributionStub:
+            metadata: ClassVar[dict[str, Any]] = {}
+
+            @staticmethod
+            def read_text(path: str) -> str | None:
+                if path == "direct_url.json":
+                    return '{"url":"https://example.invalid/repo","vcs_info":{"vcs":"git","commit_id":"abc123def"}}'
+                return None
+
+        with patch("gwmock.cli.simulate_utils.importlib_metadata.distribution", return_value=_DistributionStub()):
+            host = _get_host_metadata()
+
+        assert host["git_sha"] == "abc123def"
+
+    def test_get_host_metadata_sets_git_sha_none_when_distribution_missing(self):
+        """Missing package metadata should not raise and should return git_sha=None."""
+        with patch(
+            "gwmock.cli.simulate_utils.importlib_metadata.distribution",
+            side_effect=stdlib_metadata.PackageNotFoundError,
+        ):
+            host = _get_host_metadata()
+
+        assert host["git_sha"] is None
