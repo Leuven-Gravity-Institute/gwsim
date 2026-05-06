@@ -12,6 +12,7 @@ import yaml
 from gwmock_signal import DetectorStrainStack
 from gwpy.timeseries import TimeSeries as GWpyTimeSeries
 
+from gwmock.cli.adapter_orchestration import AdapterOrchestrator
 from gwmock.cli.simulate import _simulate_impl
 from gwmock.cli.utils.config import (
     Config,
@@ -302,6 +303,22 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
             "seed": 7,
         }
     ]
+
+
+def test_orchestrator_restores_noise_stream_from_committed_cursor(tmp_path: Path):
+    """Restart should fast-forward noise stream from persisted committed cursor."""
+    config = _orchestration_config(tmp_path)
+    orchestrator = AdapterOrchestrator.from_config(config.orchestration, config.globals.simulator_arguments)
+
+    # Simulate restored state where one chunk was already committed.
+    orchestrator.noise_stream_committed_count = 1
+    orchestrator.counter = 0
+    orchestrator._noise_stream = None
+    orchestrator._noise_stream_position = 0
+    orchestrator._pending_noise_chunk = None
+
+    chunk = orchestrator._next_noise_chunk()
+    assert chunk["H1"][0] == 1.0
 
 
 def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Path):

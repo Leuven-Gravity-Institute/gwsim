@@ -53,6 +53,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
     """Compose population, signal, and noise adapters inside gwmock."""
 
     population_index = StateAttribute(0)
+    noise_stream_committed_count = StateAttribute(0)
 
     def __init__(  # noqa: PLR0913
         self,
@@ -287,6 +288,9 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
 
     def update_state(self) -> None:
         """Advance to the next segment."""
+        self.noise_stream_committed_count = max(
+            int(self.noise_stream_committed_count), int(self._noise_stream_position)
+        )
         self.counter = cast(int, self.counter) + 1
         self.start_time += self.duration
         self._pending_noise_chunk = None
@@ -344,7 +348,11 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                 )
 
         chunk = self._next_noise_chunk()
-        return self.noise_adapter.write_chunk(config=config, chunk=chunk)
+        result = self.noise_adapter.write_chunk(config=config, chunk=chunk)
+        self.noise_stream_committed_count = max(
+            int(self.noise_stream_committed_count), int(self._noise_stream_position)
+        )
+        return result
 
     def segment_seeds(self) -> list[int]:
         """Return the deterministic per-segment seeds derived locally by gwmock."""
@@ -400,7 +408,8 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
 
     def _ensure_noise_stream(self) -> None:
         """Open or realign the shared upstream noise stream to the current batch index."""
-        if self._noise_stream is not None and self._noise_stream_position == int(self.counter):
+        target_position = max(int(self.counter), int(self.noise_stream_committed_count))
+        if self._noise_stream is not None and self._noise_stream_position == target_position:
             return
 
         self._noise_stream = self.noise_adapter.open_stream(
@@ -418,7 +427,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             glitches=self.noise_arguments.get("glitches"),
         )
         self._noise_stream_position = 0
-        for _ in range(int(self.counter)):
+        for _ in range(target_position):
             try:
                 next(self._noise_stream)
             except StopIteration as error:
