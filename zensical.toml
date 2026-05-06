@@ -93,7 +93,6 @@ nav = [
     { "gwmock.signal" = [
       { "Overview" = "reference/gwmock/signal/index.md" },
       { "base" = "reference/gwmock/signal/base.md" },
-      { "cbc" = "reference/gwmock/signal/cbc.md" },
     ] },
     { "gwmock.simulator" = [
       { "Overview" = "reference/gwmock/simulator/index.md" },

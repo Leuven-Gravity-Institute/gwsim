@@ -22,6 +22,11 @@ _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS = frozenset(
         "gwmock.signal.base.SignalSimulator",
         "gwmock.signal:SignalSimulator",
         "gwmock.signal.base:SignalSimulator",
+        "CBCSignalSimulator",
+        "gwmock.signal.CBCSignalSimulator",
+        "gwmock.signal.cbc.CBCSignalSimulator",
+        "gwmock.signal:CBCSignalSimulator",
+        "gwmock.signal.cbc:CBCSignalSimulator",
     }
 )
 
@@ -29,7 +34,7 @@ _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS = frozenset(
 def _raise_removed_signal_simulator_error(class_spec: str) -> None:
     raise ValueError(
         f"Legacy 'simulators.signal.class: {class_spec}' is no longer supported because "
-        "'gwmock.signal.SignalSimulator' has been removed. Migrate this config to the adapter-backed "
+        "the in-tree signal simulator classes have been removed. Migrate this config to the adapter-backed "
         "'orchestration' schema using 'orchestration.population', 'orchestration.signal', and "
         "'orchestration.noise'."
     )
