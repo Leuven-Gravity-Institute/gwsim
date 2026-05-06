@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
 
 from gwmock_noise import SimulationResult
 from gwmock_pop import GWPopSimulator
+from gwmock_signal import DetectorStrainStack, Network
 
 from gwmock.cli.utils.backend_resolver import instantiate_backend, resolve_backend_class, validate_backend
 from gwmock.cli.utils.config import OrchestrationConfig
@@ -23,8 +24,6 @@ from gwmock.signal import SignalAdapter
 from gwmock.simulator.base import Simulator
 from gwmock.simulator.seeds import derive_seed
 from gwmock.simulator.state import StateAttribute
-
-_DETECTOR_PLACEHOLDER = "{{ detectors }}"
 
 
 @dataclass(slots=True)
@@ -61,6 +60,9 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         population_events: list[dict[str, Any]],
         population_metadata: dict[str, Any],
         source_type: str,
+        source_detector_specs: list[str],
+        detector_network: Network,
+        detector_resolution: dict[str, Any],
         waveform_model: str | None,
         waveform_arguments: dict[str, Any],
         detectors: list[str],
@@ -79,6 +81,9 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         self._population_events = tuple(population_events)
         self._population_metadata = dict(population_metadata)
         self._source_type = source_type
+        self._source_detector_specs = tuple(source_detector_specs)
+        self._signal_network = detector_network
+        self._detector_resolution = detector_resolution
         self._population_seed = population_seed
         self.waveform_model = waveform_model
         self.waveform_arguments = waveform_arguments
@@ -91,7 +96,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             else SignalAdapter.from_source_type(
                 source_type=source_type,
                 waveform_model=waveform_model,
-                detectors=detectors,
+                network=detector_network,
             )
         )
         self.detectors = list(self.signal_adapter.detector_names)
@@ -130,6 +135,8 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             noise_arguments.setdefault("seed", int(global_args["seed"]))
         top_level_seed = int(noise_arguments["seed"]) if noise_arguments.get("seed") is not None else None
         population_seed = derive_seed(top_level_seed, "population") if top_level_seed is not None else None
+        detector_network, detector_resolution = cls._resolve_detector_network(orchestration_config.signal.detectors)
+        resolved_detectors = cls._network_detector_names(detector_network)
 
         population_backend = cls._instantiate_population_backend(orchestration_config.population)
         population_adapter = PopulationAdapter.from_backend(
@@ -140,6 +147,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         signal_adapter = cls._instantiate_signal_adapter(
             orchestration_config.signal,
             source_type=population_adapter.source_type,
+            detector_network=detector_network,
         )
         population_events = list(population_adapter.iter_event_parameters())
         if orchestration_config.population.sort_by:
@@ -148,16 +156,19 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                 raise ValueError(f"Population event ordering key '{sort_key}' is missing from one or more events.")
             population_events.sort(key=lambda event: event[sort_key])
 
-        noise_arguments.setdefault("detectors", list(orchestration_config.signal.detectors))
+        noise_arguments.setdefault("detectors", resolved_detectors)
         noise_adapter = cls._instantiate_noise_adapter(orchestration_config.noise)
 
         return cls(
             population_events=population_events,
             population_metadata=population_adapter.metadata,
             source_type=population_adapter.source_type,
+            source_detector_specs=list(orchestration_config.signal.detectors),
+            detector_network=detector_network,
+            detector_resolution=detector_resolution,
             waveform_model=orchestration_config.signal.waveform_model,
             waveform_arguments=orchestration_config.signal.waveform_arguments,
-            detectors=list(orchestration_config.signal.detectors),
+            detectors=resolved_detectors,
             duration=duration,
             sampling_frequency=sampling_frequency,
             start_time=start_time,
@@ -183,7 +194,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         )
 
     @staticmethod
-    def _instantiate_signal_adapter(signal_config, *, source_type: str) -> SignalAdapter:
+    def _instantiate_signal_adapter(signal_config, *, source_type: str, detector_network: Network) -> SignalAdapter:
         backend_name = signal_config.backend or source_type
         backend_class = resolve_backend_class("signal", backend_name)
         backend_instance = SignalAdapter.instantiate_backend(
@@ -194,7 +205,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         return SignalAdapter.from_backend(
             source_type=source_type,
             backend=backend_instance,
-            detectors=list(signal_config.detectors),
+            network=detector_network,
         )
 
     @staticmethod
@@ -227,12 +238,14 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                     "waveform_arguments": self.waveform_arguments,
                     "minimum_frequency": self.minimum_frequency,
                     "earth_rotation": self.earth_rotation,
+                    "detector_specs": list(self._source_detector_specs),
                     "detectors": self.detectors,
+                    "network_resolution": self._detector_resolution,
                     "segment_seed": signal_segment_seed,
                 },
                 "noise": {
                     "arguments": self.noise_arguments,
-                    "stream_seed": self._root_seed(),
+                    "stream_seed": self._noise_stream_seed(),
                     "state_model": "gwmock consumes one shared gwmock_noise.open_stream() iterator across batches.",
                 },
                 "segment_seeds": self.segment_seeds(),
@@ -298,13 +311,55 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         """Return the active signal output directory."""
         return self._active_signal_output_directory
 
-    def signal_output_template(self) -> str:
-        """Return the active signal file-name template."""
-        return self.orchestration_config.signal.output.file_name
-
     def signal_output_arguments(self) -> dict[str, Any]:
         """Return the active signal output keyword arguments."""
         return dict(self.orchestration_config.signal.output.arguments or {})
+
+    def _save_data(
+        self,
+        data: TimeSeries,
+        file_name: str | Path,
+        **kwargs,
+    ) -> None:
+        """Persist orchestration signal output through ``DetectorStrainStack.write``."""
+        if not isinstance(data, TimeSeries):
+            raise TypeError(f"AdapterOrchestrator can only save TimeSeries signal data, got {type(data)}.")
+
+        channel_names = self._resolve_signal_channels(data=data, channel_spec=kwargs.pop("channel", None))
+        if kwargs:
+            unsupported = ", ".join(sorted(kwargs))
+            raise ValueError(
+                f"Signal orchestration output arguments only support channel. Unsupported keys: {unsupported}."
+            )
+
+        if isinstance(file_name, (str, Path)):
+            output_path = Path(file_name)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            self._build_signal_stack(data=data, channel_names=channel_names).write(
+                output_path,
+                format=self._infer_signal_output_format(output_path),
+            )
+            return
+
+        if len(file_name.shape) != 1 or file_name.shape[0] != data.num_of_channels:
+            raise ValueError(
+                "Resolved signal output paths must be a single path or a one-dimensional array "
+                "matching the number of detector channels."
+            )
+
+        for index in range(data.num_of_channels):
+            detector_name = self.detectors[index]
+            output_path = Path(file_name[index])
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            self._build_signal_stack(
+                data=data,
+                detector_names=[detector_name],
+                channel_names=channel_names[index : index + 1],
+                indices=[index],
+            ).write(
+                output_path,
+                format=self._infer_signal_output_format(output_path),
+            )
 
     def _run_noise_batch(self) -> SimulationResult:
         output_format = self._infer_noise_output_format(self.orchestration_config.noise.output.file_name)
@@ -328,7 +383,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             output_format=output_format,
             gps_start=gps_start,
             channel_prefix=channel_prefix,
-            seed=self._root_seed(),
+            seed=self._noise_stream_seed(),
             psd_file=self.noise_arguments.get("psd_file"),
             psd_schedule=self.noise_arguments.get("psd_schedule"),
             psd_files=self.noise_arguments.get("psd_files"),
@@ -369,6 +424,21 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             return None
         return derive_seed(root_seed, "signal", int(self.counter))
 
+    def _noise_stream_seed(self) -> int | None:
+        root_seed = self._root_seed()
+        if root_seed is None:
+            return None
+        return derive_seed(root_seed, "noise", "stream")
+
+    @staticmethod
+    def _infer_signal_output_format(path: Path) -> Literal["gwf", "hdf5", "npy", "txt"]:
+        suffix = path.suffix.lower().lstrip(".")
+        if suffix == "h5":
+            suffix = "hdf5"
+        if suffix not in {"gwf", "hdf5", "npy", "txt"}:
+            raise ValueError("Signal output files must end with .gwf, .hdf5, .h5, .npy, or .txt.")
+        return cast(Literal["gwf", "hdf5", "npy", "txt"], suffix)
+
     def _infer_noise_output_format(self, file_name_template: str) -> Literal["npy", "gwf"]:
         suffix = Path(file_name_template).suffix.lower().lstrip(".")
         if suffix not in {"npy", "gwf"}:
@@ -376,8 +446,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         return cast(Literal["npy", "gwf"], suffix)
 
     def _derive_noise_output_prefix(self, file_name_template: str) -> str:
-        template_without_detector = file_name_template.replace(_DETECTOR_PLACEHOLDER, "")
-        prefix = _flatten_first(expand_template_variables(str(Path(template_without_detector).with_suffix("")), self))
+        prefix = _flatten_first(expand_template_variables(str(Path(file_name_template).with_suffix("")), self))
         prefix = prefix.strip("-_ ")
         return prefix or f"noise-{self.counter}"
 
@@ -422,7 +491,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             chunk_duration=float(self.duration.value),
             sampling_frequency=float(self.sampling_frequency.value),
             detectors=list(self.noise_arguments["detectors"]),
-            seed=self._root_seed(),
+            seed=self._noise_stream_seed(),
             psd_file=self.noise_arguments.get("psd_file"),
             psd_schedule=self.noise_arguments.get("psd_schedule"),
             psd_files=self.noise_arguments.get("psd_files"),
@@ -441,3 +510,105 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                     "Noise stream ended before the saved orchestration state could be restored."
                 ) from error
             self._noise_stream_position += 1
+
+    @classmethod
+    def _resolve_detector_network(cls, detector_specs: Sequence[str]) -> tuple[Network, dict[str, Any]]:
+        resolved_detectors: list[str | Any] = []
+        resolution_steps: list[dict[str, Any]] = []
+        for detector_spec in detector_specs:
+            detector_alias = str(detector_spec)
+            try:
+                resolved_network = Network.from_preset(detector_alias)
+                resolution_steps.append(
+                    {
+                        "input": detector_alias,
+                        "resolver": "preset",
+                        "detector_names": cls._network_detector_names(resolved_network),
+                    }
+                )
+                resolved_detectors.extend(resolved_network.detector_names)
+                continue
+            except ValueError:
+                pass
+
+            detector_path = SignalAdapter.resolve_detector_path(detector_alias)
+            if detector_path is not None:
+                resolved_network = Network.from_file(detector_path)
+                resolution_steps.append(
+                    {
+                        "input": detector_alias,
+                        "resolver": "file",
+                        "source": str(detector_path),
+                        "detector_names": cls._network_detector_names(resolved_network),
+                    }
+                )
+                resolved_detectors.extend(resolved_network.detector_names)
+                continue
+
+            try:
+                resolved_network = Network.from_name(detector_alias)
+                resolution_steps.append(
+                    {
+                        "input": detector_alias,
+                        "resolver": "name",
+                        "detector_names": cls._network_detector_names(resolved_network),
+                    }
+                )
+                resolved_detectors.extend(resolved_network.detector_names)
+                continue
+            except ValueError:
+                resolved_detectors.append(detector_alias)
+                resolution_steps.append(
+                    {
+                        "input": detector_alias,
+                        "resolver": "detector",
+                        "detector_names": [detector_alias],
+                    }
+                )
+
+        network = Network.from_detectors(tuple(resolved_detectors))
+        return network, {
+            "inputs": [str(detector_spec) for detector_spec in detector_specs],
+            "detector_names": cls._network_detector_names(network),
+            "steps": resolution_steps,
+        }
+
+    @staticmethod
+    def _network_detector_names(network: Network) -> list[str]:
+        return [detector if isinstance(detector, str) else detector.name for detector in network.detector_names]
+
+    def _resolve_signal_channels(self, *, data: TimeSeries, channel_spec: Any) -> list[str | None]:
+        if channel_spec is None:
+            return [None] * data.num_of_channels
+
+        channel_value = expand_template_variables(channel_spec, self)
+        if isinstance(channel_value, str):
+            return [channel_value] * data.num_of_channels
+
+        channel_names = [str(channel) for channel in list(channel_value)]
+        if len(channel_names) != data.num_of_channels:
+            raise ValueError("Length of channel list must match number of channels in data.")
+        return channel_names
+
+    def _build_signal_stack(
+        self,
+        *,
+        data: TimeSeries,
+        channel_names: list[str | None],
+        detector_names: list[str] | None = None,
+        indices: list[int] | None = None,
+    ) -> DetectorStrainStack:
+        active_detector_names = self.detectors if detector_names is None else detector_names
+        active_indices = list(range(data.num_of_channels)) if indices is None else indices
+        if len(active_detector_names) != len(active_indices) or len(channel_names) != len(active_indices):
+            raise ValueError("Signal detector, channel, and data selections must have matching lengths.")
+
+        mapping = {}
+        for detector_name, channel_name, index in zip(
+            active_detector_names, channel_names, active_indices, strict=True
+        ):
+            series = data[index].copy()
+            if channel_name is not None:
+                series.channel = channel_name
+            mapping[detector_name] = series
+        return DetectorStrainStack.from_mapping(active_detector_names, mapping)

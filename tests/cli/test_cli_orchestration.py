@@ -140,10 +140,10 @@ class FakeNoiseAdapter:
         return {"kind": "fake-noise"}
 
 
-def _write_signal_file(self, data, file_name, channel=None, **kwargs):
-    _ = data, kwargs
-    Path(file_name).parent.mkdir(parents=True, exist_ok=True)
-    Path(file_name).write_text(channel or "STRAIN")
+def _write_signal_file(self, path, **kwargs):
+    _ = kwargs
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text("STRAIN")
 
 
 def _fake_orchestration_config(tmp_path: Path) -> Config:
@@ -269,7 +269,7 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.safe_dump(config.model_dump(by_alias=True, exclude_none=True), sort_keys=False))
 
-    monkeypatch.setattr("gwmock.mixin.time_series.TimeSeriesMixin._save_gwf_data", _write_signal_file)
+    monkeypatch.setattr("gwmock.cli.adapter_orchestration.DetectorStrainStack.write", _write_signal_file)
 
     _simulate_impl(str(config_file), overwrite=True, metadata=True)
 
@@ -293,14 +293,19 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     assert metadata["simulator_config"]["signal"]["detectors"] == ["H1"]
     assert metadata["simulator_metadata"]["orchestration"]["population"]["metadata"] == FakePopulationBackend.metadata
     assert metadata["simulator_metadata"]["orchestration"]["population"]["seed"] == derive_seed(7, "population")
+    assert metadata["simulator_metadata"]["orchestration"]["signal"]["network_resolution"] == {
+        "inputs": ["H1"],
+        "detector_names": ["H1"],
+        "steps": [{"input": "H1", "resolver": "detector", "detector_names": ["H1"]}],
+    }
     assert metadata["simulator_metadata"]["orchestration"]["signal"]["segment_seed"] == derive_seed(7, "signal", 0)
-    assert metadata["simulator_metadata"]["orchestration"]["noise"]["stream_seed"] == 7
+    assert metadata["simulator_metadata"]["orchestration"]["noise"]["stream_seed"] == derive_seed(7, "noise", "stream")
     assert FakeNoiseAdapter.stream_open_calls == [
         {
             "chunk_duration": 4.0,
             "sampling_frequency": 4.0,
             "detectors": ["H1"],
-            "seed": 7,
+            "seed": derive_seed(7, "noise", "stream"),
         }
     ]
 
@@ -321,7 +326,31 @@ def test_orchestrator_restores_noise_stream_from_committed_cursor(tmp_path: Path
     assert chunk["H1"][0] == 1.0
 
 
-def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Path):
+def test_orchestrator_records_preset_network_resolution(tmp_path: Path):
+    """Named detector presets should be resolved once and reflected into metadata."""
+    config = _fake_orchestration_config(tmp_path)
+    config.orchestration.signal.detectors = ["ET-Triangle-Sardinia"]
+    config.orchestration.noise.arguments = {"seed": 7, "duration": 4.0, "sampling_frequency": 4.0}
+
+    orchestrator = AdapterOrchestrator.from_config(config.orchestration, config.globals.simulator_arguments)
+    signal_metadata = orchestrator.metadata["orchestration"]["signal"]
+
+    assert orchestrator.detectors == ["ET1_SARD", "ET2_SARD", "ET3_SARD"]
+    assert orchestrator.noise_arguments["detectors"] == ["ET1_SARD", "ET2_SARD", "ET3_SARD"]
+    assert signal_metadata["network_resolution"] == {
+        "inputs": ["ET-Triangle-Sardinia"],
+        "detector_names": ["ET1_SARD", "ET2_SARD", "ET3_SARD"],
+        "steps": [
+            {
+                "input": "ET-Triangle-Sardinia",
+                "resolver": "preset",
+                "detector_names": ["ET1_SARD", "ET2_SARD", "ET3_SARD"],
+            }
+        ],
+    }
+
+
+def test_simulate_command_runs_real_public_subpackages(tmp_path: Path):
     """The orchestration path should work against the real public subpackage contracts."""
     population_path = tmp_path / "population.h5"
     _write_real_population_catalog(population_path)
@@ -329,18 +358,13 @@ def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Pa
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.safe_dump(config.model_dump(by_alias=True, exclude_none=True), sort_keys=False))
 
-    monkeypatch.setattr(
-        "gwmock.mixin.time_series.TimeSeriesMixin._save_gwf_data",
-        _write_signal_file,
-    )
-
     _simulate_impl(str(config_file), overwrite=True, metadata=True)
 
     signal_path = tmp_path / "output" / "signal" / "signal-0.gwf"
     noise_path = tmp_path / "output" / "noise" / "noise-0_H1.npy"
     metadata_path = tmp_path / "metadata" / "orchestration-0.metadata.json"
 
-    assert signal_path.read_text() == "H1:STRAIN"
+    assert signal_path.exists()
     assert noise_path.exists()
     assert np.load(noise_path).shape == (256,)
     metadata = yaml.safe_load(metadata_path.read_text())
