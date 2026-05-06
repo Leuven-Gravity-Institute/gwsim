@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -685,6 +686,33 @@ class TestCreatePlanFromMetadata:
         # Check metadata fields
         assert plan.batches[0].batch_metadata["author"] == "metadata_author"
         assert plan.batches[0].batch_metadata["email"] == "metadata@example.com"
+
+    def test_create_plan_from_metadata_prefers_json_when_yaml_also_present(
+        self,
+        metadata_directory: Path,
+        globals_config: GlobalsConfig,
+        simulator_config: SimulatorConfig,
+    ):
+        """Duplicate ``simulator-batch`` metadata should keep ``.metadata.json`` over ``.metadata.yaml``."""
+        metadata = create_batch_metadata(
+            simulator_name="noise",
+            batch_index=0,
+            simulator_config=simulator_config,
+            globals_config=globals_config,
+            author="metadata_author",
+            email="metadata@example.com",
+        )
+        yaml_path = metadata_directory / "noise-0.metadata.yaml"
+        json_path = metadata_directory / "noise-0.metadata.json"
+        with yaml_path.open("w") as f:
+            yaml.safe_dump(metadata, f)
+        with json_path.open("w") as f:
+            json.dump(metadata, f)
+
+        plan = create_plan_from_metadata(metadata_directory, Path("checkpoints"))
+
+        assert plan.total_batches == 1
+        assert plan.batches[0].metadata_file.name == "noise-0.metadata.json"
 
     def test_create_plan_from_metadata_multiple_batches(
         self,

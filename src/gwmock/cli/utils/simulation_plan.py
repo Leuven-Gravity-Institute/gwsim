@@ -180,6 +180,58 @@ def parse_batch_metadata(metadata_file: Path, metadata_dir: Path | None = None) 
     return metadata
 
 
+_METADATA_JSON_SUFFIX = ".metadata.json"
+_METADATA_YAML_SUFFIX = ".metadata.yaml"
+
+
+def _metadata_file_format_rank(path: Path) -> int:
+    """Prefer JSON batch metadata over legacy YAML when both exist for one batch."""
+    if path.name.endswith(_METADATA_JSON_SUFFIX):
+        return 0
+    if path.name.endswith(_METADATA_YAML_SUFFIX):
+        return 1
+    return 2
+
+
+def _dedupe_metadata_files_prefer_json(metadata_files: list[Path]) -> list[Path]:
+    """Keep one file per (simulator_name, batch_index), preferring ``*.metadata.json``."""
+    keyed: dict[tuple[str, int], Path] = {}
+    unkeyed: list[Path] = []
+
+    for path in metadata_files:
+        name = path.name
+        if name.endswith(_METADATA_JSON_SUFFIX):
+            stem = name[: -len(_METADATA_JSON_SUFFIX)]
+            rank = 0
+        elif name.endswith(_METADATA_YAML_SUFFIX):
+            stem = name[: -len(_METADATA_YAML_SUFFIX)]
+            rank = 1
+        else:
+            unkeyed.append(path)
+            continue
+
+        if "-" not in stem:
+            unkeyed.append(path)
+            continue
+
+        sim_name, batch_token = stem.rsplit("-", 1)
+        try:
+            batch_index = int(batch_token)
+        except ValueError:
+            unkeyed.append(path)
+            continue
+
+        key = (sim_name, batch_index)
+        existing = keyed.get(key)
+        if existing is None or rank < _metadata_file_format_rank(existing):
+            keyed[key] = path
+
+    ordered = sorted(keyed.items(), key=lambda item: (item[0][0], item[0][1]))
+    deduped = [batch_path for _, batch_path in ordered]
+    deduped.extend(sorted(unkeyed))
+    return deduped
+
+
 def create_batch_metadata(  # noqa: PLR0913
     simulator_name: str,
     batch_index: int,
@@ -406,6 +458,8 @@ def create_plan_from_metadata_files(
         >>> # Reproduces specific batches with exact state snapshots
     """
     plan = SimulationPlan(checkpoint_directory=checkpoint_dir)
+
+    metadata_files = _dedupe_metadata_files_prefer_json(list(metadata_files))
 
     for metadata_file in sorted(metadata_files):
         if not metadata_file.exists():
