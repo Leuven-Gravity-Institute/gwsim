@@ -6,6 +6,7 @@ import pytest
 
 modules_to_test = [
     "gwmock",
+    "gwmock.signal",
 ]
 
 
