@@ -354,7 +354,7 @@ gwf file + metadata
     ```yaml
     simulators:
         my_noise:
-            class: gwmock.noise.MyCustomNoise
+            class: my_package.noise.MyCustomNoise
             arguments:
                 param1: value1
     ```

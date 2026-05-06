@@ -30,6 +30,31 @@ _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS = frozenset(
     }
 )
 
+_REMOVED_NOISE_SIMULATOR_CLASS_SPECS = frozenset(
+    {
+        "NoiseSimulator",
+        "gwmock.noise.NoiseSimulator",
+        "gwmock.noise.base.NoiseSimulator",
+        "gwmock.noise:NoiseSimulator",
+        "gwmock.noise.base:NoiseSimulator",
+        "ColoredNoiseSimulator",
+        "gwmock.noise.ColoredNoiseSimulator",
+        "gwmock.noise.colored_noise.ColoredNoiseSimulator",
+        "gwmock.noise:ColoredNoiseSimulator",
+        "gwmock.noise.colored_noise:ColoredNoiseSimulator",
+        "CorrelatedNoiseSimulator",
+        "gwmock.noise.CorrelatedNoiseSimulator",
+        "gwmock.noise.correlated_noise.CorrelatedNoiseSimulator",
+        "gwmock.noise:CorrelatedNoiseSimulator",
+        "gwmock.noise.correlated_noise:CorrelatedNoiseSimulator",
+        "StationaryGaussianNoiseSimulator",
+        "gwmock.noise.StationaryGaussianNoiseSimulator",
+        "gwmock.noise.stationary_gaussian.StationaryGaussianNoiseSimulator",
+        "gwmock.noise:StationaryGaussianNoiseSimulator",
+        "gwmock.noise.stationary_gaussian:StationaryGaussianNoiseSimulator",
+    }
+)
+
 
 def _raise_removed_signal_simulator_error(class_spec: str) -> None:
     raise ValueError(
@@ -37,6 +62,14 @@ def _raise_removed_signal_simulator_error(class_spec: str) -> None:
         "the in-tree signal simulator classes have been removed. Migrate this config to the adapter-backed "
         "'orchestration' schema using 'orchestration.population', 'orchestration.signal', and "
         "'orchestration.noise'."
+    )
+
+
+def _raise_removed_noise_simulator_error(class_spec: str) -> None:
+    raise ValueError(
+        f"Legacy 'simulators.noise.class: {class_spec}' is no longer supported because "
+        "the in-tree noise simulator classes have been removed. Use 'orchestration.noise' for new runs, "
+        "or point 'simulators.noise.class' at a public 'gwmock_noise.*' class instead."
     )
 
 
@@ -439,6 +472,8 @@ def resolve_class_path(class_spec: str, section_name: str | None) -> str:
     """
     if section_name == "signal" and class_spec.strip() in _REMOVED_SIGNAL_SIMULATOR_CLASS_SPECS:
         _raise_removed_signal_simulator_error(class_spec.strip())
+    if section_name == "noise" and class_spec.strip() in _REMOVED_NOISE_SIMULATOR_CLASS_SPECS:
+        _raise_removed_noise_simulator_error(class_spec.strip())
     if "." not in class_spec and section_name:
         # Just a class name - use section_name as submodule, class imported in __init__.py
         return f"gwmock.{section_name}.{class_spec}"

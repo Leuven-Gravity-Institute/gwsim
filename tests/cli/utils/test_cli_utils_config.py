@@ -441,6 +441,22 @@ class TestResolveClassPath:
         ):
             resolve_class_path(class_spec, "signal")
 
+    @pytest.mark.parametrize(
+        "class_spec",
+        [
+            "ColoredNoiseSimulator",
+            "gwmock.noise.colored_noise.ColoredNoiseSimulator",
+            "CorrelatedNoiseSimulator",
+            "StationaryGaussianNoiseSimulator",
+        ],
+    )
+    def test_resolve_class_path_removed_noise(self, class_spec: str):
+        """Removed legacy noise classes should raise a migration error."""
+        with pytest.raises(
+            ValueError, match=rf"Legacy 'simulators\.noise\.class: {class_spec}' is no longer supported"
+        ):
+            resolve_class_path(class_spec, "noise")
+
     def test_resolve_class_path_full_path(self):
         """Test resolving full import path."""
         path = resolve_class_path("numpy.random.Generator", "noise")

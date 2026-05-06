@@ -19,7 +19,7 @@ globals:
 simulators:
     # Uncorrelated Gaussian/Colored noise simulator config for ET triangular detectors
     noise:
-        class: ColoredNoiseSimulator
+        class: gwmock_noise.ColoredNoiseSimulator
         arguments:
             # PSD file describing the colored noise shape used by the simulator
             psd_file: ET_10_full_cryo_psd.txt
