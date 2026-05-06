@@ -210,19 +210,7 @@ def _validate_population_backend(backend_name: str, backend_instance: Any) -> No
     if isinstance(backend_instance, GWPopSimulator):
         return
 
-    issues = _collect_protocol_issues(
-        backend_instance,
-        required_attributes={
-            "parameter_names": _is_non_string_sequence,
-            "source_type": lambda value: isinstance(value, str) and bool(value.strip()),
-        },
-        required_callables=("simulate",),
-    )
-    if not issues:
-        return
-    raise TypeError(
-        f"Resolved population backend '{backend_name}' does not satisfy GWPopSimulator: {', '.join(issues)}."
-    )
+    raise TypeError(f"Resolved population backend '{backend_name}' does not satisfy GWPopSimulator.")
 
 
 def _validate_signal_backend(backend_name: str, backend_class: type[Any], backend_instance: Any) -> None:
@@ -283,7 +271,3 @@ def _collect_protocol_issues(
             issues.append(f"member '{method_name}' is not callable")
 
     return issues
-
-
-def _is_non_string_sequence(value: Any) -> bool:
-    return isinstance(value, Sequence) and not isinstance(value, str) and bool(value)

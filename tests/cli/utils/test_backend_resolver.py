@@ -104,6 +104,7 @@ def test_resolve_population_builtin_alias():
 
 def test_resolve_backend_entry_point_from_installed_package(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Entry-point discovery should work for an installed third-party package."""
+    alias = "tiny_alias_backend_resolver_test"
     package_dir = tmp_path / "plugin-src"
     site_packages = tmp_path / "site-packages"
     (package_dir / "tiny_backend_pkg").mkdir(parents=True)
@@ -134,9 +135,9 @@ def test_resolve_backend_entry_point_from_installed_package(tmp_path: Path, monk
             version = "0.0.1"
 
             [project.entry-points."gwmock.population"]
-            tiny_alias = "tiny_backend_pkg.population:EntryPointPopulationBackend"
+            {alias} = "tiny_backend_pkg.population:EntryPointPopulationBackend"
             """
-        )
+        ).format(alias=alias)
     )
 
     uv_path = shutil.which("uv")
@@ -159,7 +160,7 @@ def test_resolve_backend_entry_point_from_installed_package(tmp_path: Path, monk
     )
     monkeypatch.syspath_prepend(str(site_packages))
 
-    backend = instantiate_backend("population", "tiny_alias")
+    backend = instantiate_backend("population", alias)
 
     assert backend.__class__.__name__ == "EntryPointPopulationBackend"
     assert backend.simulate(1)["mass_1"][0] == pytest.approx(7.0)
@@ -189,8 +190,8 @@ def test_resolve_legacy_dotted_path_warns_once(monkeypatch):
 
 
 def test_invalid_population_backend_names_missing_member():
-    """Validation failures should name the missing or mismatched protocol member."""
-    with pytest.raises(TypeError, match="source_type"):
+    """Validation failures should be reported at the GWPopSimulator boundary."""
+    with pytest.raises(TypeError, match="does not satisfy GWPopSimulator"):
         instantiate_backend("population", "tests.cli.utils.test_backend_resolver:InvalidPopulationBackend")
 
 

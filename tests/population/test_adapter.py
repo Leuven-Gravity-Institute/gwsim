@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import shutil
+import subprocess
+import sys
 import tempfile
+import textwrap
 from pathlib import Path
 from typing import ClassVar
 
@@ -10,7 +14,8 @@ import numpy as np
 import pytest
 from gwmock_pop import CBC_PARAMETER_NAMES, ExternalPopulationLoader, GWPopSimulator
 
-from gwmock.population import PopulationAdapter
+from gwmock.cli.utils.backend_resolver import resolve_backend_class
+from gwmock.population import PopulationAdapter, instantiate_population_backend
 
 EXPECTED_SAMPLE_COUNT = 2
 
@@ -37,6 +42,10 @@ class MockGWPopBackend:
         }
 
 
+class ModulePopulationBackend(MockGWPopBackend):
+    """Protocol-compatible backend for module:Class resolver tests."""
+
+
 class MockExternalPopulationLoader:
     """Protocol-compatible file loader backend for adapter tests."""
 
@@ -60,12 +69,76 @@ class MockExternalPopulationLoader:
         }
 
 
+def _install_entry_point_backend(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    alias: str,
+    package_name: str,
+) -> None:
+    package_dir = tmp_path / "plugin-src"
+    site_packages = tmp_path / "site-packages"
+    (package_dir / package_name).mkdir(parents=True)
+    (package_dir / package_name / "__init__.py").write_text("")
+    (package_dir / package_name / "population.py").write_text(
+        textwrap.dedent(
+            """
+            import numpy as np
+
+            class EntryPointPopulationBackend:
+                parameter_names = ("detector_frame_mass_1",)
+                source_type = "bbh"
+
+                def simulate(self, n_samples: int, **_kwargs):
+                    return {"detector_frame_mass_1": np.full(n_samples, 7.0)}
+            """
+        )
+    )
+    (package_dir / "pyproject.toml").write_text(
+        textwrap.dedent(
+            """
+            [build-system]
+            requires = ["setuptools>=61"]
+            build-backend = "setuptools.build_meta"
+
+            [project]
+            name = "{package_name}"
+            version = "0.0.1"
+
+            [project.entry-points."gwmock.population"]
+            """
+        ).format(package_name=package_name)
+        + f'{alias} = "{package_name}.population:EntryPointPopulationBackend"\n'
+    )
+
+    uv_path = shutil.which("uv")
+    if uv_path is None:  # pragma: no cover - repository tests run with uv available
+        raise AssertionError("uv executable is required for entry-point installation tests.")
+
+    subprocess.run(  # noqa: S603
+        [
+            uv_path,
+            "pip",
+            "install",
+            "--python",
+            sys.executable,
+            "--quiet",
+            "--no-deps",
+            "--target",
+            str(site_packages),
+            str(package_dir),
+        ],
+        check=True,
+    )
+    monkeypatch.syspath_prepend(str(site_packages))
+
+
 class TestPopulationAdapter:
     """Test suite for population adapter behavior."""
 
     def test_from_backend_accepts_gwpop_simulator(self):
         """Simulator-backed batches are sliced into per-event dictionaries."""
-        backend = MockGWPopBackend()
+        backend = instantiate_population_backend("tests.population.test_adapter:MockGWPopBackend")
 
         assert isinstance(backend, GWPopSimulator)
 
@@ -95,7 +168,7 @@ class TestPopulationAdapter:
 
     def test_from_backend_accepts_external_population_loader(self):
         """Loader-backed batches use the same adapter boundary."""
-        loader = MockExternalPopulationLoader()
+        loader = instantiate_population_backend("tests.population.test_adapter:MockExternalPopulationLoader")
 
         assert isinstance(loader, GWPopSimulator)
         assert isinstance(loader, ExternalPopulationLoader)
@@ -159,3 +232,50 @@ class TestPopulationAdapter:
                 source_type="bbh",
                 parameter_names=("detector_frame_mass_2", "detector_frame_mass_1"),
             )
+
+    @pytest.mark.parametrize(
+        ("backend_name", "expected_class_name"),
+        [
+            ("bbh", "BBHSimulator"),
+            ("cbc_prior", "CBCPriorSimulator"),
+            ("bns_prior", "BNSPriorSimulator"),
+            ("nsbh_prior", "NSBHPriorSimulator"),
+            ("file", "FilePopulationLoader"),
+        ],
+    )
+    def test_instantiate_population_backend_resolves_builtin_aliases(
+        self,
+        backend_name: str,
+        expected_class_name: str,
+    ):
+        """Built-in aliases should resolve through the public population resolver."""
+        backend_class = resolve_backend_class("population", backend_name)
+
+        assert backend_class.__name__ == expected_class_name
+
+    def test_instantiate_population_backend_resolves_module_class(self):
+        """Module:Class backends should resolve through the public population resolver."""
+        backend_class = resolve_backend_class("population", "tests.population.test_adapter:ModulePopulationBackend")
+
+        assert backend_class.__name__ == "ModulePopulationBackend"
+
+    def test_instantiate_population_backend_resolves_entry_point(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Third-party entry points should resolve through the public population resolver."""
+        alias = "population_test_adapter_alias"
+        _install_entry_point_backend(
+            tmp_path,
+            monkeypatch,
+            alias=alias,
+            package_name="population_test_adapter_backend_pkg",
+        )
+
+        backend_class = resolve_backend_class("population", alias)
+        backend = backend_class()
+
+        assert isinstance(backend, GWPopSimulator)
+        assert backend.__class__.__name__ == "EntryPointPopulationBackend"
+        assert backend.simulate(1)["detector_frame_mass_1"][0] == pytest.approx(7.0)
