@@ -173,7 +173,7 @@ def _resolve_segment_seeds(simulator: Simulator, batch: SimulationBatch, seed: i
     if seed is None:
         return []
     if isinstance(simulator, AdapterOrchestrator):
-        return [seed + int(simulator.counter)]
+        return simulator.segment_seeds()
     return [seed + batch.batch_index]
 
 

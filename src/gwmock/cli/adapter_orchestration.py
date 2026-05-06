@@ -20,6 +20,7 @@ from gwmock.noise import NoiseAdapter
 from gwmock.population import PopulationAdapter
 from gwmock.signal import SignalAdapter
 from gwmock.simulator.base import Simulator
+from gwmock.simulator.seeds import derive_seed
 from gwmock.simulator.state import StateAttribute
 
 _DETECTOR_PLACEHOLDER = "{{ detectors }}"
@@ -69,12 +70,14 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         earth_rotation: bool,
         noise_arguments: dict[str, Any],
         orchestration_config: OrchestrationConfig,
+        population_seed: int | None = None,
         signal_adapter: SignalAdapter | None = None,
         noise_adapter: NoiseAdapter | None = None,
     ) -> None:
         self._population_events = tuple(population_events)
         self._population_metadata = dict(population_metadata)
         self._source_type = source_type
+        self._population_seed = population_seed
         self.waveform_model = waveform_model
         self.waveform_arguments = waveform_arguments
         self.minimum_frequency = minimum_frequency
@@ -117,11 +120,17 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         duration = float(global_args.get("duration", 4.0))
         sampling_frequency = float(global_args.get("sampling_frequency", 4096.0))
         start_time = float(global_args.get("start_time", 0.0))
+        noise_arguments = _normalize_keys(orchestration_config.noise.arguments)
+        if global_args.get("seed") is not None:
+            noise_arguments.setdefault("seed", int(global_args["seed"]))
+        top_level_seed = int(noise_arguments["seed"]) if noise_arguments.get("seed") is not None else None
+        population_seed = derive_seed(top_level_seed, "population") if top_level_seed is not None else None
 
         population_backend = cls._instantiate_population_backend(orchestration_config.population)
         population_adapter = PopulationAdapter.from_backend(
             population_backend,
             n_samples=orchestration_config.population.n_samples,
+            **({"seed": population_seed} if population_seed is not None else {}),
         )
         signal_adapter = cls._instantiate_signal_adapter(
             orchestration_config.signal,
@@ -134,7 +143,6 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                 raise ValueError(f"Population event ordering key '{sort_key}' is missing from one or more events.")
             population_events.sort(key=lambda event: event[sort_key])
 
-        noise_arguments = _normalize_keys(orchestration_config.noise.arguments)
         noise_arguments.setdefault("detectors", list(orchestration_config.signal.detectors))
         noise_adapter = cls._instantiate_noise_adapter(orchestration_config.noise)
 
@@ -153,6 +161,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             earth_rotation=orchestration_config.signal.earth_rotation,
             noise_arguments=noise_arguments,
             orchestration_config=orchestration_config,
+            population_seed=population_seed,
             signal_adapter=signal_adapter,
             noise_adapter=noise_adapter,
         )
@@ -198,6 +207,8 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
     @property
     def metadata(self) -> dict[str, Any]:
         """Return orchestration metadata for reproducibility."""
+        signal_segment_seed = self._signal_segment_seed()
+        noise_segment_seed = self._noise_segment_seed()
         return {
             **super().metadata,
             "orchestration": {
@@ -206,6 +217,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                 "population_events_remaining": len(self._population_events) - int(self.population_index),
                 "population": {
                     "metadata": self._population_metadata,
+                    "seed": self._population_seed,
                 },
                 "signal": {
                     "waveform_model": self.waveform_model,
@@ -213,10 +225,13 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                     "minimum_frequency": self.minimum_frequency,
                     "earth_rotation": self.earth_rotation,
                     "detectors": self.detectors,
+                    "segment_seed": signal_segment_seed,
                 },
                 "noise": {
                     "arguments": self.noise_arguments,
+                    "segment_seed": noise_segment_seed,
                 },
+                "segment_seeds": self.segment_seeds(),
             },
         }
 
@@ -247,7 +262,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         """Generate signal chunks for the current segment from population events."""
         chunks = TimeSeriesList()
         while self.population_index < len(self._population_events):
-            parameters = self._population_events[int(self.population_index)]
+            parameters = dict(self._population_events[int(self.population_index)])
             coa_time = parameters.get("coa_time")
             end_time_value = float(getattr(self.end_time, "value", self.end_time))
             if coa_time is not None and float(coa_time) >= end_time_value:
@@ -304,7 +319,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             output_format=output_format,
             gps_start=gps_start,
             channel_prefix=channel_prefix,
-            seed=self._segment_seed(),
+            seed=self._noise_segment_seed(),
             psd_file=self.noise_arguments.get("psd_file"),
             psd_schedule=self.noise_arguments.get("psd_schedule"),
             psd_files=self.noise_arguments.get("psd_files"),
@@ -315,11 +330,27 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             glitches=self.noise_arguments.get("glitches"),
         )
 
-    def _segment_seed(self) -> int | None:
+    def segment_seeds(self) -> list[int]:
+        """Return the deterministic per-segment seeds used in the current batch."""
+        return [seed for seed in (self._signal_segment_seed(), self._noise_segment_seed()) if seed is not None]
+
+    def _root_seed(self) -> int | None:
         base_seed = self.noise_arguments.get("seed")
         if base_seed is None:
             return None
-        return int(base_seed) + int(self.counter)
+        return int(base_seed)
+
+    def _signal_segment_seed(self) -> int | None:
+        root_seed = self._root_seed()
+        if root_seed is None:
+            return None
+        return derive_seed(root_seed, "signal", int(self.counter))
+
+    def _noise_segment_seed(self) -> int | None:
+        root_seed = self._root_seed()
+        if root_seed is None:
+            return None
+        return derive_seed(root_seed, "noise", int(self.counter))
 
     def _infer_noise_output_format(self, file_name_template: str) -> Literal["npy", "gwf"]:
         suffix = Path(file_name_template).suffix.lower().lstrip(".")
