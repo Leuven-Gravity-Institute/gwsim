@@ -1,40 +1,48 @@
 globals:
     simulator-arguments:
-        # Sampling frequency in Hz (affects time resolution and file size)
         sampling-frequency: 4096
-        # Duration of each generated segment in seconds
         duration: 4096
-        # Human-friendly total duration (may be parsed by the config loader)
-        total-duration: '1 day'
-        # GPS start time for the simulation
+        total-duration: 1 day
         start-time: 1577491218
-    # Working directory for generated outputs (relative or absolute)
     working-directory: .
-    # Default directory where generated frame files are written
     output-directory: output
-    # Directory to store metadata sidecars and checkpoints
     metadata-directory: metadata
 
-simulators:
-    # Gengli glitch simulator configuration
-    glitch:
-        class: GengliGlitchSimulator
+orchestration:
+    population:
+        backend: FilePopulationLoader
+        source-type: bbh
+        n-samples: 1
         arguments:
-            # Path or URL to population file (HDF5) containing simulated glitch events
-            population_file: https://sandbox.zenodo.org/records/413548/files/blip_glitch_population_E2.hdf5
-            # PSD to recolor the glitches
-            psd_file: ET_15_full_cryo_psd.txt
-            # List of detector names to generate glitch for (NO network support)
+            path: examples/glitch/gengli/bbh_smoke_population.csv
+    signal:
+        waveform-model: IMRPhenomXPHM
+        minimum-frequency: 2
+        detectors:
+            - src/gwmock/detector/detectors/E2_2L_Misaligned_EMR.interferometer
+        output:
+            output_directory: signal
+            file_name:
+                signal-{{ detectors }}-{{ start_time }}-{{ duration }}.gwf
+            arguments:
+                channel: '{{ detectors }}:STRAIN'
+    noise:
+        arguments:
+            seed: 42
             detectors:
                 - E2_2L_misaligned_emr
-            # Random seed for glitch generation
-            seed: 42
+            glitches:
+                - kind: gengli_blip
+                  rate: 0.0011111111111111111
+                  amplitude_distribution:
+                      distribution: lognormal
+                      mean: 1.0
+                      std: 0.0
+                  population_file: https://sandbox.zenodo.org/records/413548/files/blip_glitch_population_E2.hdf5
+                  psd_file: https://raw.githubusercontent.com/Leuven-Gravity-Institute/gwmock/main/src/gwmock/detector/noise_curves/ET_15_full_cryo_psd.txt
+                  low_frequency_cutoff: 5.0
         output:
-            # Template used to construct the output file name at runtime. Uses template variables
-            # such as `detectors`, `start_time` and `duration` expanded by the config loader.
-            file_name:
-                'E-{{ detectors }}_STRAIN_GLITCH-{{ start_time }}-{{ duration
-                }}.gwf'
+            output_directory: noise
+            file_name: glitch-{{ counter }}.gwf
             arguments:
-                # Channel name (template) for the output frame (e.g. "E1_2L_aligned_sardinia:STRAIN")
-                channel: '{{ detectors }}:STRAIN'
+                channel_prefix: STRAIN

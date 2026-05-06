@@ -56,7 +56,7 @@ Base Simulator (interface, state management, iteration)
     └── + WaveformMixin → handles waveform generation
 
     ↓
-Specialized Simulators (NoiseSimulator, SignalSimulator, GlitchSimulator)
+Specialized Simulators (NoiseSimulator, SignalSimulator)
 ```
 
 Benefits:

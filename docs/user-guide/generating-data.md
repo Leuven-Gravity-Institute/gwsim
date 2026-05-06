@@ -147,8 +147,11 @@ gwmock simulate config.yaml
 
 Glitches can be generated using configuration files in the
 [`examples/glitch`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/glitch/gengli)
-directory. Glitch generation uses the [gengli](https://pypi.org/project/gengli/)
-package and currently supports only _blip_ glitches.
+directory. These examples attach
+[`gwmock-noise`](https://github.com/Leuven-Gravity-Institute/gwmock-noise)
+glitch models through `orchestration.noise.arguments.glitches`, so glitches are
+treated as detector artifacts in the protocol-only pipeline. The bundled gengli
+integration currently supports only _blip_ glitches.
 
 An example configuration for producing one day of ET data for the E1 detector
 containing blip glitches from a realistic population is provided in
@@ -164,10 +167,10 @@ January 2030.
 
 Blip glitches are injected into zero noise from the
 [blip_glitch_population_E1.h5](https://sandbox.zenodo.org/records/413548)
-population file, which was generated with gengli using the
-[following script](https://github.com/Leuven-Gravity-Institute/gwmock/blob/main/src/gwmock/population/glitch.py).
-These glitches are modeled on LIGO blip glitches observed during the O3
-observing run and recolored to match the ET sensitivity.
+population file, which can be generated from GravitySpy tables with
+`gwmock-noise build-blip-glitch-table`. These glitches are modeled on LIGO blip
+glitches observed during the O3 observing run and recolored to match the ET
+sensitivity.
 
 To generate the ET data for detector E1 with glitches, run:
 
@@ -189,16 +192,6 @@ gwmock simulate config.yaml
     [Zenodo repository](https://sandbox.zenodo.org/records/413548).
     The file is saved in a cache directory (by default, `~/.gwmock/population/`).
     When the same population file is needed again, gwmock uses the cached copy to avoid re-downloading.
-
-<!-- prettier-ignore -->
-!!! note
-    The [`GengliGlitchSimulator`](/reference/gwmock/glitch/gengli_glitch) currently supports only a single detector at
-    a time.
-    To generate glitch-containing data for detectors E2 and E3, rerun the command above using the
-    [`glitch/gengli/et_triangle_emr/e2/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/glitch/gengli/et_triangle_emr/e2/config.yaml) and
-    [`glitch/gengli/et_triangle_emr/e3/config.yaml`](https://github.com/Leuven-Gravity-Institute/gwmock/tree/main/examples/glitch/gengli/et_triangle_emr/e3/config.yaml) configuration files respectively
-    (updating the working directory name).
-    Note that a different glitch population is used for each detector.
 
 ## Using Different Detector Configurations
 

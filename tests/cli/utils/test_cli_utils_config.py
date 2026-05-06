@@ -206,12 +206,12 @@ class TestConfig:
         config = Config(
             simulators={
                 "noise": SimulatorConfig(class_="WhiteNoise"),
-                "glitch": SimulatorConfig(class_="GengliGlitchSimulator"),
+                "aux": SimulatorConfig(class_="AuxiliarySimulator"),
             }
         )
         assert len(config.simulators) == NUM_SIMULATORS
         assert "noise" in config.simulators
-        assert "glitch" in config.simulators
+        assert "aux" in config.simulators
 
     @pytest.mark.parametrize("class_spec", ["SignalSimulator", "CBCSignalSimulator"])
     def test_config_rejects_removed_signal_simulator(self, class_spec: str):
@@ -814,8 +814,8 @@ simulators:
                     class_="WhiteNoise",
                     arguments={"seed": 42},
                 ),
-                "glitch": SimulatorConfig(
-                    class_="GengliGlitchSimulator",
+                "aux": SimulatorConfig(
+                    class_="AuxiliarySimulator",
                     arguments={"snr_threshold": 10},
                 ),
             },
@@ -828,7 +828,7 @@ simulators:
             expected_num_of_simulators = NUM_SIMULATORS
             assert len(loaded.simulators) == expected_num_of_simulators
             assert "noise" in loaded.simulators
-            assert "glitch" in loaded.simulators
+            assert "aux" in loaded.simulators
             assert loaded.globals.simulator_arguments["sampling_frequency"] == sampling_frequency
 
 
