@@ -412,6 +412,13 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         if self._noise_stream is not None and self._noise_stream_position == target_position:
             return
 
+        if int(self.counter) > 0 and self._root_seed() is None:
+            raise ValueError(
+                "Cannot resume an unseeded noise stream from a non-zero batch index; "
+                "the upstream stream is non-deterministic without a seed."
+            )
+        self._pending_noise_chunk = None
+
         self._noise_stream = self.noise_adapter.open_stream(
             chunk_duration=float(self.duration.value),
             sampling_frequency=float(self.sampling_frequency.value),
