@@ -4,44 +4,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
+import numpy as np
 
-from gwmock.cli.utils.config import SimulatorConfig, SimulatorOutputConfig
-from gwmock.cli.utils.simulation_plan import SimulationBatch
-from gwmock.noise import NoiseAdapter, UpstreamNoiseSimulator
+from gwmock.noise import NoiseAdapter
 
 TEST_DURATION = 8.0
 TEST_SAMPLING_FREQUENCY = 256.0
 TEST_GPS_START = 1234.5
 TEST_SEED = 11
-SEGMENT_DURATION = 4.0
-BASE_SEED = 7
 
 
 class FakeNoiseBackend:
-    """Minimal public gwmock-noise backend for adapter tests."""
+    """Minimal run-style gwmock-noise backend for direct adapter tests."""
 
     def __init__(self) -> None:
         self.run_calls = []
-
-    @staticmethod
-    def _format_time_token(value: float) -> str:
-        """Same rules as ``gwmock_noise.output.frame.FrameWriter._format_time_token``."""
-        if float(value).is_integer():
-            return str(int(value))
-        return f"{value:.6f}".rstrip("0").rstrip(".").replace(".", "p")
-
-    def _artifact_path(self, config, detector: str) -> Path:
-        """Match ``DefaultNoiseSimulator`` output paths (NumPy vs GWF frame writer)."""
-        if config.output.format == "npy":
-            return config.output.directory / f"{config.output.prefix}_{detector}.npy"
-        start_token = self._format_time_token(float(config.output.gps_start))
-        duration_token = self._format_time_token(config.duration)
-        channel = f"{detector}:{config.output.channel_prefix}_NOISE"
-        artifact_name = f"{detector[0]}-{channel}_{start_token}-{duration_token}.gwf"
-        prefix = config.output.prefix or ""
-        name = f"{prefix}_{artifact_name}" if prefix else artifact_name
-        return config.output.directory / name
 
     def run(self, config):
         """Record the config and materialize the declared outputs."""
@@ -49,11 +26,64 @@ class FakeNoiseBackend:
         config.output.directory.mkdir(parents=True, exist_ok=True)
         output_paths = {}
         for detector in config.detectors:
-            artifact_path = self._artifact_path(config, detector)
+            artifact_path = config.output.directory / f"{config.output.prefix}_{detector}.npy"
             artifact_path.write_text(f"{detector}:{config.output.format}")
-            (config.output.directory / f"{config.output.prefix}_{detector}.json").write_text("{}")
             output_paths[detector] = artifact_path
         return type("SimulationResultStub", (), {"output_paths": output_paths, "config": config})()
+
+
+class FakeStreamNoiseBackend:
+    """Protocol-style backend that exposes one stateful chunk iterator."""
+
+    def __init__(self) -> None:
+        self.duration = 0.0
+        self.sampling_frequency = 0.0
+        self.detectors = ["H1", "L1"]
+        self.seed = None
+        self.stream_open_calls = []
+        self.chunk_index = 0
+
+    def generate(self, duration: float, sampling_frequency: float, detectors: list[str], seed: int | None = None):
+        """Return one deterministic chunk."""
+        _ = seed
+        n_samples = round(duration * sampling_frequency)
+        return {detector: np.full(n_samples, self.chunk_index, dtype=float) for detector in detectors}
+
+    def generate_stream(
+        self,
+        chunk_duration: float,
+        sampling_frequency: float,
+        detectors: list[str],
+        seed: int | None = None,
+    ):
+        """Yield deterministic chunks while recording one stream-open event."""
+        self.stream_open_calls.append(
+            {
+                "chunk_duration": chunk_duration,
+                "sampling_frequency": sampling_frequency,
+                "detectors": list(detectors),
+                "seed": seed,
+            }
+        )
+        while True:
+            n_samples = round(chunk_duration * sampling_frequency)
+            value = self.chunk_index
+            self.chunk_index += 1
+            yield {detector: np.full(n_samples, value, dtype=float) for detector in detectors}
+
+    @property
+    def metadata(self) -> dict[str, object]:
+        """Return fake backend metadata."""
+        return {"kind": "fake-stream-noise"}
+
+
+def _psd_file(tmp_path: Path) -> Path:
+    """Create a simple PSD file for reproducibility tests."""
+    freqs = np.linspace(1, 64, 64)
+    psd_values = np.ones_like(freqs)
+    psd_path = tmp_path / "psd.txt"
+    np.savetxt(psd_path, np.column_stack([freqs, psd_values]))
+    return psd_path
 
 
 class TestNoiseAdapter:
@@ -63,8 +93,7 @@ class TestNoiseAdapter:
         """The adapter should pass gwmock orchestration inputs through NoiseConfig."""
         backend = FakeNoiseBackend()
         adapter = NoiseAdapter.from_backend(backend)
-        psd_path = tmp_path / "psd.txt"
-        psd_path.write_text("0 1\n1 1\n")
+        psd_path = _psd_file(tmp_path)
 
         result = adapter.run(
             detectors=["H1", "L1"],
@@ -94,86 +123,109 @@ class TestNoiseAdapter:
         assert config.psd_file == psd_path
         assert result.output_paths["H1"] == tmp_path / "segment-0_H1.npy"
 
+    def test_open_stream_uses_one_upstream_iterator(self):
+        """The adapter should open one shared stream and consume it chunk by chunk."""
+        backend = FakeStreamNoiseBackend()
+        adapter = NoiseAdapter.from_backend(backend)
 
-class TestUpstreamNoiseSimulator:
-    """Tests for the gwmock orchestration wrapper."""
-
-    @staticmethod
-    def _batch(file_name: str, arguments: dict | None = None) -> SimulationBatch:
-        return SimulationBatch(
-            simulator_name="noise",
-            simulator_config=SimulatorConfig(
-                class_="gwmock.noise.UpstreamNoiseSimulator",
-                arguments={},
-                output=SimulatorOutputConfig(file_name=file_name, arguments=arguments or {}),
-            ),
-            globals_config=type(
-                "GlobalsStub",
-                (),
-                {
-                    "working_directory": ".",
-                    "output_directory": None,
-                    "metadata_directory": None,
-                    "simulator_arguments": {},
-                    "output_arguments": {},
-                },
-            )(),
-            batch_index=0,
-        )
-
-    def test_simulate_uses_batch_context_and_deterministic_segment_seed(self, tmp_path: Path):
-        """Each batch should map to one deterministic public run(config) call."""
-        backend = FakeNoiseBackend()
-        simulator = UpstreamNoiseSimulator(
-            duration=SEGMENT_DURATION,
-            sampling_frequency=128.0,
+        stream = adapter.open_stream(
+            chunk_duration=4.0,
+            sampling_frequency=8.0,
             detectors=["H1", "L1"],
-            seed=BASE_SEED,
-            psd_file=tmp_path / "psd.npy",
-            noise_adapter=NoiseAdapter.from_backend(backend),
+            seed=7,
         )
 
-        batch0 = self._batch("noise-{{counter}}.npy")
-        batch1 = self._batch("noise-{{counter}}.npy")
+        first_chunk = next(stream)
+        second_chunk = next(stream)
 
-        simulator.set_batch_context(batch=batch0, output_directory=tmp_path, overwrite=False)
-        result0 = simulator.simulate()
-        simulator.update_state()
+        assert backend.stream_open_calls == [
+            {
+                "chunk_duration": 4.0,
+                "sampling_frequency": 8.0,
+                "detectors": ["H1", "L1"],
+                "seed": 7,
+            }
+        ]
+        assert np.all(first_chunk["H1"] == 0.0)
+        assert np.all(second_chunk["L1"] == 1.0)
 
-        simulator.set_batch_context(batch=batch1, output_directory=tmp_path, overwrite=False)
-        result1 = simulator.simulate()
-
-        config0, config1 = backend.run_calls
-        assert config0.seed == BASE_SEED
-        assert config1.seed == BASE_SEED + 1
-        assert config0.output.prefix == "noise-0"
-        assert config1.output.prefix == "noise-1"
-        assert config0.output.gps_start == 0.0
-        assert config1.output.gps_start == SEGMENT_DURATION
-        assert result0.output_paths["H1"] == tmp_path / "noise-0_H1.npy"
-        assert result1.output_paths["L1"] == tmp_path / "noise-1_L1.npy"
-
-    def test_set_batch_context_rejects_unsupported_output_arguments(self, tmp_path: Path):
-        """Unsupported gwmock-only output arguments should fail loudly for the adapter path."""
-        simulator = UpstreamNoiseSimulator(noise_adapter=NoiseAdapter.from_backend(FakeNoiseBackend()))
-        batch = self._batch("noise.npy", {"channel": "H1:STRAIN"})
-
-        with pytest.raises(ValueError, match="Unsupported keys: channel"):
-            simulator.set_batch_context(batch=batch, output_directory=tmp_path, overwrite=False)
-
-    def test_simulate_gwf_overwrite_false_raises_when_outputs_exist(self, tmp_path: Path):
-        """GWF pre-run existence checks should see the same paths the backend writes."""
-        backend = FakeNoiseBackend()
-        simulator = UpstreamNoiseSimulator(
-            duration=SEGMENT_DURATION,
-            sampling_frequency=128.0,
-            detectors=["H1"],
+    def test_write_chunk_persists_numpy_outputs(self, tmp_path: Path):
+        """The adapter should let gwmock own NumPy chunk output writing."""
+        adapter = NoiseAdapter.from_backend(FakeStreamNoiseBackend())
+        config = adapter.build_config(
+            detectors=["H1", "L1"],
+            duration=4.0,
+            sampling_frequency=8.0,
+            output_directory=tmp_path,
+            output_prefix="noise-0",
+            output_format="npy",
+            gps_start=100.0,
             channel_prefix="MOCK",
-            noise_adapter=NoiseAdapter.from_backend(backend),
+            seed=7,
         )
-        batch = self._batch("noise-{{counter}}.gwf", {"prefix": "seg", "gps_start": 100.0})
 
-        simulator.set_batch_context(batch=batch, output_directory=tmp_path, overwrite=False)
-        simulator.simulate()
-        with pytest.raises(FileExistsError, match="Noise adapter output"):
-            simulator.simulate()
+        result = adapter.write_chunk(
+            config=config,
+            chunk={
+                "H1": np.arange(32, dtype=float),
+                "L1": np.arange(32, dtype=float) + 1.0,
+            },
+        )
+
+        assert adapter.expected_output_paths(config=config) == [
+            tmp_path / "noise-0_H1.npy",
+            tmp_path / "noise-0_L1.npy",
+        ]
+        assert np.array_equal(np.load(result.output_paths["H1"]), np.arange(32, dtype=float))
+        assert np.array_equal(np.load(result.output_paths["L1"]), np.arange(32, dtype=float) + 1.0)
+
+    def test_expected_output_paths_for_gwf(self, tmp_path: Path):
+        """GWF expected paths should match gwmock-noise FrameWriter naming."""
+        adapter = NoiseAdapter.from_backend(FakeStreamNoiseBackend())
+        config = adapter.build_config(
+            detectors=["H1", "L1"],
+            duration=4.0,
+            sampling_frequency=8.0,
+            output_directory=tmp_path,
+            output_prefix="noise-0",
+            output_format="gwf",
+            gps_start=100.5,
+            channel_prefix="MOCK",
+            seed=7,
+        )
+
+        assert adapter.expected_output_paths(config=config) == [
+            tmp_path / "noise-0_H-H1:MOCK_NOISE_100p5-4.gwf",
+            tmp_path / "noise-0_L-L1:MOCK_NOISE_100p5-4.gwf",
+        ]
+
+    def test_multisegment_outputs_match_single_long_run_with_stateful_backend(self, tmp_path: Path):
+        """Concatenated chunk outputs should match one long protocol run for the same stream."""
+        backend = FakeStreamNoiseBackend()
+        adapter = NoiseAdapter.from_backend(backend)
+        stream = adapter.open_stream(
+            chunk_duration=2.0,
+            sampling_frequency=4.0,
+            detectors=["H1"],
+            seed=13,
+        )
+
+        segments = []
+        for index in range(5):
+            config = adapter.build_config(
+                detectors=["H1"],
+                duration=2.0,
+                sampling_frequency=4.0,
+                output_directory=tmp_path,
+                output_prefix=f"noise-{index}",
+                output_format="npy",
+                gps_start=100.0 + index * 2.0,
+                channel_prefix="MOCK",
+                seed=13,
+            )
+            result = adapter.write_chunk(config=config, chunk=next(stream))
+            segments.append(np.load(result.output_paths["H1"]))
+
+        concatenated = np.concatenate(segments)
+        expected = np.concatenate([np.full(8, value, dtype=float) for value in range(5)])
+        assert concatenated.tobytes() == expected.tobytes()

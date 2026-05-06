@@ -12,6 +12,7 @@ import yaml
 from gwmock_signal import DetectorStrainStack
 from gwpy.timeseries import TimeSeries as GWpyTimeSeries
 
+from gwmock.cli.adapter_orchestration import AdapterOrchestrator
 from gwmock.cli.simulate import _simulate_impl
 from gwmock.cli.utils.config import (
     Config,
@@ -87,6 +88,8 @@ class FakeSignalAdapter:
 class FakeNoiseAdapter:
     """Minimal noise protocol backend that materializes deterministic arrays."""
 
+    stream_open_calls: ClassVar[list[dict[str, object]]] = []
+
     def __init__(
         self,
         duration: float = 4.0,
@@ -98,6 +101,7 @@ class FakeNoiseAdapter:
         self.sampling_frequency = sampling_frequency
         self.detectors = ["H1"] if detectors is None else detectors
         self.seed = seed
+        self._chunk_index = 0
 
     def generate(
         self,
@@ -116,12 +120,20 @@ class FakeNoiseAdapter:
         detectors: list[str],
         seed: int | None = None,
     ):
-        yield self.generate(
-            duration=chunk_duration,
-            sampling_frequency=sampling_frequency,
-            detectors=detectors,
-            seed=seed,
+        type(self).stream_open_calls.append(
+            {
+                "chunk_duration": chunk_duration,
+                "sampling_frequency": sampling_frequency,
+                "detectors": list(detectors),
+                "seed": seed,
+            }
         )
+        while True:
+            yield {
+                detector: np.full(round(chunk_duration * sampling_frequency), self._chunk_index, dtype=float)
+                for detector in detectors
+            }
+            self._chunk_index += 1
 
     @property
     def metadata(self) -> dict[str, object]:
@@ -252,6 +264,7 @@ def test_create_plan_from_orchestration_config(tmp_path: Path):
 
 def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path):
     """The CLI should execute the adapter-backed orchestration path end to end."""
+    FakeNoiseAdapter.stream_open_calls.clear()
     config = _orchestration_config(tmp_path)
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.safe_dump(config.model_dump(by_alias=True, exclude_none=True), sort_keys=False))
@@ -272,7 +285,7 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     assert metadata["population"]["source_type"] == "bbh"
     assert metadata["signal"]["detector_network"] == ["H1"]
     assert {output["kind"] for output in metadata["outputs"]} == {"signal", "noise"}
-    assert metadata["segment_seeds"] == [derive_seed(7, "signal", 0), derive_seed(7, "noise", 0)]
+    assert metadata["segment_seeds"] == [derive_seed(7, "signal", 0)]
     assert (
         metadata["simulator_config"]["population"]["backend"]
         == "tests.cli.test_cli_orchestration:FakePopulationBackend"
@@ -281,7 +294,31 @@ def test_simulate_command_runs_adapter_orchestration(monkeypatch, tmp_path: Path
     assert metadata["simulator_metadata"]["orchestration"]["population"]["metadata"] == FakePopulationBackend.metadata
     assert metadata["simulator_metadata"]["orchestration"]["population"]["seed"] == derive_seed(7, "population")
     assert metadata["simulator_metadata"]["orchestration"]["signal"]["segment_seed"] == derive_seed(7, "signal", 0)
-    assert metadata["simulator_metadata"]["orchestration"]["noise"]["segment_seed"] == derive_seed(7, "noise", 0)
+    assert metadata["simulator_metadata"]["orchestration"]["noise"]["stream_seed"] == 7
+    assert FakeNoiseAdapter.stream_open_calls == [
+        {
+            "chunk_duration": 4.0,
+            "sampling_frequency": 4.0,
+            "detectors": ["H1"],
+            "seed": 7,
+        }
+    ]
+
+
+def test_orchestrator_restores_noise_stream_from_committed_cursor(tmp_path: Path):
+    """Restart should fast-forward noise stream from persisted committed cursor."""
+    config = _orchestration_config(tmp_path)
+    orchestrator = AdapterOrchestrator.from_config(config.orchestration, config.globals.simulator_arguments)
+
+    # Simulate restored state where one chunk was already committed.
+    orchestrator.noise_stream_committed_count = 1
+    orchestrator.counter = 0
+    orchestrator._noise_stream = None
+    orchestrator._noise_stream_position = 0
+    orchestrator._pending_noise_chunk = None
+
+    chunk = orchestrator._next_noise_chunk()
+    assert chunk["H1"][0] == 1.0
 
 
 def test_simulate_command_runs_real_public_subpackages(monkeypatch, tmp_path: Path):
