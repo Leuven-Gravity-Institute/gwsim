@@ -120,6 +120,11 @@ class TestDetectorMixin:
 class TestProjectPolarizationsEarthRotation:
     """Test suite for earth rotation effects in polarization projection."""
 
+    @pytest.fixture(autouse=True)
+    def _require_pycbc(self):
+        """Skip these integration-style tests when optional pycbc dependency is missing."""
+        pytest.importorskip("pycbc.detector")
+
     @pytest.fixture
     def h1_detector(self):
         """Create a real H1 detector once for all tests in this class."""

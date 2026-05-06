@@ -6,7 +6,6 @@ from ast import literal_eval
 from pathlib import Path
 
 import numpy as np
-from pycbc.detector import add_detector_on_earth
 
 # The default base path for detector configuration files
 DEFAULT_DETECTOR_BASE_PATH = Path(__file__).parent / "detectors"
@@ -107,6 +106,13 @@ def load_interferometer_config(config_file: str | Path, encoding: str = "utf-8")
 
     params = _bilby_to_pycbc_detector_parameters(bilby_params)
     det_name = params["name"]
+
+    try:
+        from pycbc.detector import add_detector_on_earth  # noqa: PLC0415
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "pycbc is required to register detector configurations from '.interferometer' files."
+        ) from exc
 
     add_detector_on_earth(
         name=det_name,
