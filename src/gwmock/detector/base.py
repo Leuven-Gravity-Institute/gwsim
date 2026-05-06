@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
-from pycbc.detector import Detector as PyCBCDetector
+try:
+    from pycbc.detector import Detector as PyCBCDetector
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI environments without optional deps
+    PyCBCDetector = None  # type: ignore[assignment]
 
 from gwmock.detector.utils import DEFAULT_DETECTOR_BASE_PATH, load_interferometer_config
 
@@ -47,6 +50,10 @@ class Detector:
                 "configuration_file": configuration_file,
             }
         }
+        if PyCBCDetector is None:
+            raise ModuleNotFoundError(
+                "pycbc is required for gwmock.detector.Detector. Install optional waveform/detector dependencies."
+            )
         if name is not None and configuration_file is None:
             try:
                 self._detector = PyCBCDetector(str(name))
@@ -93,7 +100,7 @@ class Detector:
         """
         if not self.is_configured():
             raise ValueError(f"Detector '{self.name}' is not configured.")
-        detector = cast(PyCBCDetector, self._detector)
+        detector = cast(Any, self._detector)
         return detector.antenna_pattern(right_ascension, declination, polarization, t_gps, frequency, polarization_type)
 
     def time_delay_from_earth_center(self, right_ascension, declination, t_gps):
@@ -102,7 +109,7 @@ class Detector:
         """
         if not self.is_configured():
             raise ValueError(f"Detector '{self.name}' is not configured.")
-        detector = cast(PyCBCDetector, self._detector)
+        detector = cast(Any, self._detector)
         return detector.time_delay_from_earth_center(right_ascension, declination, t_gps)
 
     def __getattr__(self, attr):

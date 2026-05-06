@@ -5,12 +5,14 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from gwpy.timeseries import TimeSeries
-from pycbc.waveform import get_td_waveform
 
 from gwmock.waveform.pycbc_wrapper import pycbc_waveform_wrapper
 
+pycbc_waveform = pytest.importorskip("pycbc.waveform")
+get_td_waveform = pycbc_waveform.get_td_waveform
+
 # Mark as integration tests - slower, requires PyCBC
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration]
 
 
 class TestPyCBCWaveformWrapperIntegration:
