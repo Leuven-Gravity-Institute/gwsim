@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
 
+import numpy as np
 from gwmock_noise import SimulationResult
 from gwmock_pop import GWPopSimulator
 from gwmock_signal import DetectorStrainStack, Network
@@ -318,7 +319,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
     def _save_data(
         self,
         data: TimeSeries,
-        file_name: str | Path,
+        file_name: str | Path | np.ndarray[Any, np.dtype[np.object_]],
         **kwargs,
     ) -> None:
         """Persist orchestration signal output through ``DetectorStrainStack.write``."""
