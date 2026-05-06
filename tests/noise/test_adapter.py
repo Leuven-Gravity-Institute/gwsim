@@ -179,6 +179,26 @@ class TestNoiseAdapter:
         assert np.array_equal(np.load(result.output_paths["H1"]), np.arange(32, dtype=float))
         assert np.array_equal(np.load(result.output_paths["L1"]), np.arange(32, dtype=float) + 1.0)
 
+    def test_expected_output_paths_for_gwf(self, tmp_path: Path):
+        """GWF expected paths should match gwmock-noise FrameWriter naming."""
+        adapter = NoiseAdapter.from_backend(FakeStreamNoiseBackend())
+        config = adapter.build_config(
+            detectors=["H1", "L1"],
+            duration=4.0,
+            sampling_frequency=8.0,
+            output_directory=tmp_path,
+            output_prefix="noise-0",
+            output_format="gwf",
+            gps_start=100.5,
+            channel_prefix="MOCK",
+            seed=7,
+        )
+
+        assert adapter.expected_output_paths(config=config) == [
+            tmp_path / "noise-0_H-H1:MOCK_NOISE_100p5-4.gwf",
+            tmp_path / "noise-0_L-L1:MOCK_NOISE_100p5-4.gwf",
+        ]
+
     def test_multisegment_outputs_match_single_long_run_with_stateful_backend(self, tmp_path: Path):
         """Concatenated chunk outputs should match one long protocol run for the same stream."""
         backend = FakeStreamNoiseBackend()

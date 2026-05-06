@@ -29,6 +29,34 @@ _SUPPORTED_OUTPUT_FORMATS = {"npy", "gwf"}
 _DETECTOR_PAIR_SIZE = 2
 
 
+def _format_frame_time_token(value: float) -> str:
+    """Match gwmock-noise frame filename token formatting."""
+    if float(value).is_integer():
+        return str(int(value))
+    return f"{value:.6f}".rstrip("0").rstrip(".").replace(".", "p")
+
+
+def _frame_channel_name(detector: str, channel_prefix: str) -> str:
+    """Return detector channel name used by gwmock-noise frame outputs."""
+    return f"{detector}:{channel_prefix}_NOISE"
+
+
+def _frame_artifact_name(
+    *,
+    detector: str,
+    channel_prefix: str,
+    prefix: str,
+    gps_start: float,
+    duration: float,
+) -> str:
+    """Return the GWF filename used by gwmock-noise ``FrameWriter``."""
+    channel = _frame_channel_name(detector, channel_prefix)
+    start_token = _format_frame_time_token(gps_start)
+    duration_token = _format_frame_time_token(duration)
+    name = f"{detector[0]}-{channel}_{start_token}-{duration_token}.gwf"
+    return f"{prefix}_{name}" if prefix else name
+
+
 def _coerce_path(value: str | Path | None) -> Path | None:
     """Normalize a path-like input."""
     if value is None:
@@ -241,16 +269,15 @@ class NoiseAdapter:
                 / (f"{config.output.prefix}_{detector}.npy" if config.output.prefix else f"{detector}.npy")
                 for detector in config.detectors
             ]
-
-        writer = FrameWriter(
-            _ChunkNoiseSimulator({detector: np.zeros(1) for detector in config.detectors}),
-            gps_start=config.output.gps_start,
-            output_dir=config.output.directory,
-            channel_prefix=config.output.channel_prefix,
-            prefix=config.output.prefix,
-        )
         return [
-            writer._frame_path(detector, writer._channel_name(detector), config.output.gps_start, config.duration)
+            config.output.directory
+            / _frame_artifact_name(
+                detector=detector,
+                channel_prefix=config.output.channel_prefix,
+                prefix=config.output.prefix,
+                gps_start=config.output.gps_start,
+                duration=config.duration,
+            )
             for detector in config.detectors
         ]
 
