@@ -206,19 +206,20 @@ class TestConfig:
         config = Config(
             simulators={
                 "noise": SimulatorConfig(class_="WhiteNoise"),
-                "signal": SimulatorConfig(class_="CBCSignalSimulator"),
+                "glitch": SimulatorConfig(class_="GengliGlitchSimulator"),
             }
         )
         assert len(config.simulators) == NUM_SIMULATORS
         assert "noise" in config.simulators
-        assert "signal" in config.simulators
+        assert "glitch" in config.simulators
 
-    def test_config_rejects_removed_signal_simulator(self):
+    @pytest.mark.parametrize("class_spec", ["SignalSimulator", "CBCSignalSimulator"])
+    def test_config_rejects_removed_signal_simulator(self, class_spec: str):
         """Legacy signal simulator configs should direct users to orchestration."""
         with pytest.raises(
             ValidationError, match=r"orchestration\.population.*orchestration\.signal.*orchestration\.noise"
         ):
-            Config(simulators={"signal": SimulatorConfig(class_="SignalSimulator")})
+            Config(simulators={"signal": SimulatorConfig(class_=class_spec)})
 
     def test_config_serialization(self):
         """Test Config serialization for YAML export."""
@@ -432,12 +433,13 @@ class TestResolveClassPath:
         path = resolve_class_path("WhiteNoise", "noise")
         assert path == "gwmock.noise.WhiteNoise"
 
-    def test_resolve_class_path_simple_signal(self):
+    @pytest.mark.parametrize("class_spec", ["SignalSimulator", "CBCSignalSimulator"])
+    def test_resolve_class_path_simple_signal(self, class_spec: str):
         """Removed legacy signal class should raise a migration error."""
         with pytest.raises(
-            ValueError, match=r"Legacy 'simulators\.signal\.class: SignalSimulator' is no longer supported"
+            ValueError, match=rf"Legacy 'simulators\.signal\.class: {class_spec}' is no longer supported"
         ):
-            resolve_class_path("SignalSimulator", "signal")
+            resolve_class_path(class_spec, "signal")
 
     def test_resolve_class_path_full_path(self):
         """Test resolving full import path."""
@@ -560,9 +562,10 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="'output' must be a dictionary"):
             validate_config(config)
 
-    def test_validate_config_rejects_removed_signal_simulator(self):
+    @pytest.mark.parametrize("class_spec", ["SignalSimulator", "CBCSignalSimulator"])
+    def test_validate_config_rejects_removed_signal_simulator(self, class_spec: str):
         """Legacy signal simulator configs should raise a migration error."""
-        config = {"simulators": {"signal": {"class": "SignalSimulator"}}}
+        config = {"simulators": {"signal": {"class": class_spec}}}
         with pytest.raises(ValueError, match=r"orchestration\.population.*orchestration\.signal.*orchestration\.noise"):
             validate_config(config)
 
@@ -795,9 +798,9 @@ simulators:
                     class_="WhiteNoise",
                     arguments={"seed": 42},
                 ),
-                "signal": SimulatorConfig(
-                    class_="CBCSignalSimulator",
-                    arguments={"mass1": 10, "mass2": 10},
+                "glitch": SimulatorConfig(
+                    class_="GengliGlitchSimulator",
+                    arguments={"snr_threshold": 10},
                 ),
             },
         )
@@ -809,7 +812,7 @@ simulators:
             expected_num_of_simulators = NUM_SIMULATORS
             assert len(loaded.simulators) == expected_num_of_simulators
             assert "noise" in loaded.simulators
-            assert "signal" in loaded.simulators
+            assert "glitch" in loaded.simulators
             assert loaded.globals.simulator_arguments["sampling_frequency"] == sampling_frequency
 
 

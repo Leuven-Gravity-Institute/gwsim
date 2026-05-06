@@ -118,8 +118,9 @@ gwmock config --get <label of the configuration file> --output <directory or fil
 
 ## Configuration File Structure
 
-The configuration file uses YAML format. They consist of two main sections:
-globals and simulators.
+The configuration file uses YAML format. They consist of a shared `globals`
+section plus exactly one execution surface: legacy `simulators` or the
+adapter-backed `orchestration` schema.
 
 ### Globals
 
@@ -176,9 +177,8 @@ Available `noise` simulators includes:
 - [`ColoredNoiseSimulator`](/reference/gwmock/noise/colored_noise/?h=colorednoise#gwmock.noise.colored_noise.ColoredNoiseSimulator)
 - [`CorrelatedNoiseSimulator`](/reference/gwmock/noise/correlated_noise/?h=correlatednoise#gwmock.noise.correlated_noise.CorrelatedNoiseSimulator)
 
-Available `signal` simulators includes:
-
-- [`CBCSignalSimulator`](/reference/gwmock/signal/cbc/?h=gwmock.signal.cbc.cbcsignalsimulator#gwmock.signal.cbc.CBCSignalSimulator)
+Legacy `signal` simulator classes have been removed. Configure
+gravitational-wave signals under `orchestration.signal` instead.
 
 Available `glitch` simulators includes:
 
