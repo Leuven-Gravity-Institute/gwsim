@@ -59,9 +59,12 @@ Consumers must reject unknown major versions.
 ```
 
 `config` stores the resolved configuration snapshot for that run.
-`segment_seeds` stores the deterministic per-segment seeds derived from the
-top-level `seed`. The subpackage `metadata` objects are preserved as JSON
-objects without gwmock rewriting their internal structure.
+`segment_seeds` stores the deterministic per-segment seeds that `gwmock` derives
+locally. Adapter-backed noise now consumes one shared
+`gwmock_noise.open_stream(...)` iterator per run, so the top-level `seed` is
+recorded once and noise continuation no longer appears as one derived seed per
+batch. The subpackage `metadata` objects are preserved as JSON objects without
+gwmock rewriting their internal structure.
 
 ## Reproducing a run
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -99,6 +100,9 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         self._active_noise_output_directory = Path("noise")
         self._active_noise_output_arguments: dict[str, Any] = {}
         self._active_overwrite = False
+        self._noise_stream: Iterator[dict[str, Any]] | None = None
+        self._noise_stream_position = 0
+        self._pending_noise_chunk: dict[str, Any] | None = None
 
         super().__init__(
             max_samples=max_samples,
@@ -208,7 +212,6 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
     def metadata(self) -> dict[str, Any]:
         """Return orchestration metadata for reproducibility."""
         signal_segment_seed = self._signal_segment_seed()
-        noise_segment_seed = self._noise_segment_seed()
         return {
             **super().metadata,
             "orchestration": {
@@ -229,7 +232,8 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
                 },
                 "noise": {
                     "arguments": self.noise_arguments,
-                    "segment_seed": noise_segment_seed,
+                    "stream_seed": self._root_seed(),
+                    "state_model": "gwmock consumes one shared gwmock_noise.open_stream() iterator across batches.",
                 },
                 "segment_seeds": self.segment_seeds(),
             },
@@ -285,6 +289,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         """Advance to the next segment."""
         self.counter = cast(int, self.counter) + 1
         self.start_time += self.duration
+        self._pending_noise_chunk = None
 
     def signal_output_directory(self) -> Path:
         """Return the active signal output directory."""
@@ -301,16 +306,17 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
     def _run_noise_batch(self) -> SimulationResult:
         output_format = self._infer_noise_output_format(self.orchestration_config.noise.output.file_name)
         output_prefix = self._derive_noise_output_prefix(self.orchestration_config.noise.output.file_name)
-        channel_prefix = str(self._active_noise_output_arguments.pop("channel_prefix", "MOCK"))
-        gps_start = float(self._active_noise_output_arguments.pop("gps_start", float(self.start_time.value)))
-        if self._active_noise_output_arguments:
-            unsupported = ", ".join(sorted(self._active_noise_output_arguments))
+        output_arguments = dict(self._active_noise_output_arguments)
+        channel_prefix = str(output_arguments.pop("channel_prefix", "MOCK"))
+        gps_start = float(output_arguments.pop("gps_start", float(self.start_time.value)))
+        if output_arguments:
+            unsupported = ", ".join(sorted(output_arguments))
             raise ValueError(
                 "Noise orchestration output arguments only support channel_prefix and gps_start. "
                 f"Unsupported keys: {unsupported}."
             )
 
-        return self.noise_adapter.run(
+        config = self.noise_adapter.build_config(
             detectors=list(self.noise_arguments["detectors"]),
             duration=float(self.duration.value),
             sampling_frequency=float(self.sampling_frequency.value),
@@ -319,7 +325,7 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             output_format=output_format,
             gps_start=gps_start,
             channel_prefix=channel_prefix,
-            seed=self._noise_segment_seed(),
+            seed=self._root_seed(),
             psd_file=self.noise_arguments.get("psd_file"),
             psd_schedule=self.noise_arguments.get("psd_schedule"),
             psd_files=self.noise_arguments.get("psd_files"),
@@ -329,10 +335,20 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             spectral_lines=self.noise_arguments.get("spectral_lines"),
             glitches=self.noise_arguments.get("glitches"),
         )
+        if not self._active_overwrite:
+            existing = [path for path in self.noise_adapter.expected_output_paths(config=config) if path.exists()]
+            if existing:
+                raise FileExistsError(
+                    f"Noise adapter output(s) already exist: {', '.join(str(path) for path in existing)}. "
+                    "Use overwrite=True to overwrite them."
+                )
+
+        chunk = self._next_noise_chunk()
+        return self.noise_adapter.write_chunk(config=config, chunk=chunk)
 
     def segment_seeds(self) -> list[int]:
-        """Return the deterministic per-segment seeds used in the current batch."""
-        return [seed for seed in (self._signal_segment_seed(), self._noise_segment_seed()) if seed is not None]
+        """Return the deterministic per-segment seeds derived locally by gwmock."""
+        return [seed for seed in (self._signal_segment_seed(),) if seed is not None]
 
     def _root_seed(self) -> int | None:
         base_seed = self.noise_arguments.get("seed")
@@ -345,12 +361,6 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
         if root_seed is None:
             return None
         return derive_seed(root_seed, "signal", int(self.counter))
-
-    def _noise_segment_seed(self) -> int | None:
-        root_seed = self._root_seed()
-        if root_seed is None:
-            return None
-        return derive_seed(root_seed, "noise", int(self.counter))
 
     def _infer_noise_output_format(self, file_name_template: str) -> Literal["npy", "gwf"]:
         suffix = Path(file_name_template).suffix.lower().lstrip(".")
@@ -372,3 +382,47 @@ class AdapterOrchestrator(TimeSeriesMixin, Simulator):
             return base_output_directory / fallback_subdir
         configured_path = Path(configured_directory)
         return configured_path if configured_path.is_absolute() else base_output_directory / configured_path
+
+    def _next_noise_chunk(self) -> dict[str, Any]:
+        """Return the chunk for the current batch, reusing it across retries."""
+        if self._pending_noise_chunk is not None:
+            return self._pending_noise_chunk
+
+        self._ensure_noise_stream()
+        if self._noise_stream is None:
+            raise RuntimeError("Noise stream was not initialized.")
+        try:
+            self._pending_noise_chunk = next(self._noise_stream)
+        except StopIteration as error:
+            raise ValueError("Noise stream ended before all orchestration batches were generated.") from error
+        self._noise_stream_position += 1
+        return self._pending_noise_chunk
+
+    def _ensure_noise_stream(self) -> None:
+        """Open or realign the shared upstream noise stream to the current batch index."""
+        if self._noise_stream is not None and self._noise_stream_position == int(self.counter):
+            return
+
+        self._noise_stream = self.noise_adapter.open_stream(
+            chunk_duration=float(self.duration.value),
+            sampling_frequency=float(self.sampling_frequency.value),
+            detectors=list(self.noise_arguments["detectors"]),
+            seed=self._root_seed(),
+            psd_file=self.noise_arguments.get("psd_file"),
+            psd_schedule=self.noise_arguments.get("psd_schedule"),
+            psd_files=self.noise_arguments.get("psd_files"),
+            csd_files=self.noise_arguments.get("csd_files"),
+            low_frequency_cutoff=self.noise_arguments.get("low_frequency_cutoff", 2.0),
+            high_frequency_cutoff=self.noise_arguments.get("high_frequency_cutoff"),
+            spectral_lines=self.noise_arguments.get("spectral_lines"),
+            glitches=self.noise_arguments.get("glitches"),
+        )
+        self._noise_stream_position = 0
+        for _ in range(int(self.counter)):
+            try:
+                next(self._noise_stream)
+            except StopIteration as error:
+                raise ValueError(
+                    "Noise stream ended before the saved orchestration state could be restored."
+                ) from error
+            self._noise_stream_position += 1
