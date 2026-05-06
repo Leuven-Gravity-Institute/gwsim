@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from gwpy.timeseries import TimeSeries
-from pycbc.waveform import get_td_waveform
+
+try:
+    from pycbc.waveform import get_td_waveform
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI environments without optional deps
+    get_td_waveform = None  # type: ignore[assignment]
 
 
 def pycbc_waveform_wrapper(
@@ -20,6 +24,10 @@ def pycbc_waveform_wrapper(
     Returns:
         A dictionary with 'plus' and 'cross' keys containing the respective GWpy TimeSeries.
     """
+    if get_td_waveform is None:
+        raise ModuleNotFoundError(
+            "pycbc is required for pycbc_waveform_wrapper. Install optional waveform dependencies."
+        )
 
     # Call PyCBC to generate the waveform.
     hp, hc = get_td_waveform(

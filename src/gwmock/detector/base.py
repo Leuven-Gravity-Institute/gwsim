@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
-from pycbc.detector import Detector as PyCBCDetector
+try:
+    from pycbc.detector import Detector as PyCBCDetector
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI environments without optional deps
+    PyCBCDetector = None  # type: ignore[assignment]
 
 from gwmock.detector.utils import DEFAULT_DETECTOR_BASE_PATH, load_interferometer_config
 
@@ -23,7 +26,10 @@ def _load_all_detector_configuration_files(config_dir: Path = DEFAULT_DETECTOR_B
             logger.warning("Failed to load detector configuration from %s: %s", config_file, e)
 
 
-_load_all_detector_configuration_files(config_dir=DEFAULT_DETECTOR_BASE_PATH)
+if PyCBCDetector is not None:
+    _load_all_detector_configuration_files(config_dir=DEFAULT_DETECTOR_BASE_PATH)
+else:
+    logger.debug("Skipping detector config preload because pycbc is not installed.")
 
 
 class Detector:
@@ -48,6 +54,10 @@ class Detector:
             }
         }
         if name is not None and configuration_file is None:
+            if PyCBCDetector is None:
+                raise ModuleNotFoundError(
+                    "pycbc is required for gwmock.detector.Detector. Install optional waveform/detector dependencies."
+                )
             try:
                 self._detector = PyCBCDetector(str(name))
                 self.name = str(name)
@@ -70,6 +80,10 @@ class Detector:
                 prefix = load_interferometer_config(config_file=DEFAULT_DETECTOR_BASE_PATH / configuration_file)
             else:
                 raise FileNotFoundError(f"Configuration file '{configuration_file}' not found.")
+            if PyCBCDetector is None:
+                raise ModuleNotFoundError(
+                    "pycbc is required for gwmock.detector.Detector. Install optional waveform/detector dependencies."
+                )
             self._detector = PyCBCDetector(prefix)
             self.name = prefix
         elif name is not None and configuration_file is not None:
@@ -93,7 +107,7 @@ class Detector:
         """
         if not self.is_configured():
             raise ValueError(f"Detector '{self.name}' is not configured.")
-        detector = cast(PyCBCDetector, self._detector)
+        detector = cast(Any, self._detector)
         return detector.antenna_pattern(right_ascension, declination, polarization, t_gps, frequency, polarization_type)
 
     def time_delay_from_earth_center(self, right_ascension, declination, t_gps):
@@ -102,7 +116,7 @@ class Detector:
         """
         if not self.is_configured():
             raise ValueError(f"Detector '{self.name}' is not configured.")
-        detector = cast(PyCBCDetector, self._detector)
+        detector = cast(Any, self._detector)
         return detector.time_delay_from_earth_center(right_ascension, declination, t_gps)
 
     def __getattr__(self, attr):

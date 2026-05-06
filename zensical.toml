@@ -70,11 +70,6 @@ nav = [
     { "gwmock.config" = "reference/gwmock/config/index.md" },
     { "gwmock.data" = "reference/gwmock/data/index.md" },
     { "gwmock.detector" = "reference/gwmock/detector/index.md" },
-    { "gwmock.glitch" = [
-      { "Overview" = "reference/gwmock/glitch/index.md" },
-      { "base" = "reference/gwmock/glitch/base.md" },
-      { "gengli" = "reference/gwmock/glitch/gengli_glitch.md" },
-    ] },
     { "gwmock.mixin" = [
       { "Overview" = "reference/gwmock/mixin/index.md" },
       { "detector" = "reference/gwmock/mixin/detector.md" },

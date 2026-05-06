@@ -180,9 +180,24 @@ adapter-backed `orchestration.noise` flow.
 Legacy `signal` simulator classes have been removed. Configure
 gravitational-wave signals under `orchestration.signal` instead.
 
-Available `glitch` simulators includes:
+Transient glitches are now configured on the noise side under
+`orchestration.noise.arguments.glitches` using public `gwmock-noise` glitch
+models. For example:
 
-- [`GengliGlitchSimulator`](/reference/gwmock/glitch/gengli_glitch/?h=gwmock.glitch.gengli_glitch.gengliglitchsimulator#gwmock.glitch.gengli_glitch.GengliGlitchSimulator)
+```yaml
+orchestration:
+    noise:
+        arguments:
+            glitches:
+                - kind: gengli_blip
+                  rate: 0.0011111111111111111
+                  amplitude_distribution:
+                      distribution: lognormal
+                      mean: 1.0
+                      std: 0.0
+                  population_file: glitches.hdf5
+                  psd_file: https://example.org/ET_10_full_cryo_psd.txt
+```
 
 ## Template Variables
 
