@@ -10,7 +10,7 @@ import yaml
 
 from gwmock.cli.simulate import _simulate_impl
 from gwmock.cli.utils.hash import compute_file_hash
-from gwmock.cli.utils.metadata import SubpackageVersions, load_metadata_record
+from gwmock.cli.utils.metadata import MetadataRecord, SubpackageVersions, load_metadata_record
 
 
 def _write_mock_config(tmp_path: Path) -> Path:
@@ -91,3 +91,18 @@ def test_subpackage_versions_accepts_partial_dict() -> None:
     assert partial.gwmock_signal == "0.1.0"
     assert partial.gwmock_noise is None
     assert partial.gwmock_pop is None
+
+
+def test_metadata_record_accepts_missing_gwmock_version() -> None:
+    """``gwmock_version`` may be unknown when dependency resolution returns None."""
+    minimal = {
+        "subpackage_versions": {},
+        "config": {},
+        "config_sha256": "0" * 64,
+        "host": {"platform": "x", "python": "3.12", "cpu": "cpu"},
+    }
+    record = MetadataRecord.model_validate(minimal)
+    assert record.gwmock_version is None
+
+    with_version = {**minimal, "gwmock_version": None}
+    assert MetadataRecord.model_validate(with_version).gwmock_version is None

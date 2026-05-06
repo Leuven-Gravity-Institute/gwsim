@@ -76,7 +76,7 @@ class MetadataRecord(BaseModel):
     """Versioned metadata record written for each simulation batch."""
 
     schema_version: str = Field(default=SCHEMA_VERSION)
-    gwmock_version: str
+    gwmock_version: str | None = None
     subpackage_versions: SubpackageVersions
     config: dict[str, Any]
     config_sha256: str
